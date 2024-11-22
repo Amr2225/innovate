@@ -1,8 +1,11 @@
+"use client";
 import React from "react";
 
 import { Button } from "@/components/ui/button";
 import { X, Check } from "lucide-react";
 import Link from "next/link";
+
+import { motion } from "framer-motion";
 
 interface PriceCardsProps {
   type: PricePlans;
@@ -52,7 +55,7 @@ function getDescription(type: PricePlans) {
             <p>Minimum amount is 1,000 student</p>
           </li>
           <li className='flex gap-3'>
-            <Check className='text-red-500' />
+            <Check className='text-green-500' />
             <p>Offers will be granted yearly</p>
           </li>
         </>
@@ -69,7 +72,7 @@ function getDescription(type: PricePlans) {
             <p>Minimum amount is 10,000 students</p>
           </li>
           <li className='flex gap-3'>
-            <Check className='text-red-500' />
+            <Check className='text-green-500' />
             <p>Offers will be granted monthly</p>
           </li>
         </>
@@ -77,9 +80,21 @@ function getDescription(type: PricePlans) {
   }
 }
 
+const variant = {
+  show: {
+    y: 0,
+    opacity: 1,
+    transition: { duraiton: 0.8, ease: "easeInOut" },
+  },
+  hidden: {
+    y: 20,
+    opacity: 0,
+  },
+};
+
 export default function PriceCards({ type }: PriceCardsProps) {
   return (
-    <div className='border shadow-lg rounded-lg md:hover:-translate-y-2 transition-transform w-full md:w-fit'>
+    <motion.div variants={variant} className='border shadow-lg rounded-lg w-full md:w-fit'>
       <header className='bg-gradient-to-r from-primary-dark to-primary flex justify-between items-center px-8 h-14 rounded-se-md rounded-ss-md'>
         <h1 className='font-bold text-xl text-white'>{getTitle(type)}</h1>
       </header>
@@ -95,6 +110,6 @@ export default function PriceCards({ type }: PriceCardsProps) {
         </Button>
         <ul className='space-y-4'>{getDescription(type)}</ul>
       </div>
-    </div>
+    </motion.div>
   );
 }
