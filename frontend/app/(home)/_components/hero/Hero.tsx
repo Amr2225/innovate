@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import React from "react";
 import Graphics from "./Graphics";
+import Link from "next/link";
 
 export default function Hero() {
   return (
@@ -16,7 +17,7 @@ export default function Hero() {
             </span>
           </h5>
           <Button className='w-[90%] font-bold text-lg capitalize' size={"lg"}>
-            Login with access code
+            <Link href={"/login-access"}>Login with access code</Link>
           </Button>
         </div>
         <Graphics />
