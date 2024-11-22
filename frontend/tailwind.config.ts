@@ -12,7 +12,7 @@ export default {
 			backgroundColor: {
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
 				},
 			},
 			colors: {
@@ -29,7 +29,8 @@ export default {
 				},
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+					foreground: 'hsl(var(--primary-foreground))',
+					dark: "#CC522B",
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
