@@ -74,3 +74,39 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+.silver {
+  background: rgb(168, 169, 173);
+  background: linear-gradient(
+    90deg,
+    rgba(168, 169, 173, 1) 0%,
+    rgba(180, 181, 184, 1) 20%,
+    rgba(215, 215, 216, 1) 42%,
+    rgba(192, 192, 195, 1) 71%,
+    rgba(203, 204, 205, 1) 94%
+  );
+}
+
+.gold {
+  background: rgb(168, 169, 173);
+  background: linear-gradient(
+    90deg,
+    rgba(168, 169, 173, 1) 0%,
+    rgba(180, 181, 184, 1) 0%,
+    rgba(204, 161, 43, 1) 0%,
+    rgba(244, 212, 128, 1) 48%,
+    rgba(234, 182, 48, 1) 95%
+  );
+}
+
+.diamond {
+  background: rgb(168, 169, 173);
+  background: linear-gradient(
+    90deg,
+    rgba(168, 169, 173, 1) 0%,
+    rgba(180, 181, 184, 1) 0%,
+    rgba(65, 144, 219, 1) 0%,
+    rgba(123, 185, 243, 1) 50%,
+    rgba(70, 162, 255, 1) 100%
+  );
+}

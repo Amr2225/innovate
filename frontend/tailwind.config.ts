@@ -14,6 +14,9 @@ export default {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))',
 				},
+				blue: {
+					1000: "#1D2026"
+				}
 			},
 			colors: {
 				background: 'hsl(var(--background))',
