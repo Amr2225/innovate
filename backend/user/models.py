@@ -21,6 +21,10 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.username} ({self.role})"
 
+
+class Courses(models.Model):
+    pass
+
     # class User(AbstractBaseUser, PermissionsMixin):
     #     class RoleChoices(models.TextChoices):
     #         STUDENT = 'student', 'Student'
@@ -41,5 +45,5 @@ class User(AbstractUser):
 
     #     objects = UserManager()
 
-        # def __str__(self):
-        #     return f"{self.username} ({self.role})"
+    # def __str__(self):
+    #     return f"{self.username} ({self.role})"
