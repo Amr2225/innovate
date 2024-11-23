@@ -8,7 +8,7 @@ export default function Join() {
   const joinSteps = [
     "Purchase a plan that fits your active student count and your future needs",
     "Start adding your students and instructors into the system ",
-    "Add your courses and prerequisites ans assign instructors",
+    "Add your courses and prerequisites and assign instructors",
     "That's it you have your own LMS",
   ];
 

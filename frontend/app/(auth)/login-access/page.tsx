@@ -1,13 +1,6 @@
 "use client";
 import React from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 import {
   Form,
@@ -19,7 +12,6 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -43,7 +35,7 @@ export default function AccessLogin() {
   };
 
   return (
-    <main className='h-[85vh] grid place-content-center'>
+    <div className='h-[85vh] grid place-content-center'>
       <Card className='md:w-[500px] w-[350px]'>
         <CardHeader>
           <CardTitle>Login</CardTitle>
@@ -100,6 +92,6 @@ export default function AccessLogin() {
           </Form>
         </CardContent>
       </Card>
-    </main>
+    </div>
   );
 }

@@ -6,6 +6,7 @@ import { X, Check } from "lucide-react";
 import Link from "next/link";
 
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface PriceCardsProps {
   type: PricePlans;
@@ -97,9 +98,12 @@ export default function PriceCards({ type }: PriceCardsProps) {
     <motion.div variants={variant} className='border shadow-lg rounded-lg w-full md:w-fit'>
       <header className='bg-gradient-to-r from-primary-dark to-primary flex justify-between items-center px-8 h-14 rounded-se-md rounded-ss-md'>
         <h1 className='font-bold text-xl text-white'>{getTitle(type)}</h1>
+        <div className={cn(type, "text-white rounded-full px-4 py-0.3 capitalize shadow-md")}>
+          {type}
+        </div>
       </header>
       <div className='p-5'>
-        <h1 className='md:text-2xl  mt-5 font-bold'>
+        <h1 className='text-2xl mt-5 font-bold'>
           {getTitle(type).replace("To", "Credit = ") + " Students"}
         </h1>
         <Button
