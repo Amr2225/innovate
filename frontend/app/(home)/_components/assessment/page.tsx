@@ -6,9 +6,9 @@ export default function AssessmentSystem() {
   return (
     <section>
       <h1 className='text-3xl font-bold text-center'>Our Innovated Assessment System</h1>
-      <div className='!w-[60%]'>
+      <div className='md:!w-[60%] px-3'>
         {/*  */}
-        <div className='flex gap-3 items-center justify-center '>
+        <div className='flex flex-col-reverse md:flex-row gap-3 items-center justify-center '>
           <div className='w-full'>
             <h1 className='text-xl font-bold my-3'>Handwritten Exams</h1>
             <p className='text-neutral-500'>
@@ -25,7 +25,7 @@ export default function AssessmentSystem() {
           </div>
         </div>
 
-        <div className='flex gap-3 items-center justify-center '>
+        <div className='flex flex-col md:flex-row gap-3 items-center justify-center '>
           <div className='size-[350px] aspect-square'>
             <CodingGraphics />
           </div>
@@ -41,7 +41,7 @@ export default function AssessmentSystem() {
           </div>
         </div>
 
-        <div className='flex gap-3 items-center justify-center '>
+        <div className='flex flex-col-reverse md:flex-row gap-3 items-center justify-center '>
           <div className='w-full'>
             <h1 className='text-xl font-bold my-3'>MCQ Exams</h1>
             <p className='text-neutral-500'>
