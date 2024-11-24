@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 export default function Footer() {
   return (
     <footer className='bg-blue-1000 py-10'>
-      <div className='flex justify-between items-center container mx-auto'>
+      <div className='flex flex-col md:flex-row gap-5 justify-between md:items-center container px-3'>
         <div className=''>
           <div className='flex gap-2 items-start justify-start'>
             <Image src={"/Logo.png"} alt='Logo' width={40} height={40} />
@@ -16,8 +16,8 @@ export default function Footer() {
         </div>
 
         <div>
-          <h5 className='uppercase text-white mb-5'>quick links</h5>
-          <ul className='space-y-3 [&>li]:text-neutral-400'>
+          <h5 className='uppercase text-white md:mb-5 mb-2'>quick links</h5>
+          <ul className='md:space-y-3 [&>li]:text-neutral-400'>
             <li>
               <Button variant={"link"} asChild className='text-neutral-400 px-0'>
                 <Link href={"/about"}>About Us</Link>
@@ -32,8 +32,8 @@ export default function Footer() {
         </div>
 
         <div>
-          <h5 className='uppercase text-white mb-5'>Support</h5>
-          <ul className='space-y-3 [&>li]:text-neutral-400'>
+          <h5 className='uppercase text-white mb-2 md:mb-5'>Support</h5>
+          <ul className='md:space-y-3 [&>li]:text-neutral-400'>
             <li>
               <Button variant={"link"} asChild className='text-neutral-400 px-0'>
                 <Link href={"/faq"}>FAQs</Link>

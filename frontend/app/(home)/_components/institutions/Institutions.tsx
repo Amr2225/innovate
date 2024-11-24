@@ -1,14 +1,14 @@
 import React from "react";
 import Image from "next/image";
 
-import institutionImage from "../../../assets/institutions/institution.png";
-import institutionImage2 from "../../../assets/institutions/institution2.png";
-import institutionImage3 from "../../../assets/institutions/institution3.png";
-import institutionImage4 from "../../../assets/institutions/institution4.png";
-import institutionImage5 from "../../../assets/institutions/institution5.png";
-import institutionImage6 from "../../../assets/institutions/institution6.png";
-import institutionImage7 from "../../../assets/institutions/institution7.png";
-import institutionImage8 from "../../../assets/institutions/institution8.png";
+import institutionImage from "../../../../assets/institutions/institution.png";
+import institutionImage2 from "../../../../assets/institutions/institution2.png";
+import institutionImage3 from "../../../../assets/institutions/institution3.png";
+import institutionImage4 from "../../../../assets/institutions/institution4.png";
+import institutionImage5 from "../../../../assets/institutions/institution5.png";
+import institutionImage6 from "../../../../assets/institutions/institution6.png";
+import institutionImage7 from "../../../../assets/institutions/institution7.png";
+import institutionImage8 from "../../../../assets/institutions/institution8.png";
 
 export default function Institutions() {
   const instituationImages = [
@@ -23,8 +23,8 @@ export default function Institutions() {
   ];
   return (
     <section>
-      <div className='flex justify-between items-start !w-[60%] gap-5'>
-        <div className='w-[45%]'>
+      <div className='flex flex-col md:flex-row justify-between items-start md:!w-[60%] gap-5 px-3'>
+        <div className='md:w-[45%]'>
           <h1 className='font-bold text-3xl'>150 Trusted Institutions</h1>
           <p className='text-neutral-500'>
             Partnered with leading Institutions, we bring top-tier education to your fingertips. Our
@@ -33,10 +33,10 @@ export default function Institutions() {
           </p>
         </div>
 
-        <div className='grid grid-cols-4 grid-rows-2 gap-y-3 gap-x-32 w-[55%]'>
+        <div className='grid md:grid-cols-4 md:grid-rows-2 grid-cols-3 grid-rows-3 md:gap-x-32 gap-4 mx-auto md:w-[55%]'>
           {instituationImages.map((image, index) => (
             <div
-              className='size-[150px] aspect-square p-3 border shadow-sm rounded-md '
+              className='md:size-[150px] size-[100px] aspect-square p-3 border shadow-sm rounded-md '
               key={index}
             >
               <Image src={image} alt='institution image' className='w-full h-full' />

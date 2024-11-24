@@ -5,7 +5,7 @@ import Join from "./_components/join/Join";
 import Plans from "./_components/plans/Plans";
 import AssessmentSystemIntro from "./_components/assessment/page";
 import Testimonial from "./_components/testimonial/page";
-import Institutions from "./institutions/Institutions";
+import Institutions from "./_components/institutions/Institutions";
 import Footer from "@/components/Footer";
 
 export default function HomePage() {
