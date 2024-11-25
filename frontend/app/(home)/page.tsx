@@ -6,7 +6,6 @@ import Plans from "./_components/plans/Plans";
 import AssessmentSystemIntro from "./_components/assessment/page";
 import Testimonial from "./_components/testimonial/page";
 import Institutions from "./_components/institutions/Institutions";
-import Footer from "@/components/Footer";
 
 export default function HomePage() {
   return (
@@ -24,8 +23,6 @@ export default function HomePage() {
         <Testimonial />
         <hr className='my-5 border-none ' />
         <Institutions />
-        <hr className='my-5 border-none ' />
-        <Footer />
       </div>
     </div>
   );
