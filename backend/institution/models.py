@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password
 
 
 class Institution(models.Model):
-    id = NanoidField(primary_key=True, max_length=14)
+    id = NanoidField(primary_key=True, max_length=8)
     name = models.CharField(max_length=255, blank=False,
                             null=False, unique=True)
     credits = models.PositiveIntegerField(blank=False, null=False)
