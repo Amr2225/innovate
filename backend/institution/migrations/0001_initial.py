@@ -15,7 +15,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Institution',
             fields=[
-                ('id', nanoid_field.fields.NanoidField(alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz-', max_length=16, primary_key=True, serialize=False)),
+                ('id', nanoid_field.fields.NanoidField(
+                    alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz-', max_length=16, primary_key=True, serialize=False)),
                 ('name', models.CharField(max_length=255)),
                 ('credits', models.PositiveIntegerField()),
                 ('email', models.EmailField(max_length=254, unique=True)),
