@@ -47,7 +47,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     national_id = models.CharField(
         max_length=14, blank=False, null=False, validators=[nationalId_length_validation])
     instituition = models.ForeignKey(
-        Institution, on_delete=models.CASCADE, null=True)
+        Institution, on_delete=models.CASCADE, null=True, related_name="institution")
 
     is_active = models.BooleanField(default=False)
     is_valid = models.BooleanField(default=False)
