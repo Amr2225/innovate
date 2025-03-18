@@ -6,3 +6,9 @@ psycopg2
 python-dotenv
 django-nanoid-field
 drf-spectacular
+django-allauth
+dj-rest-auth
+python-decouple
+django-otp
+requests
+cryptography 
