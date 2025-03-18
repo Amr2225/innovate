@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 class CourseListCreateAPIView(generics.ListCreateAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
+
     def get_permissions(self):
         self.permission_classes = [AllowAny]
         if self.request.method == 'POST':
@@ -19,6 +20,7 @@ class RetrieveUpdateDestroyCourseDetailAPIView(generics.RetrieveUpdateDestroyAPI
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
     lookup_url_kwarg = 'p_id'
+
     def get_permissions(self):
         self.permission_classes = [AllowAny]
         if self.request.method in ['PUT', 'PATCH', 'DELETE']:

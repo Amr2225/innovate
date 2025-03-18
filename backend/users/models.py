@@ -1,10 +1,8 @@
 from django.db import models
-from django.core.exceptions import ValidationError
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
+from nanoid_field import NanoidField
+from .validation import nationalId_length_validation
 import uuid
-from institution.models import Institution
-from users.validation import nationalId_length_validation
-from django.utils import timezone
 
 # Create your models here.
 
@@ -21,53 +19,71 @@ class CustomManager(UserManager):
 
         return user
 
-    def create_user(self, email=None, password=None, **extra_fields):
-        extra_fields.setdefault("is_teacher", False)
-        extra_fields.setdefault("is_superuser", False)
-        extra_fields.setdefault("is_staff", False)
-        extra_fields.setdefault("is_valid", False)
-        return self._create_user(email, password, **extra_fields)
-
     def create_superuser(self, email, password, **extra_fields):
-        extra_fields.setdefault("is_teacher", False)
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_valid", True)
         extra_fields.setdefault("is_active", True)
+        # TODO: may be changed
+        extra_fields.setdefault('is_email_verified', True)
+        extra_fields.setdefault("role", "Admin")
         return self._create_user(email, password, **extra_fields)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email = models.EmailField(unique=True)
-    first_name = models.CharField(max_length=255, blank=False, null=False)
-    last_name = models.CharField(max_length=255, blank=False, null=False)
-    avatar = models.ImageField(
-        upload_to='uploads/user/avatars', blank=True, null=True)
-    is_teacher = models.BooleanField(default=False)
-    national_id = models.CharField(
-        max_length=14, blank=False, null=False, default="00000000000000", validators=[nationalId_length_validation])
-    instituition = models.ForeignKey(
-        Institution, on_delete=models.CASCADE, null=True)
+    class Role(models.Choices):
+        INSTITUTION = "Institution"
+        STUDENT = "Student"
+        TEACHER = "Teacher"
+        ADMIN = "Admin"
 
-    is_active = models.BooleanField(default=False)
-    is_valid = models.BooleanField(default=False)
+    # Common Fields
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email = models.EmailField(unique=True, null=True, blank=True)
+    otp = models.CharField(max_length=6, blank=True, null=True)
+    otp_created_at = models.DateTimeField(blank=True, null=True)
+    otp_expiry_time_minutes = models.PositiveSmallIntegerField(default=5)
+    # TODO: if password rasise error add it here and make it nullable
+    date_joined = models.DateTimeField(auto_now_add=True)
+    role = models.CharField(max_length=15, choices=Role, default=Role.STUDENT)
+    is_email_verified = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
-    date_joined = models.DateTimeField(default=timezone.now)
-    last_login = models.DateTimeField(blank=True, null=True)
+    # User Fields
+    first_name = models.CharField(max_length=255, blank=True, null=True)
+    middle_name = models.CharField(max_length=255, blank=True, null=True)
+    last_name = models.CharField(max_length=255, blank=True, null=True)
+    avatar = models.ImageField(
+        upload_to='uploads/user/avatars', blank=True, null=True)
+    birth_date = models.DateTimeField(blank=True, null=True)
+    age = models.PositiveIntegerField(blank=True, null=True)
+    national_id = models.CharField(
+        max_length=14, blank=True, null=True, validators=[nationalId_length_validation])
+
+    # Institution Fields
+    access_code = NanoidField(max_length=8, blank=True, null=True)
+    name = models.CharField(max_length=255, blank=True,
+                            null=True, unique=True)
+    credits = models.PositiveIntegerField(blank=True, null=True)
+    logo = models.ImageField(
+        upload_to='uploads/institution/logo/', null=True, blank=True)
+
+    # Relation
+    institution = models.ForeignKey('self', on_delete=models.CASCADE, blank=True,
+                                    null=True, related_name="members", limit_choices_to={"role": "Institution"})
 
     objects = CustomManager()
 
     USERNAME_FIELD = "email"
     EMAIL_FIELD = "email"
-    REQUIRED_FIELDS = ["first_name", "last_name"]
+    REQUIRED_FIELDS = ['first_name', 'middle_name', 'last_name']
 
     @property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name} {self.middle_name} {self.last_name}"
 
     def __str__(self):
-        role = "admin" if self.is_superuser else "teacher" if self.is_teacher else "student"
-        return f"{self.full_name} ({role})"
+        if self.role == "Institution":
+            return f"{self.name} - {self.credits}"
+        return f"{self.full_name} ({self.role})"
