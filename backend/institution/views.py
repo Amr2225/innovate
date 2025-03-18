@@ -20,10 +20,9 @@ class RetrieveUpdateDestroyInstitutionDetailAPIView(generics.RetrieveUpdateDestr
     queryset = Institution.objects.all()
     serializer_class = InstitutionSerializer
     lookup_url_kwarg = 'p_id'
-    http_method_names = ['put', 'delete']
 
     def get_permissions(self):
         self.permission_classes = [AllowAny]
-        if self.request.method in self.http_method_names:
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
             self.permission_classes = [IsAuthenticated]
         return super().get_permissions()
