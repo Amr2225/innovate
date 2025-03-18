@@ -1,12 +1,11 @@
 from rest_framework import serializers
-from user.models import User
+from users.models import User
 from courses.models import Course
 
 
 class CourseSerializer(serializers.ModelSerializer):
-    instructor = serializers.PrimaryKeyRelatedField(
-        queryset=User.objects.all())
-
+    instructor = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    
     class Meta:
         model = Course
         fields = (
@@ -15,7 +14,7 @@ class CourseSerializer(serializers.ModelSerializer):
             'instructor',
             'institution'
         )
-
+    
     def create(self, validated_data):
         course = Course(
             name=validated_data['name'],
