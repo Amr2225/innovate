@@ -1,5 +1,6 @@
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
 import os
 load_dotenv()
 
@@ -14,7 +15,7 @@ ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
 
 WEBSITE_URL = "http://localhost:8000"
 
-AUTH_USER_MODEL = "user.User"
+AUTH_USER_MODEL = "users.User"
 
 # CORS
 CORS_ALLOWED_ORIGINS = [
@@ -31,22 +32,23 @@ CORS_ALLOW_METHODS = (
     "PUT",
 )
 
-# Application definition
 INSTALLED_APPS = [
+    # Django Core Apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    "django_extensions",
 
+    # Third-Party Apps
+    "django_extensions",
+    "nanoid_field",
     "drf_spectacular",
 
-    "nanoid_field",
-
-    "institution",
-    "user"
+    # Apps
+    'users',
+    "courses",
 ]
 
 MIDDLEWARE = [
@@ -141,13 +143,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
-        "rest_framework.authentication.BasicAuthentication"
+        'rest_framework.authentication.SessionAuthentication',  # For Browsable API
+        # "rest_framework.authentication.BasicAuthentication"
     ),
     "DEFAULT_PERMISSIONS_CLASSES": (
         "rest_framework.permissions.IsAuthenticated"
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+
+# Simple JWT
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "SIGNING_KEY": SECRET_KEY,
+
 }
 
 
