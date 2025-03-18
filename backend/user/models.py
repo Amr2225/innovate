@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserM
 import uuid
 from institution.models import Institution
 from .validation import nationalId_length_validation
+from django.contrib.auth.hashers import make_password
 
 # Create your models here.
 
@@ -49,11 +50,22 @@ class User(AbstractBaseUser, PermissionsMixin):
     instituition = models.ForeignKey(
         Institution, on_delete=models.CASCADE, null=True, related_name="institution")
 
+    # Authentication fields
     is_active = models.BooleanField(default=False)
     is_valid = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
+    # Email verification
+    email_verification_code = models.CharField(
+        max_length=6, blank=True, null=True)
+    email_verification_code_expiry = models.DateTimeField(
+        blank=True, null=True)
+
+    # Social login information
+    google_id = models.CharField(max_length=255, blank=True, null=True)
+
+    # Timestamps
     data_joined = models.DateTimeField(auto_now_add=True)
     last_login = models.DateTimeField(blank=True, null=True)
 
@@ -68,5 +80,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         return f"{self.first_name} {self.last_name}"
 
     def __str__(self):
-        role = "admin" if self.is_superuser else "teacher" if self.is_teacher else "studnet"
+        role = "admin" if self.is_superuser else "teacher" if self.is_teacher else "student"
         return f"{self.full_name} ({role})"
+
+    def save(self, **fields):
+        if 'password' in fields or (not self.id and self.password):
+            self.password = make_password(self.password)
+        return super().save(**fields)
