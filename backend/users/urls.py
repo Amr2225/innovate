@@ -11,6 +11,8 @@ urlpatterns = [
     path('institution/register/', views.InstitutionRegisterView.as_view(),
          name="institution_register"),
 
+    path('add-credentials/', views.UserAddCredentialsView.as_view(), name="add_creds"),
+
     # Token
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
@@ -19,4 +21,12 @@ urlpatterns = [
     path('resend-verification-email/', views.ResendVerificationEmailView.as_view(),
          name="resend-verfication-email"),
 
+    # Institution
+    path('institution/users/register/',
+         views.InstitutionRegisterUserView.as_view(), name="institution_register_user"),
+
+    path('institution/users/register/csv/',
+         views.BulkUserImportView.as_view(), name="institution_register_user"),
+
+    path("login-access/", views.LoginAccessView.as_view(), name="first_login")
 ]

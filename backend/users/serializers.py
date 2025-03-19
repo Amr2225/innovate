@@ -1,13 +1,18 @@
-import random
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
-from rest_framework.exceptions import AuthenticationFailed
-from django.core.mail import send_mail
 from django.utils import timezone
+from django.db import models
+import random
+
+from users.validation import nationalId_length_validation
 
 # Helpers
-from .helper import generateVerificationLink, generateVerificationToken, sendEmail
+from .helper import sendEmail
+
+# Errors
+from .errors import EmailNotVerifiedError
 
 User = get_user_model()
 
@@ -58,6 +63,34 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
         return data
 
 
+class InstitutionRegisterUserSeralizer(serializers.ModelSerializer):
+    Role = (
+        ("Student", "Student"),
+        ("Teacher", "Teacher"),
+    )
+
+    role = serializers.ChoiceField(choices=Role)
+
+    class Meta:
+        model = User
+        fields = (
+            "first_name",
+            "middle_name",
+            "last_name",
+            "role",
+            "national_id",
+            "birth_date",
+            "age",
+        )
+
+    def create(self, data):
+        request = self.context.get('request')
+        user = User(**data, institution=request.user, access_code=None)
+        user.save()
+
+        return user
+
+
 class UserLoginSeralizer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(
@@ -80,10 +113,16 @@ class UserLoginSeralizer(serializers.Serializer):
             raise AuthenticationFailed("User account is disabled")
 
         if not user.is_email_verified:
-            raise AuthenticationFailed("Email is not verified")
+            raise EmailNotVerifiedError()
 
         data['user'] = user
         return data
+
+    def to_representation(self):
+        errors = {}
+        for field, error_list in self.errors.items():
+            errors[field] = [str(error) for error in error_list]
+        return errors
 
 
 class LoginResponseSerializer(serializers.Serializer):
@@ -94,3 +133,26 @@ class LoginResponseSerializer(serializers.Serializer):
 
 class ErrorResponseSerializer(serializers.Serializer):
     detail = serializers.CharField(help_text="Error message")
+
+
+class FirstLoginSerializer(serializers.Serializer):
+    access_code = serializers.CharField(max_length=8)
+    national_id = serializers.CharField(max_length=14, validators=[
+                                        nationalId_length_validation])
+
+    def validate(self, data):
+        access_code = data.get("access_code")
+        national_id = data.get("national_id")
+
+        if not access_code or not national_id:
+            raise AuthenticationFailed(
+                "Please provide both access code and national id")
+
+        user = User.objects.get(national_id=national_id)
+
+        if not user.institution.access_code == access_code:
+            raise AuthenticationFailed("Invalid institution Code")
+
+        data['user'] = user
+
+        return data

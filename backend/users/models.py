@@ -60,10 +60,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     birth_date = models.DateTimeField(blank=True, null=True)
     age = models.PositiveIntegerField(blank=True, null=True)
     national_id = models.CharField(
-        max_length=14, blank=True, null=True, validators=[nationalId_length_validation])
+        max_length=14, blank=True, null=True, unique=True, validators=[nationalId_length_validation])
 
     # Institution Fields
-    access_code = NanoidField(max_length=8, blank=True, null=True)
+    access_code = NanoidField(max_length=8, blank=True,
+                              null=True, unique=True, editable=True)
     name = models.CharField(max_length=255, blank=True,
                             null=True, unique=True)
     credits = models.PositiveIntegerField(blank=True, null=True)
