@@ -17,6 +17,7 @@ WEBSITE_URL = "http://localhost:8000"
 
 AUTH_USER_MODEL = "users.User"
 
+
 # CORS
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -40,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
 
     # Third-Party Apps
     "django_extensions",
@@ -150,6 +152,10 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated"
     ),
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # TODO: Enable this in production
+    # 'DEFAULT_RENDERER_CLASSES': [
+    #     'rest_framework.renderers.JSONRenderer',
+    # ],
 }
 
 
@@ -158,7 +164,9 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "SIGNING_KEY": SECRET_KEY,
-
+    "ISSUER": None,
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
 }
 
 
@@ -167,8 +175,19 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Innovate Backend APIs',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    "deepLinking": True,
+    "SWAGGER_UI_DIST": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@latest",  # default
     # OTHER SETTINGS
     # 'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAuthenticated'],
     # None will default to DRF's AUTHENTICATION_CLASSES
     # 'SERVE_AUTHENTICATION': None,
+    # "SWAGGER_UI_FAVICON_HREF": settings.STATIC_URL + "your_company_favicon.png", # default is swagger favicon
 }
+
+# Email Config
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'amrmohamed.amaa@gmail.com'
+EMAIL_HOST_PASSWORD = 'qofp adxx ymxu udmi'

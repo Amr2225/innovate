@@ -2,12 +2,21 @@ from django.contrib import admin
 from django.urls import path
 from . import views
 from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
     TokenRefreshView,
 )
 
 urlpatterns = [
-    path('login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('login/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('register/', views.UserCreateAPIView.as_view())
+    # Auth
+    path('login/', views.UserLoginView.as_view(), name='user_login'),
+    path('institution/register/', views.InstitutionRegisterView.as_view(),
+         name="institution_register"),
+
+    # Token
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    # Email Verification
+    path('verify-email/', views.VerifyEmailView.as_view(), name="verify_email"),
+    path('resend-verification-email/', views.ResendVerificationEmailView.as_view(),
+         name="resend-verfication-email"),
+
 ]
