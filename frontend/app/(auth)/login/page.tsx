@@ -1,11 +1,19 @@
 "use client";
-import React from "react";
+import React, { startTransition, useActionState } from "react";
 import Link from "next/link";
+import { useForm } from "react-hook-form";
 
+// Server Actions
+import { login } from "@/actions/login";
+
+// Assets
 import LoginImage from "../../../assets/login.png";
 import googleIcon from "../../../assets/googleIcons.png";
 import Image from "next/image";
 
+// Components
+import LoginErrorMessage from "@/components/helpers/LoginErrorMessage";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
   FormControl,
@@ -17,12 +25,25 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import { useForm } from "react-hook-form";
+import { signIn } from "next-auth/react";
 
+// Types & Schemas
+import { LoginError } from "@/types/auth.type";
 import { LoginSchema, LoginSchemaType } from "@/schema/loginSchema";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 
 export default function Login() {
+  const [error, submitAction, isPending] = useActionState<LoginError, LoginSchemaType>(
+    async (prev, data) => {
+      const status = await login(data);
+
+      if (status) return { message: status.message, type: status.type };
+
+      return { message: "" };
+    },
+    { message: "" }
+  );
+
   const form = useForm<LoginSchemaType>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
@@ -33,9 +54,11 @@ export default function Login() {
 
   const handleLogin = (data: LoginSchemaType) => {
     console.log(data);
+    startTransition(() => submitAction(data));
   };
 
   const hanldeGoogleLogin = () => {
+    signIn("google", { redirectTo: DEFAULT_LOGIN_REDIRECT });
     console.log("google in");
   };
 
@@ -76,9 +99,10 @@ export default function Login() {
               )}
             />
 
-            <Button type='submit' className='w-full font-bold text-lg'>
+            <Button type='submit' className='w-full font-bold text-lg' disabled={isPending}>
               Login
             </Button>
+            <LoginErrorMessage error={error} />
             <div className='mt-1 text-center'>
               <p className='inline -mr-2'>Don&apos;t have an account?</p>
               <Button variant={"link"} asChild>

@@ -1,5 +1,14 @@
+from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+from .permissions import isInstitution
+from .errors import EmailNotVerifiedError
+from datetime import timedelta
+from django.utils import timezone
+import io
+import csv
+from .helper import generateTokens, sendEmail
 import random
-from django.http import JsonResponse
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -7,30 +16,19 @@ from rest_framework.views import APIView
 
 from django.contrib.auth import get_user_model
 from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import ErrorResponseSerializer, FirstLoginSerializer, InstitutionRegisterSeralizer, InstitutionRegisterUserSeralizer, UserLoginSeralizer, LoginResponseSerializer
-from .authentication import CustomJWTAuthentication, FirstLoginAuthentication
+from users.exceptions import EmailVerificationError
+
+from .serializers import ErrorResponseSerializer, FirstLoginSerializer, InstitutionRegisterSeralizer, InstitutionRegisterUserSeralizer, UserAddCredentialsSerializer, UserLoginSeralizer, LoginResponseSerializer
+from .authentication import FirstLoginAuthentication
 
 from rest_framework.parsers import MultiPartParser, FormParser
 
-# Helpers
-from .helper import generateTokens, sendEmail
-import csv
-import io
+from google.oauth2 import id_token
+from google.auth.transport import requests
 
-# OTP Validation
-from django.utils import timezone
-from datetime import timedelta
-
-# Errors
-from .errors import EmailNotVerifiedError
-
-# Permissions
-from .permissions import isInstitution
-
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
-from rest_framework.exceptions import AuthenticationFailed
-from rest_framework import serializers
+from django.conf import settings
 User = get_user_model()
 
 
@@ -60,7 +58,7 @@ class BulkUserImportView(generics.CreateAPIView):
         try:
             decoded_file = csv_file.read().decode('utf-8')
             io_string = io.StringIO(decoded_file)
-            reader = list(csv.DictReader(io_string, delimiter="\t"))
+            reader = list(csv.DictReader(io_string, delimiter=","))
 
             # Process each row from the dictionary
             for row in reader:
@@ -223,27 +221,75 @@ class LoginAccessView(APIView):
             serializer.is_valid(raise_exception=True)
 
             user = serializer.validated_data['user']
-            print(
-                user
-            )
 
-            # Generate tokens
-            [refresh, access] = generateTokens(user, isFirstLogin=True)
+            # Generate token
+            [access, _] = generateTokens(user)
 
-            return Response({
-                'refresh': refresh,
-                'access': access,
-            }, status=status.HTTP_200_OK)
+            return Response({'access': access, }, status=status.HTTP_200_OK)
         except AuthenticationFailed as e:
             return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        except EmailVerificationError as e:
+            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
         except serializers.ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UserAddCredentialsView(APIView):
+class UserAddCredentialsView(generics.CreateAPIView):
     authentication_classes = [FirstLoginAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = UserAddCredentialsSerializer
     allowed_methods = ["POST"]
 
+    # def post(self, request):
+    #     return JsonResponse({"Message": "message"})
+
+
+class GoogleAuthView(APIView):
+    permission_classes = []
+
     def post(self, request):
-        return JsonResponse({"Message": "message"})
+        try:
+            # Verify the Google token
+            id_info = id_token.verify_oauth2_token(
+                request.data.get('id_token'),
+                requests.Request(),
+                settings.GOOGLE_OAUTH2_CLIENT_ID
+            )
+
+            if id_info['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                return Response({'error': 'Wrong issuer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get or create user
+            email = id_info['email']
+
+            # Created is just a boolean value to check if the user was created or not
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    'username': email,
+                    'first_name': id_info.get('given_name', ''),
+                    'last_name': id_info.get('family_name', ''),
+                }
+            )
+
+            print("USER", user)
+            print("created", created)
+            refresh = RefreshToken.for_user(user)
+            refresh['role'] = user.role
+            refresh['email'] = user.email
+
+            # Create or get token
+            # token, _ = user.objects.get_or_create(user=user)
+
+            return Response({
+                "refresh": str(refresh),
+                'access': str(refresh.access_token),
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'name': f"{user.first_name} {user.last_name}".strip(),
+                    'role': user.role
+                }
+            })
+        except ValueError:
+            return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)

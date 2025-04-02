@@ -1,13 +1,11 @@
-"use client";
-import Image from "next/image";
 import React from "react";
+import Image from "next/image";
 import notFoundImage from "../assets/not-found.png";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+
 import NavBar from "@/components/navbar";
+import BackButton from "@/components/backButton";
 
 export default function Notfound() {
-  const router = useRouter();
   return (
     <main>
       <NavBar />
@@ -19,7 +17,7 @@ export default function Notfound() {
             Something went wrong. It&apos;s look that your requested could not be found. It's look
             like the link is broken or the page is removed.
           </p>
-          <Button onClick={() => router.back()}>Go Back</Button>
+          <BackButton />
         </div>
         <Image src={notFoundImage} alt='Not Found Image' width={500} height={500} />
       </div>

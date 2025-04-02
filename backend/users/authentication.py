@@ -1,61 +1,19 @@
-from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken
-from rest_framework_simplejwt.settings import api_settings
 from rest_framework.authentication import BaseAuthentication
-from rest_framework.exceptions import AuthenticationFailed, ParseError
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework_simplejwt.settings import api_settings
 from django.core.signing import Signer, BadSignature
 from django.contrib.auth import get_user_model
-
-import os
 import jwt
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
-
-class CustomJWTAuthentication(JWTAuthentication):
-    def authenticate(self, request):
-        # Store the request object for use in token validation
-        self.request = request
-        return super().authenticate(request)
-
-    def get_validated_token(self, raw_token):
-        try:
-            print("token", raw_token.decode('utf-8'))
-            token = raw_token.decode('utf-8')
-
-            return self.validate_token(token, "secret-secret-secret")
-            # Determine the signing key based on the request path
-            tokenNumber = self.request.query_params.get('token')
-            if tokenNumber and int(tokenNumber) == 1:
-                api_settings.SIGNING_KEY = os.environ.get('JWT_ACCESS_LOGIN')
-                # self.validate_token(raw_token, os.environ.get("JWT_ACCESS_LOGIN"))
-                print(api_settings.SIGNING_KEY)
-                print("JWT SECOND")
-            else:
-                api_settings.SIGNING_KEY = os.environ.get('JWT_MAIN')
-                print(api_settings.SIGNING_KEY)
-                print("JWT MAIN")
-
-            # Validate the token using the appropriate key
-            # return super().get_validated_token(raw_token)
-        except Exception as e:
-            print(e)
-            raise InvalidToken('Invalid token')
-
-    def validate_token(self, token, signing_key):
-        """Validate token with a specific signing key"""
-        try:
-            payload = jwt.decode(
-                token,
-                signing_key,
-                algorithms=api_settings.ALGORITHM
-            )
-        except jwt.InvalidTokenError as e:
-            raise InvalidToken(str(e))
-
-        # Additional validation logic can go here
-        return payload
+AUTH_HEADER_TYPES = api_settings.AUTH_HEADER_TYPES
 
 
 class FirstLoginAuthentication(BaseAuthentication):
+    www_authenticate_realm = "api"
+    media_type = "application/json"
+
     def authenticate(self, request):
         jwt_token = request.META.get('HTTP_AUTHORIZATION')
         if jwt_token is None:
@@ -95,4 +53,10 @@ class FirstLoginAuthentication(BaseAuthentication):
         return token
 
     def authenticate_header(self, request):
-        return 'Bearer'
+        return '{} realm="{}"'.format(
+            AUTH_HEADER_TYPES[0],
+            self.www_authenticate_realm,
+        )
+
+    # def authenticate_header(self, request):
+    #     return 'Bearer'

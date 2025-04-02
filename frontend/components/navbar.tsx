@@ -12,12 +12,18 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
+import { auth } from "@/auth";
+import UserProfile from "./user-profile";
+import { getSession } from "next-auth/react";
 
+// Used to deffirentiate between the authentication and nont-authentication pages
 interface NavBarProps {
   isAuth?: boolean;
 }
 
-export default function NavBar({ isAuth }: NavBarProps) {
+export default async function NavBar({ isAuth }: NavBarProps) {
+  const session = await auth();
+
   return (
     <nav className='p-6 px-2 md:px-14 flex items-center justify-between text-foreground border-b border-neutral-300'>
       <Link href={"/"} className='flex gap-2 items-center justify-start'>
@@ -56,19 +62,25 @@ export default function NavBar({ isAuth }: NavBarProps) {
             </NavigationMenuList>
           </NavigationMenu>
 
-          <div className='flex flex-col-reverse md:flex-row items-center justify-start gap-3 [&>*]:font-bold max-w-[150px] min-w-fit'>
-            <Button asChild className='w-full md:w-fit capitalize text-xs md:text-base'>
-              <Link href={"/login"}>login</Link>
-            </Button>
+          {session ? (
+            <div className='flex flex-col-reverse md:flex-row items-center justify-start gap-3 [&>*]:font-bold max-w-[200px] min-w-fit w-full'>
+              <UserProfile name={session.user.name} email={session.user.email} />
+            </div>
+          ) : (
+            <div className='flex flex-col-reverse md:flex-row items-center justify-start gap-3 [&>*]:font-bold max-w-[150px] min-w-fit'>
+              <Button asChild className='w-full md:w-fit capitalize text-xs md:text-base'>
+                <Link href={"/login"}>login</Link>
+              </Button>
 
-            <Button
-              variant={"secondary"}
-              className='capitalize w-full md:w-fit text-xs md:text-base'
-              asChild
-            >
-              <Link href={"/login-access"}>login with access code</Link>
-            </Button>
-          </div>
+              <Button
+                variant={"secondary"}
+                className='capitalize w-full md:w-fit text-xs md:text-base'
+                asChild
+              >
+                <Link href={"/login-access"}>login with access code</Link>
+              </Button>
+            </div>
+          )}
         </>
       )}
     </nav>
