@@ -3,17 +3,16 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from django.utils import timezone
-from django.db import models
 import random
 
+from users.exceptions import EmailVerificationError
 from users.validation import nationalId_length_validation
 
 # Helpers
-from .helper import sendEmail
+from .helper import generateOTP, sendEmail, generateTokens
 
 # Errors
-from .errors import EmailNotVerifiedError
-
+from .errors import EmailNotVerifiedError, UserAccountDisabledError, UserNotFoundError
 User = get_user_model()
 
 
@@ -107,10 +106,10 @@ class UserLoginSeralizer(serializers.Serializer):
         user = authenticate(email=email, password=password)
 
         if not user:
-            raise AuthenticationFailed("Invalid credentials")
+            raise UserNotFoundError()
 
         if not user.is_active:
-            raise AuthenticationFailed("User account is disabled")
+            raise UserAccountDisabledError()
 
         if not user.is_email_verified:
             raise EmailNotVerifiedError()
@@ -153,6 +152,60 @@ class FirstLoginSerializer(serializers.Serializer):
         if not user.institution.access_code == access_code:
             raise AuthenticationFailed("Invalid institution Code")
 
+        if not user.is_email_verified:
+            raise EmailVerificationError()
+
         data['user'] = user
 
         return data
+
+
+class UserAddCredentialsSerializer(serializers.ModelSerializer):
+    confirm_password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = User
+        fields = (
+            "first_name",
+            "middle_name",
+            "last_name",
+            "email",
+            'password',
+            "confirm_password",
+            'birth_date',
+        )
+        extra_kwargs = {
+            "first_name": {'write_only': True, 'required': True},
+            "middle_name": {'write_only': True, 'required': True},
+            "last_name": {'write_only': True, 'required': True},
+            'email': {'write_only': True, 'required': True},
+            'birth_date': {'write_only': True, 'required': True},
+            'password': {'write_only': True, 'required': True},
+            "confirm_password": {'write_only': True, 'required': True},
+        }
+
+    def validate(self, data):
+        if data['password'] != data['confirm_password']:
+            raise serializers.ValidationError(
+                {"message": "Passwords do not match."})
+        return data
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        # Remove the pop password from the validated_data
+        validated_data.pop("confirm_password")
+
+        user = User.objects.get(national_id=request.user.national_id)
+        user.set_password(validated_data.get('password'))
+        validated_data.pop("password")
+
+        for key, value in validated_data.items():
+            setattr(user, key, value)
+
+        user.save()
+        print(user)
+
+        generateOTP(user)
+        sendEmail(user.email, user.otp)
+
+        return {"message": "Verification email sent."}

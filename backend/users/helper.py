@@ -1,10 +1,11 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
+import datetime as dt
 import os
 from django.utils import timezone
 from random import random
 from django.core.signing import Signer
 from django.core.mail import send_mail
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.settings import api_settings
 
 
@@ -65,36 +66,41 @@ def sendEmail(email, otp):
 
 
 def generateOTP(user):
-    if user.otp_created_at + timedelta(minutes=user.otp_expiry_time_minutes) <= timezone.now():
-        otp = str(random.randint(100000, 999999))
-        user.otp = otp
-        user.otp_created_at = timezone.now()
-        user.save()
+    if not user.otp_created_at or user.otp_created_at + timedelta(minutes=user.otp_expiry_time_minutes) > timezone.now():
+        return False
+
+    otp = str(random.randint(100000, 999999))
+    user.otp = otp
+    user.otp_created_at = timezone.now()
+    user.save()
+
+    return True
 
 
-def generateTokens(user, isFirstLogin=False):
-    # if isFirstLogin:
-    #     api_settings.SIGNING_KEY = os.environ.get("JWT_ACCESS_LOGIN")
-    # else:
-    #     api_settings.SIGNING_KEY = os.environ.get("JWT_MAIN")
-
+def generateTokens(user):
     refresh = RefreshToken.for_user(user)
 
-    if isFirstLogin:
+    if not user.email:
+        access = AccessToken.for_user(user)
+
         national_id = user.national_id
         signer = Signer()
-        refresh['national_id'] = signer.sign(national_id)
-        refresh['first_login'] = True
-        del refresh['user_id']
-        return [str(refresh), str(refresh.access_token)]
+
+        del access['user_id']
+        access['national_id'] = signer.sign(national_id)
+        access['first_login'] = True
+        access['exp'] = int(
+            (datetime.now() + timedelta(minutes=10)).timestamp())
+
+        return [str(access), None]
 
     if user.role == "Institution":
         refresh['name'] = user.name
-        refresh['role'] = user.role
         refresh['credits'] = user.credits
-        refresh['email'] = user.email
     else:
         refresh['full_name'] = user.full_name
-        refresh['role'] = user.role
+
+    refresh['role'] = user.role
+    refresh['email'] = user.email
 
     return [str(refresh), str(refresh.access_token)]

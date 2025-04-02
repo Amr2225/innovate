@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { startTransition, useActionState } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 import {
@@ -17,21 +17,33 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 import { useForm } from "react-hook-form";
-import { accessLoginSchema, AccessLoginSchemaType } from "@/schema/accessLoginSchema";
+import { loginAccessSchema, LoginAccessSchemaType } from "@/schema/loginAccessSchema";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { loginAccess } from "@/actions/login-access";
+import { LoginError } from "@/types/auth.type";
 
 export default function AccessLogin() {
-  const form = useForm<AccessLoginSchemaType>({
-    resolver: zodResolver(accessLoginSchema),
+  const [error, submitAction, isPending] = useActionState<LoginError, LoginAccessSchemaType>(
+    async (prev, data) => {
+      const status = await loginAccess(data);
+
+      if (status) return { message: status.message, type: status.type };
+      return { message: "" };
+    },
+    { message: "" }
+  );
+
+  const form = useForm<LoginAccessSchemaType>({
+    resolver: zodResolver(loginAccessSchema),
     defaultValues: {
       accessCode: "",
-      naitonal: "",
+      nationalId: "",
     },
   });
 
-  const handleLogin = (data: AccessLoginSchemaType) => {
-    //TODO: Implement login and authentication
+  const handleLogin = (data: LoginAccessSchemaType) => {
     console.log(data);
+    startTransition(() => submitAction(data));
   };
 
   return (
@@ -63,7 +75,7 @@ export default function AccessLogin() {
 
               <FormField
                 control={form.control}
-                name='naitonal'
+                name='nationalId'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>National ID</FormLabel>
@@ -78,7 +90,7 @@ export default function AccessLogin() {
                 )}
               />
               <div className='flex flex-col'>
-                <Button type='submit' className='w-full font-bold text-lg'>
+                <Button disabled={isPending} type='submit' className='w-full font-bold text-lg'>
                   Login
                 </Button>
                 <div className='mt-2 text-center'>
@@ -89,6 +101,7 @@ export default function AccessLogin() {
                 </div>
               </div>
             </form>
+            {error.message && <p className='text-red-500 text-center'>{error.message}</p>}
           </Form>
         </CardContent>
       </Card>

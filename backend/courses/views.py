@@ -10,7 +10,7 @@ class CourseListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = CourseSerializer
 
     def get_permissions(self):
-        self.permission_classes = [AllowAny]
+        self.permission_classes = [IsAuthenticated]
         if self.request.method == 'POST':
             self.permission_classes = [AllowAny]
         return super().get_permissions()

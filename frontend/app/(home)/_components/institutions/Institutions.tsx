@@ -1,14 +1,14 @@
 import React from "react";
 import Image from "next/image";
 
-import institutionImage from "../../../../assets/institutions/institution.png";
-import institutionImage2 from "../../../../assets/institutions/institution2.png";
-import institutionImage3 from "../../../../assets/institutions/institution3.png";
-import institutionImage4 from "../../../../assets/institutions/institution4.png";
-import institutionImage5 from "../../../../assets/institutions/institution5.png";
-import institutionImage6 from "../../../../assets/institutions/institution6.png";
-import institutionImage7 from "../../../../assets/institutions/institution7.png";
-import institutionImage8 from "../../../../assets/institutions/institution8.png";
+import institutionImage from "@/assets/institutions/institution.png";
+import institutionImage2 from "@/assets/institutions/institution2.png";
+import institutionImage3 from "@/assets/institutions/institution3.png";
+import institutionImage4 from "@/assets/institutions/institution4.png";
+import institutionImage5 from "@/assets/institutions/institution5.png";
+import institutionImage6 from "@/assets/institutions/institution6.png";
+import institutionImage7 from "@/assets/institutions/institution7.png";
+import institutionImage8 from "@/assets/institutions/institution8.png";
 
 export default function Institutions() {
   const instituationImages = [
