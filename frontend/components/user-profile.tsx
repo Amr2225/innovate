@@ -11,28 +11,57 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles } from "lucide-react";
-import { signOutAction } from "@/actions/signOut";
+import { Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles, LayoutDashboard } from "lucide-react";
+import { logout } from "@/lib/session";
+import { redirect } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { User } from "@/types/user.types";
+import Link from "next/link";
 
-interface UserProfileProps {
-  email: string;
-  name: string;
+interface UserProfileProps extends User {
+  variant?: "default" | "icon";
+  className?: string;
 }
 
-export default function UserProfile({ name, email }: UserProfileProps) {
+const handleLogout = async () => {
+  await logout();
+  redirect("/");
+};
+
+export default function UserProfile({
+  name,
+  email,
+  role,
+  variant = "default",
+  className,
+}: UserProfileProps) {
+  const nameSplitted = name.split(" ");
+  const nameInitial = nameSplitted[0][0] + nameSplitted[1][0];
+
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className='flex flex-row gap-3 items-center justify-start focus-visible:outline-none'>
+      <DropdownMenuTrigger
+        className={cn(
+          "flex flex-row gap-3 items-center justify-start focus-visible:outline-none",
+          className
+        )}
+      >
         <>
           <Avatar className='h-8 w-8 rounded-lg'>
-            <AvatarImage src='https://github.com/shadcn.png' alt={"google"} />
-            <AvatarFallback className='rounded-lg'>CN</AvatarFallback>
+            <AvatarImage src='https://github.com/shadcn.png' alt={"user-profile"} />
+            <AvatarFallback className='rounded-lg bg-primary text-white items-center justify-center flex'>
+              {nameInitial}
+            </AvatarFallback>
           </Avatar>
-          <div className='grid flex-1 text-left text-sm leading-tight'>
-            <span className='truncate font-semibold'>{name}</span>
-            <span className='truncate text-xs'>{email}</span>
-          </div>
-          <ChevronsUpDown className='ml-auto size-4' />
+          {variant === "default" && (
+            <>
+              <div className='grid flex-1 text-left text-sm leading-tight'>
+                <span className='truncate font-semibold'>{name}</span>
+                <span className='truncate text-xs'>{email}</span>
+              </div>
+              <ChevronsUpDown className='ml-auto size-4' />
+            </>
+          )}
         </>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -55,6 +84,7 @@ export default function UserProfile({ name, email }: UserProfileProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+
         <DropdownMenuGroup>
           <DropdownMenuItem>
             <Sparkles />
@@ -62,11 +92,18 @@ export default function UserProfile({ name, email }: UserProfileProps) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <BadgeCheck />
-            Account
+          <DropdownMenuItem asChild>
+            <Link
+              href={`/${role.toLowerCase()}/dashboard`}
+              className='flex items-center text-black'
+            >
+              <LayoutDashboard />
+              Dashboard
+            </Link>
           </DropdownMenuItem>
+
           <DropdownMenuItem>
             <CreditCard />
             Billing
@@ -76,15 +113,12 @@ export default function UserProfile({ name, email }: UserProfileProps) {
             Notifications
           </DropdownMenuItem>
         </DropdownMenuGroup>
+
         <DropdownMenuSeparator />
-        <form action={signOutAction}>
-          <button type='submit' className='w-full'>
-            <DropdownMenuItem className='cursor-pointer'>
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
-          </button>
-        </form>
+        <DropdownMenuItem className='cursor-pointer' onClick={handleLogout}>
+          <LogOut />
+          Log out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

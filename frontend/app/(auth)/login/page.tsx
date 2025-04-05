@@ -1,5 +1,5 @@
 "use client";
-import React, { startTransition, useActionState } from "react";
+import React, { useActionState, startTransition } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 
@@ -25,25 +25,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import { signIn } from "next-auth/react";
-
 // Types & Schemas
-import { LoginError } from "@/types/auth.type";
 import { LoginSchema, LoginSchemaType } from "@/schema/loginSchema";
-import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
+// import { LoginError } from "@/types/auth.type";
+import { redirect } from "next/navigation";
 
-export default function Login() {
-  const [error, submitAction, isPending] = useActionState<LoginError, LoginSchemaType>(
-    async (prev, data) => {
-      const status = await login(data);
-
-      if (status) return { message: status.message, type: status.type };
-
-      return { message: "" };
+export default function LoginPage() {
+  const [error, submitAction, isPending] = useActionState(
+    async (prevState: unknown, data: LoginSchemaType) => {
+      const res = await login(data);
+      if (res?.error) return { message: res.error, type: res.type };
+      if (res?.role) redirect(`/${res.role.toLowerCase()}/dashboard`);
+      return null;
     },
-    { message: "" }
+    null
   );
 
+  // Form Data
   const form = useForm<LoginSchemaType>({
     resolver: zodResolver(LoginSchema),
     defaultValues: {
@@ -53,12 +51,13 @@ export default function Login() {
   });
 
   const handleLogin = (data: LoginSchemaType) => {
-    console.log(data);
-    startTransition(() => submitAction(data));
+    startTransition(() => {
+      submitAction(data);
+    });
   };
 
   const hanldeGoogleLogin = () => {
-    signIn("google", { redirectTo: DEFAULT_LOGIN_REDIRECT });
+    // signIn("google", { redirectTo: DEFAULT_LOGIN_REDIRECT });
     console.log("google in");
   };
 
@@ -92,7 +91,7 @@ export default function Login() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input placeholder='Enter your password' {...field} />
+                    <Input placeholder='Enter your password' {...field} type='password' />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

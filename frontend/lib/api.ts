@@ -1,13 +1,10 @@
 import axios from "axios";
-import { signOut, useSession } from "next-auth/react";
-import { getSession } from "next-auth/react";
+import { getSession, setSession, logout } from "./session";
+import { redirect } from "next/navigation";
 import moment from "moment";
-import { auth } from "@/auth";
-
-
 
 export const BASE_URL = process.env.NEXT_PUBLIC_API_URL
-const api = axios.create({
+export const api = axios.create({
     baseURL: BASE_URL,
     headers: {
         'Content-Type': "application/json"
@@ -15,9 +12,72 @@ const api = axios.create({
     validateStatus: status => status < 500
 })
 
+export const apiUserImport = axios.create({
+    baseURL: BASE_URL,
+    headers: {
+        'Content-Type': "multipart/form-data"
+    },
+    validateStatus: status => status < 500
+})
+
+const refreshToken = async () => {
+    try {
+        const session = await getSession();
+        if (!session?.refreshToken) throw new Error("No refresh token");
+
+        const response = await api.post("/auth/token/refresh/", {
+            refresh: session.refreshToken,
+        });
+
+        await setSession("innovate-auth", {
+            accessToken: response.data.access,
+            refreshToken: session.refreshToken
+        });
+
+        return response.data.access;
+    } catch {
+        await logout();
+        redirect("/login");
+    }
+};
+
+apiUserImport.interceptors.request.use(
+    async (config) => {
+        let session = await getSession();
+        if (!session) {
+            await logout();
+            redirect("/login");
+        }
+
+        // Refresh token if expired
+        if (session?.exp && moment.unix(session.exp).isBefore(moment())) {
+            await refreshToken();
+            session = await getSession();
+        }
+
+        if (session?.accessToken) {
+            config.headers.Authorization = `Bearer ${session.accessToken}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+
 api.interceptors.request.use(
     async (config) => {
-        const session = await auth();
+        let session = await getSession();
+        if (!session) {
+            await logout();
+            redirect("/login");
+        }
+
+        // Refresh token if expired
+        if (session?.exp && moment.unix(session.exp).isBefore(moment())) {
+            await refreshToken();
+            session = await getSession();
+        }
+
         if (session) {
             if (session.accessToken) config.headers.Authorization = `Bearer ${session.accessToken}`
         }
@@ -121,5 +181,3 @@ api.interceptors.request.use(
 //     }
 // );
 
-
-export default api

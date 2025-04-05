@@ -17,15 +17,18 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # Email Verification
-    path('verify-email/', views.VerifyEmailView.as_view(), name="verify_email"),
+    path('verify-email/<str:token>/',
+         views.VerifyEmailView.as_view(), name="verify_email"),
     path('resend-verification-email/', views.ResendVerificationEmailView.as_view(),
-         name="resend-verfication-email"),
+         name="resend-verification-email"),
+    path('resend-verification-email/<str:token>/', views.ResendVerificationEmailView.as_view(),
+         name="resend-verification-email-with-token"),
 
     # Institution
     path('institution/register/', views.InstitutionRegisterView.as_view(),
          name="institution_register"),
-    path('institution/users/register/',
-         views.InstitutionRegisterUserView.as_view(), name="institution_register_user"),
+    path('institution/users/',
+         views.InstitutionUserView.as_view(), name="institution_register_user"),
     path('institution/users/register/csv/',
          views.BulkUserImportView.as_view(), name="institution_register_user"),
     path('add-credentials/', views.UserAddCredentialsView.as_view(), name="add_creds"),

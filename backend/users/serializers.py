@@ -3,7 +3,9 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from django.utils import timezone
+from django.core.signing import TimestampSigner, Signer
 import random
+import uuid
 
 from users.exceptions import EmailVerificationError
 from users.validation import nationalId_length_validation
@@ -62,17 +64,27 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
         return data
 
 
-class InstitutionRegisterUserSeralizer(serializers.ModelSerializer):
+class InstitutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("name")
+
+
+class InstitutionUserSeralizer(serializers.ModelSerializer):
+    # TODO: implement rules for the age attribute (calculated, or entered)
     Role = (
         ("Student", "Student"),
         ("Teacher", "Teacher"),
     )
 
     role = serializers.ChoiceField(choices=Role)
+    institution = serializers.CharField(
+        read_only=True, source="institution.name")
 
     class Meta:
         model = User
         fields = (
+            "id",
             "first_name",
             "middle_name",
             "last_name",
@@ -80,7 +92,22 @@ class InstitutionRegisterUserSeralizer(serializers.ModelSerializer):
             "national_id",
             "birth_date",
             "age",
+            "institution",
+            "is_email_verified",
+            "is_active",
+            'date_joined',
+            'email',
         )
+        # extra_kwargs = {
+        #     # "first_name": { 'required': True},
+        #     # "middle_name": {'write_only': True, 'required': True},
+        #     # "last_name": {'write_only': True, 'required': True},
+        #     "role": {'write_only': True, 'required': True},
+        #     "national_id": {'write_only': True, 'required': True},
+        #     "birth_date": {'write_only': True, 'required': True},
+        #     'date_joined': {'read_only': True},
+        #     'is_email_verified': {'read_only': True},
+        # }
 
     def create(self, data):
         request = self.context.get('request')
@@ -106,7 +133,7 @@ class UserLoginSeralizer(serializers.Serializer):
         user = authenticate(email=email, password=password)
 
         if not user:
-            raise UserNotFoundError()
+            raise AuthenticationFailed()
 
         if not user.is_active:
             raise UserAccountDisabledError()
@@ -127,7 +154,6 @@ class UserLoginSeralizer(serializers.Serializer):
 class LoginResponseSerializer(serializers.Serializer):
     refresh = serializers.CharField(help_text="JWT refresh token")
     access = serializers.CharField(help_text="JWT access token")
-    # user = serializers.DictField(help_text="User information")
 
 
 class ErrorResponseSerializer(serializers.Serializer):
@@ -150,9 +176,13 @@ class FirstLoginSerializer(serializers.Serializer):
         user = User.objects.get(national_id=national_id)
 
         if not user.institution.access_code == access_code:
-            raise AuthenticationFailed("Invalid institution Code")
+            raise AuthenticationFailed(
+                "Invalid institution Code or National ID")
 
-        if not user.is_email_verified:
+        if not user.is_active:
+            raise UserAccountDisabledError()
+
+        if user.email and not user.is_email_verified:
             raise EmailVerificationError()
 
         data['user'] = user
@@ -162,6 +192,7 @@ class FirstLoginSerializer(serializers.Serializer):
 
 class UserAddCredentialsSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True, min_length=8)
+    token = serializers.CharField(read_only=True)
 
     class Meta:
         model = User
@@ -173,6 +204,7 @@ class UserAddCredentialsSerializer(serializers.ModelSerializer):
             'password',
             "confirm_password",
             'birth_date',
+            'token',
         )
         extra_kwargs = {
             "first_name": {'write_only': True, 'required': True},
@@ -208,4 +240,7 @@ class UserAddCredentialsSerializer(serializers.ModelSerializer):
         generateOTP(user)
         sendEmail(user.email, user.otp)
 
-        return {"message": "Verification email sent."}
+        signer = Signer()
+        token = signer.sign(user.email)
+
+        return {"token": token}

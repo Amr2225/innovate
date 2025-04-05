@@ -1,8 +1,13 @@
 import { TriangleAlert } from "lucide-react";
 import React from "react";
-import type { LoginErrorProps } from "@/types/auth.type";
 import { Button } from "../ui/button";
 import Link from "next/link";
+import { LoginError } from "@/types/auth.type";
+import { redirect } from "next/navigation";
+
+interface LoginErrorProps {
+  error: LoginError | null;
+}
 
 export default function LoginErrorMessage({ error }: LoginErrorProps) {
   if (!error?.message) return null;
@@ -14,7 +19,12 @@ export default function LoginErrorMessage({ error }: LoginErrorProps) {
         <p>{error.message}</p>
         {error.type === "Verification" && (
           <Link href={"/verify-email"}>
-            <Button type='button' variant={"link"} className='text-black'>
+            <Button
+              type='button'
+              variant={"link"}
+              className='text-black'
+              onClick={() => redirect("/verify-email")}
+            >
               Resend Verification
             </Button>
           </Link>

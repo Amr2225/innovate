@@ -1,8 +1,8 @@
-import { auth } from "@/auth"
+import { NextRequest, NextResponse } from "next/server"
+import { getSession } from "./lib/session"
 import {
     DEFAULT_LOGIN_REDIRECT,
     authRoutes,
-    apiAuthPrefix,
     teacherRoutes,
     studentRoutes,
     institutionRoutes,
@@ -13,30 +13,25 @@ import {
     LOGIN_ROUTE,
     firstLoginRoutes
 } from "@/routes"
-import { NextResponse } from "next/server"
 
 
-export default auth(async (req) => {
-    const { nextUrl, auth } = req
-    // console.log(req);
-    // console.log(auth);
+export default async function middleware(req: NextRequest) {
+    const { nextUrl } = req
+    const headers = new Headers(req.headers);
+    headers.set("x-current-path", req.nextUrl.pathname);
+    const session = await getSession()
 
-    // console.log("origin", originRequestURL);
-    // console.log("AUTH", auth);
-    // console.log("PATH NAME", nextUrl.pathname);
 
-    // User Specific
-    const isLoggedIn = !!auth // Will contain the user session if authenticated {user: {}, expires: Date} !! to turn it into a boolean
+    const isLoggedIn = !!session
+    const user = session?.user
 
-    //Role
-    const isInstitution = auth?.user.role === "Institution"
-    const isTeacher = auth?.user.role === "Teacher"
-    const isStudent = auth?.user.role === "Student"
-    const isFirstLogin = !!auth && !auth?.user?.email
+    const isTeacher = user?.role === "Teacher"
+    const isStudent = user?.role === "Student"
+    const isInstitution = user?.role === "Institution"
+    const isFirstLogin = !!user && !user?.email
 
     // Routes Specific
-    const isAPIAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix)
-    const isAuthRoute = authRoutes.includes(nextUrl.pathname)
+    const isAuthRoute = authRoutes.some((route) => nextUrl.pathname.startsWith(route))
 
     const isTeacherRoute = teacherRoutes.includes(nextUrl.pathname)
     const isStudentRoute = studentRoutes.includes(nextUrl.pathname)
@@ -46,36 +41,34 @@ export default auth(async (req) => {
 
     const isProtectedRoute = isTeacherRoute || isStudentRoute || isInstitutionRoute || isFirstLoginRoute
 
-    // console.log(isAPIAuthRoute, isPublicRoute, isAuthRoute, isLoggedIn);
-
-    if (isAPIAuthRoute) return; //For auth js routes
-
-    if (isTeacherRoute && !isTeacher) return NextResponse.redirect(new URL(LOGIN_ROUTE, nextUrl))
-    if (isStudentRoute && !isStudent) return Response.redirect(new URL(LOGIN_ROUTE, nextUrl))
-    if (isInstitutionRoute && !isInstitution) return Response.redirect(new URL(LOGIN_ROUTE, nextUrl))
-
-    if (isFirstLoginRoute && !isFirstLogin) return Response.redirect(new URL(LOGIN_ROUTE, nextUrl))
+    console.log(isAuthRoute, isLoggedIn);
 
 
-    if (isProtectedRoute && !isLoggedIn) return Response.redirect(new URL("/", nextUrl))
+    if (isTeacherRoute && !isTeacher) return NextResponse.redirect(new URL(LOGIN_ROUTE, nextUrl.origin))
+    if (isStudentRoute && !isStudent) return NextResponse.redirect(new URL(LOGIN_ROUTE, nextUrl.origin))
+    if (isInstitutionRoute && !isInstitution) return NextResponse.redirect(new URL(LOGIN_ROUTE, nextUrl.origin))
+
+    if (isFirstLoginRoute && !isFirstLogin) return NextResponse.redirect(new URL(LOGIN_ROUTE, nextUrl.origin))
+
+    if (isProtectedRoute && !isLoggedIn) return NextResponse.redirect(new URL("/", nextUrl.origin))
 
     if (isLoggedIn) {
         if (isAuthRoute) {
-            if (isStudent) return Response.redirect(new URL(STUDENT_ROUTE, nextUrl))
-            if (isTeacher) return Response.redirect(new URL(TEACHER_ROUTE, nextUrl))
-            if (isInstitution) return Response.redirect(new URL(INSTITUTION_ROUTE, nextUrl))
-            if (isFirstLogin) return Response.redirect(new URL(FIRST_LOGIN_ROUTE, nextUrl))
+            if (isStudent) return NextResponse.redirect(new URL(STUDENT_ROUTE, nextUrl.origin))
+            if (isTeacher) return NextResponse.redirect(new URL(TEACHER_ROUTE, nextUrl.origin))
+            if (isInstitution) return NextResponse.redirect(new URL(INSTITUTION_ROUTE, nextUrl.origin))
+            if (isFirstLogin) return NextResponse.redirect(new URL(FIRST_LOGIN_ROUTE, nextUrl.origin))
         }
 
-        if (isFirstLogin && !isFirstLoginRoute) return NextResponse.redirect(new URL(FIRST_LOGIN_ROUTE, nextUrl))
+        if (isFirstLogin && !isFirstLoginRoute) return NextResponse.redirect(new URL(FIRST_LOGIN_ROUTE, nextUrl.origin))
 
-        if (isAuthRoute && !isFirstLogin) return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl))
+        if (isAuthRoute && !isFirstLogin) return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, nextUrl.origin))
 
         return;
     }
 
     return;
-})
+}
 
 
 export const config = {

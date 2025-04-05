@@ -7,6 +7,7 @@ from django.core.signing import Signer
 from django.core.mail import send_mail
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from rest_framework_simplejwt.settings import api_settings
+import random
 
 
 class SendEmail():
@@ -66,9 +67,11 @@ def sendEmail(email, otp):
 
 
 def generateOTP(user):
-    if not user.otp_created_at or user.otp_created_at + timedelta(minutes=user.otp_expiry_time_minutes) > timezone.now():
-        return False
+    # Check if OTP exists and is not expired
+    if user.otp_created_at and user.otp_created_at + timedelta(minutes=user.otp_expiry_time_minutes) > timezone.now():
+        return True
 
+    # Generate new OTP
     otp = str(random.randint(100000, 999999))
     user.otp = otp
     user.otp_created_at = timezone.now()
@@ -98,7 +101,7 @@ def generateTokens(user):
         refresh['name'] = user.name
         refresh['credits'] = user.credits
     else:
-        refresh['full_name'] = user.full_name
+        refresh['name'] = user.full_name
 
     refresh['role'] = user.role
     refresh['email'] = user.email

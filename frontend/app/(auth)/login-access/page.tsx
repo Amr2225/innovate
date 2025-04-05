@@ -1,5 +1,5 @@
 "use client";
-import React, { startTransition, useActionState } from "react";
+import React, { useState, useTransition } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 import {
@@ -21,17 +21,12 @@ import { loginAccessSchema, LoginAccessSchemaType } from "@/schema/loginAccessSc
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginAccess } from "@/actions/login-access";
 import { LoginError } from "@/types/auth.type";
+import { redirect } from "next/navigation";
+import { firstLoginRoutes } from "@/routes";
 
 export default function AccessLogin() {
-  const [error, submitAction, isPending] = useActionState<LoginError, LoginAccessSchemaType>(
-    async (prev, data) => {
-      const status = await loginAccess(data);
-
-      if (status) return { message: status.message, type: status.type };
-      return { message: "" };
-    },
-    { message: "" }
-  );
+  const [error, setError] = useState<LoginError | null>(null);
+  const [isPending, startTransition] = useTransition();
 
   const form = useForm<LoginAccessSchemaType>({
     resolver: zodResolver(loginAccessSchema),
@@ -43,7 +38,13 @@ export default function AccessLogin() {
 
   const handleLogin = (data: LoginAccessSchemaType) => {
     console.log(data);
-    startTransition(() => submitAction(data));
+    startTransition(() => {
+      loginAccess(data).then((data) => {
+        if (data?.error) setError({ message: data.error, type: data.type });
+        else if (data?.isFirstLogin) redirect(firstLoginRoutes[0]);
+        else if (data?.role) redirect(`/${data.role.toLowerCase()}/dashboard`);
+      });
+    });
   };
 
   return (
@@ -101,7 +102,7 @@ export default function AccessLogin() {
                 </div>
               </div>
             </form>
-            {error.message && <p className='text-red-500 text-center'>{error.message}</p>}
+            {error?.message && <p className='text-red-500 text-center'>{error.message}</p>}
           </Form>
         </CardContent>
       </Card>

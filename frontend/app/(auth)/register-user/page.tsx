@@ -23,23 +23,24 @@ import DatePicker from "@/components/date-picker";
 import { RegisterSchemaType, RegisterSchema } from "@/schema/registerSchema";
 
 //Server Actions
-import { register } from "@/actions/register";
+import { register, RegisterResponse } from "@/actions/register";
+// import { FormSuccess } from "@/components/helpers/FormSucess";
+import { logout } from "@/lib/session";
+import { redirect } from "next/navigation";
 import LoginErrorMessage from "@/components/helpers/LoginErrorMessage";
-import { LoginError } from "@/types/auth.type";
-import { FormSuccess } from "@/components/helpers/FormSucess";
-import { signOut } from "next-auth/react";
 
 export default function RegisterUser() {
-  const [state, submitAction, isPending] = useActionState<LoginError, RegisterSchemaType>(
+  const [state, submitAction, isPending] = useActionState<RegisterResponse, RegisterSchemaType>(
     async (prev, data) => {
-      const error = await register(data);
-      if (error) return error;
-      setTimeout(() => {
-        signOut({ redirectTo: "/login" });
-      }, 1000);
-      return { message: "User registered successfully, login now" };
+      const res = await register(data);
+      if (res?.error) return { error: res.error };
+      if (res?.token) {
+        logout();
+        redirect(`/verify-email/${res.token}`);
+      }
+      return { error: "User registered successfully, login now" };
     },
-    { message: "" }
+    { error: "", token: "" }
   );
 
   const form = useForm<RegisterSchemaType>({
@@ -150,7 +151,7 @@ export default function RegisterUser() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input placeholder='Enter your password' {...field} />
+                    <Input placeholder='Enter your password' {...field} type='password' />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -164,7 +165,7 @@ export default function RegisterUser() {
                 <FormItem>
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
-                    <Input placeholder='Confirm Password' {...field} />
+                    <Input placeholder='Confirm Password' {...field} type='password' />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -181,8 +182,7 @@ export default function RegisterUser() {
               </Button>
             </div>
           </form>
-          <LoginErrorMessage error={state} />
-          <FormSuccess message={state.message} />
+          <LoginErrorMessage error={{ message: state.error }} />
           <div className='mt-7'>
             <span className='w-full bg-neutral-300 h-[3px] block relative'>
               <p className='absolute top-[50%] left-[50%] -translate-x-[50%] -translate-y-[50%] bg-white px-3 uppercase text-neutral-500 text-sm'>

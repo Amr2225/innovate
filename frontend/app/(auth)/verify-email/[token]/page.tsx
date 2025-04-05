@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 
 import {
@@ -24,6 +24,12 @@ import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useParams, useRouter } from "next/navigation";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { resendEmail, verifyEmail, verifyEmailToken } from "@/api/auth/verifyEmail";
+import { Spinner } from "@/components/helpers/Spinner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 const OTPSchema = z.object({
   pin: z.string().min(6, {
@@ -33,7 +39,10 @@ const OTPSchema = z.object({
 
 type OTPSchemaType = z.infer<typeof OTPSchema>;
 
-export default function AccessLogin() {
+export default function VerifyEmail() {
+  const router = useRouter();
+  const { token }: { token: string } = useParams();
+
   const form = useForm<OTPSchemaType>({
     resolver: zodResolver(OTPSchema),
     defaultValues: {
@@ -41,10 +50,45 @@ export default function AccessLogin() {
     },
   });
 
+  const { isLoading, isError } = useQuery({
+    queryKey: ["verifyEmailToken"],
+    queryFn: () => verifyEmailToken(token),
+    retry: 1,
+  });
+
+  const { mutate: verifyEmailMutation, isPending } = useMutation({
+    mutationFn: (otp: number) => verifyEmail(otp, token),
+    onSuccess: () => {
+      router.push("/login");
+      toast.success("Email verified successfully");
+    },
+    onError: (e) => {
+      toast.error(e.message);
+    },
+  });
+
+  const { mutate: resendEmailMutation } = useMutation({
+    mutationFn: () => resendEmail(undefined, token),
+    onSuccess: () => {
+      toast.success("Verification email sent");
+    },
+    onError: (e) => {
+      toast.error(e.message);
+    },
+  });
+
+  useEffect(() => {
+    if (isError) {
+      router.push("/login");
+      toast.error("Resend the verification email");
+    }
+  }, [isError, router]);
+
   const handleLogin = (data: OTPSchemaType) => {
-    //TODO: Implement OTP Verification
-    console.log(data);
+    verifyEmailMutation(Number(data.pin));
   };
+
+  if (isLoading) return <LoadingSkeleton />;
 
   return (
     <div className='h-[85vh] grid place-content-center'>
@@ -79,18 +123,52 @@ export default function AccessLogin() {
                     <FormDescription>
                       Please enter the one-time password sent to your email.
                     </FormDescription>
+                    <Button
+                      variant='link'
+                      className='text-neutral-600'
+                      type='button'
+                      onClick={() => resendEmailMutation()}
+                    >
+                      Resend OTP
+                    </Button>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
               <div className='flex flex-col'>
-                <Button type='submit' className='w-full font-bold text-base'>
-                  Submit
+                <Button type='submit' className='w-full font-bold text-base' disabled={isPending}>
+                  {isPending ? (
+                    <div className='flex items-center gap-2'>
+                      <Spinner size='small' className='text-white' />
+                      Submitting...
+                    </div>
+                  ) : (
+                    "Submit"
+                  )}
                 </Button>
               </div>
             </form>
           </Form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className='h-[85vh] grid place-content-center'>
+      <Card className='md:w-[500px] w-[350px]'>
+        <CardHeader>
+          <Skeleton className='w-full h-10' />
+          <Skeleton className='w-full h-10' />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className='w-full h-10' />
+          <Skeleton className='w-full h-10' />
+          <Skeleton className='w-full h-10' />
+          <Skeleton className='w-full h-10' />
         </CardContent>
       </Card>
     </div>
