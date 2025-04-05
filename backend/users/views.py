@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
 from .permissions import isInstitution
-from .errors import EmailNotVerifiedError
+from .errors import EmailNotVerifiedError, UserAccountDisabledError
 from datetime import timedelta
 from django.utils import timezone
 import io
@@ -20,10 +20,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.exceptions import EmailVerificationError
 
-from .serializers import ErrorResponseSerializer, FirstLoginSerializer, InstitutionRegisterSeralizer, InstitutionRegisterUserSeralizer, UserAddCredentialsSerializer, UserLoginSeralizer, LoginResponseSerializer
+from .serializers import ErrorResponseSerializer, FirstLoginSerializer, InstitutionRegisterSeralizer, InstitutionUserSeralizer, UserAddCredentialsSerializer, UserLoginSeralizer, LoginResponseSerializer
 from .authentication import FirstLoginAuthentication
 
 from rest_framework.parsers import MultiPartParser, FormParser
+from django.core.signing import Signer, BadSignature
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -38,8 +39,9 @@ class InstitutionRegisterView(generics.CreateAPIView):
 
 
 class BulkUserImportView(generics.CreateAPIView):
+    permission_classes = [isInstitution]
     parser_classes = (MultiPartParser, FormParser)
-    serializer_class = InstitutionRegisterUserSeralizer
+    serializer_class = InstitutionUserSeralizer
 
     def create(self, request):
         csv_file = request.FILES.get('file')
@@ -75,10 +77,14 @@ class BulkUserImportView(generics.CreateAPIView):
                     # Create user with institution relationship
                     self.perform_create(serializer)
                     created_users.append(serializer.data)
+                    # instance = serializer.save()
+                    # created_users.append(
+                    #     InstitutionUserSeralizer(instance).data)
                 else:
+                    # existing_user = User.objects.filter(national_id=cleaned_row['national_id'])
                     # Track errors for this row
                     errors.append({
-                        'row': cleaned_row,
+                        'row': serializer.data,
                         'errors': serializer.errors
                     })
 
@@ -98,29 +104,55 @@ class BulkUserImportView(generics.CreateAPIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
-class InstitutionRegisterUserView(generics.CreateAPIView):
-    model = User
-    serializer_class = InstitutionRegisterUserSeralizer
+class InstitutionUserView(generics.ListCreateAPIView):
+    # model = User
+    # queryset = User.objects.all()
+    serializer_class = InstitutionUserSeralizer
     permission_classes = [isInstitution]
+
+    def get_queryset(self):
+        user = self.request.user
+        return User.objects.filter(institution=user)
 
 
 class VerifyEmailView(APIView):
-    def post(self, request):
-        otp = request.data.get("otp")
-        email = request.data.get("email")
+    def get(self, request, token):
+        try:
+            signer = Signer()
+            email = signer.unsign(token)
 
-        # Validate Input
-        if not email or not otp:
-            return Response({"detail": "Invalid email or OTP"}, status=status.HTTP_400_BAD_REQUEST)
+            user = User.objects.get(email=email)
+
+            if not user:
+                return Response({"message": "Invalid token"}, status=status.HTTP_403_FORBIDDEN)
+
+            if user.is_email_verified:
+                return Response({"detail": "Email is already verified"}, status=status.HTTP_403_FORBIDDEN)
+
+        except BadSignature:
+            return Response({"message": "Invalid token"}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response(status=status.HTTP_200_OK)
+
+    def post(self, request, token):
+        otp = request.data.get("otp")
+        print(otp)
 
         try:
+            # Validate Input
+            signer = Signer()
+            email = signer.unsign(token)
+
+            if not email or not otp:
+                return Response({"detail": "Invalid email or OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
             user = User.objects.get(email=email)
             # Validate Email
             if user.is_email_verified:
                 return Response({"detail": "Email is already verified"}, status=status.HTTP_400_BAD_REQUEST)
 
             # Validate OTP
-            if not user.otp == otp:
+            if not user.otp == str(otp):
                 return Response({"detail": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
 
             if user.otp_created_at + timedelta(minutes=user.otp_expiry_time_minutes) <= timezone.now():
@@ -135,16 +167,21 @@ class VerifyEmailView(APIView):
 
         except User.DoesNotExist:
             return Response({"message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+        except BadSignature:
+            return Response({"message": "Invalid token"}, status=status.HTTP_403_FORBIDDEN)
 
 
 class ResendVerificationEmailView(APIView):
-    def post(self, request):
-        email = request.data.get('email')
-
-        if not email:
-            return Response({"message": "Invalid Email"}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, token=None):
+        email = request.data.get('email', None)
 
         try:
+            if token:
+                signer = Signer()
+                email = signer.unsign(token)
+
+            if not email:
+                return Response({"message": "Invalid Email"}, status=status.HTTP_400_BAD_REQUEST)
             user = User.objects.get(email=email)
             if user.is_email_verified:
                 return Response({"message": "Email is already verified"}, status=status.HTTP_400_BAD_REQUEST)
@@ -158,10 +195,17 @@ class ResendVerificationEmailView(APIView):
 
             sendEmail(user.email, user.otp)
 
+            if not token:
+                signer = Signer()
+                token = signer.sign(user.email)
+                return Response({"message": "Verification email resent.", "token": token}, status=status.HTTP_200_OK)
+
             return Response({"message": "Verification email resent."}, status=status.HTTP_200_OK)
 
         except User.DoesNotExist:
             return Response({"message": "User with this email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+        except BadSignature:
+            return Response({"message": "Invalid token"}, status=status.HTTP_403_FORBIDDEN)
 
 
 class UserLoginView(APIView):
@@ -204,9 +248,11 @@ class UserLoginView(APIView):
                 }, status=status.HTTP_200_OK)
 
         except AuthenticationFailed as e:
-            return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'error': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
         except EmailNotVerifiedError as e:
-            return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except UserAccountDisabledError as e:
+            return Response({'error': str(e)}, status=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS)
         except serializers.ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 
@@ -230,6 +276,8 @@ class LoginAccessView(APIView):
             return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
         except EmailVerificationError as e:
             return Response({'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except UserAccountDisabledError as e:
+            return Response({'error': str(e)}, status=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS)
         except serializers.ValidationError as e:
             return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
 

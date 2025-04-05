@@ -70,6 +70,12 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.auth.middleware.RemoteUserMiddleware',
+]
+
+# To enable non active users to authenticate
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.AllowAllUsersModelBackend',
 ]
 
 
@@ -170,8 +176,8 @@ REST_FRAMEWORK = {
 
 # Simple JWT
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=1),
-    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=1),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=30),
     "SIGNING_KEY": os.environ.get('JWT_MAIN', SECRET_KEY),
     "ISSUER": None,
     "USER_ID_FIELD": "id",
@@ -198,5 +204,5 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'amrmohamed.amaa@gmail.com'
-EMAIL_HOST_PASSWORD = 'qofp adxx ymxu udmi'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')

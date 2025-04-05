@@ -12,9 +12,8 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
-import { auth } from "@/auth";
 import UserProfile from "./user-profile";
-import { getSession } from "next-auth/react";
+import { getSession } from "@/lib/session";
 
 // Used to deffirentiate between the authentication and nont-authentication pages
 interface NavBarProps {
@@ -22,7 +21,7 @@ interface NavBarProps {
 }
 
 export default async function NavBar({ isAuth }: NavBarProps) {
-  const session = await auth();
+  const session = await getSession();
 
   return (
     <nav className='p-6 px-2 md:px-14 flex items-center justify-between text-foreground border-b border-neutral-300'>
@@ -64,7 +63,11 @@ export default async function NavBar({ isAuth }: NavBarProps) {
 
           {session ? (
             <div className='flex flex-col-reverse md:flex-row items-center justify-start gap-3 [&>*]:font-bold max-w-[200px] min-w-fit w-full'>
-              <UserProfile name={session.user.name} email={session.user.email} />
+              <UserProfile
+                name={session.user.name}
+                email={session.user.email}
+                role={session.user.role}
+              />
             </div>
           ) : (
             <div className='flex flex-col-reverse md:flex-row items-center justify-start gap-3 [&>*]:font-bold max-w-[150px] min-w-fit'>
