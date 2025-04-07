@@ -35,6 +35,29 @@ export interface SubmissionData extends Omit<InstitutionMembersType, 'is_email_v
     error?: string;
 }
 
+
+export interface UserResponse {
+    first_name: string;
+    middle_name: string;
+    last_name: string;
+    email: string;
+    role: string;
+    national_id: string;
+    birth_date: string;
+    age: number;
+}
+
+export interface BulkInsertResponse {
+    success: boolean;
+    created_users: UserResponse[];
+    errors: {
+        row: UserResponse;
+        errors: {
+            [key: string]: string[];
+        };
+    }[];
+}
+
 // Subset without personal details
 export interface InstitutionMemberBasic extends Omit<InstitutionMembersType,
     'first_name' | 'middle_name' | 'last_name' | 'birth_date' | 'age' | 'is_email_verified'> {

@@ -111,9 +111,9 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
 
     def create(self, data):
         request = self.context.get('request')
-        user = User(**data, institution=request.user, access_code=None)
+        user = User.objects.create(**data, access_code=None)
         user.save()
-
+        user.institution.set([request.user])
         return user
 
 

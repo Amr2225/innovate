@@ -64,7 +64,6 @@ class BulkUserImportView(generics.CreateAPIView):
 
             # Process each row from the dictionary
             for row in reader:
-                print(row)
                 # Clean the data - strip whitespace and handle empty strings
                 cleaned_row = {k: v.strip() if v else None for k,
                                v in row.items()}
@@ -81,12 +80,28 @@ class BulkUserImportView(generics.CreateAPIView):
                     # created_users.append(
                     #     InstitutionUserSeralizer(instance).data)
                 else:
-                    # existing_user = User.objects.filter(national_id=cleaned_row['national_id'])
-                    # Track errors for this row
-                    errors.append({
-                        'row': serializer.data,
-                        'errors': serializer.errors
-                    })
+                    if 'national_id' in serializer.errors:
+                        try:
+                            existing_user = User.objects.exclude(
+                                institution__in=[request.user]).get(national_id=serializer.data['national_id'])
+                            # existing_user = User.objects.get(
+                            #     national_id=serializer.data['national_id'])
+                            existing_user.institution.add(request.user)
+                            created_users.append(
+                                self.get_serializer(existing_user).data)
+                        except User.DoesNotExist:
+                            print("user doesn't exist")
+                            errors.append({
+                                'row': serializer.data,
+                                'errors': serializer.errors
+                            })
+                    else:
+                        # existing_user = User.objects.filter(national_id=cleaned_row['national_id'])
+                        # Track errors for this row
+                        errors.append({
+                            'row': serializer.data,
+                            'errors': serializer.errors
+                        })
 
             # Return results
             return Response({

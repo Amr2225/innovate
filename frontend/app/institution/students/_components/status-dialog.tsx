@@ -23,12 +23,8 @@ interface StatusDialogProps {
 }
 
 export default function StatusDialog({ open, onOpenChange, data }: StatusDialogProps) {
-  console.log(data);
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      {/* <AlertDialogTrigger asChild>
-        <Button variant='outline'>Show Dialog</Button>
-      </AlertDialogTrigger> */}
       <AlertDialogContent className='min-w-max'>
         <AlertDialogHeader>
           <AlertDialogTitle>Import Status</AlertDialogTitle>

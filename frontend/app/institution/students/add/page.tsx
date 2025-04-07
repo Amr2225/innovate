@@ -1,4 +1,9 @@
 "use client";
+import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useMutation } from "@tanstack/react-query";
+
+// Components
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -8,94 +13,19 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import React, { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { AxiosError } from "axios";
-import { apiUserImport } from "@/lib/api";
-import { useMutation } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import StatusDialog from "@/app/institution/students/_components/status-dialog";
-import { SubmissionData } from "@/types/user.types";
-import moment from "moment";
-import { getSession } from "@/lib/session";
+import { Input } from "@/components/ui/input";
 
-const formSchema = z.object({
-  excelFile: z
-    .instanceof(File, { message: "Excel file is required" })
-    .refine((file) => file.size > 0, "Please select a file")
-    .refine(
-      (file) =>
-        file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-        file.type === "application/vnd.ms-excel" ||
-        file.type === "text/csv",
-      "Please upload an Excel file (.xlsx or .xls or .csv)"
-    ),
-});
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
 
-interface UserResponse {
-  first_name: string;
-  middle_name: string;
-  last_name: string;
-  email: string;
-  role: string;
-  national_id: string;
-  birth_date: string;
-  age: number;
-}
+// API
+import { bulkUserInsert } from "@/api/institution/users";
+import { AxiosError } from "axios";
 
-interface BulkInsertResponse {
-  success: boolean;
-  created_users: UserResponse[];
-  errors: {
-    row: UserResponse;
-    errors: {
-      [key: string]: string[];
-    };
-  }[];
-}
-
-const transformData = (data: BulkInsertResponse, institution: string): SubmissionData[] => {
-  const transformedData: SubmissionData[] = [];
-
-  data.errors.forEach((record) => {
-    transformedData.push({
-      name: record.row.first_name + " " + record.row.middle_name + " " + record.row.last_name,
-      email: record.row.email ?? "-",
-      role: record.row.role,
-      institution: institution,
-      national_id: record.row.national_id,
-      birth_date: moment(record.row.birth_date).format("YYYY-MM-DD"),
-      age: record.row.age,
-      error: Object.values(record.errors)[0][0],
-    });
-  });
-
-  data.created_users.forEach((record) => {
-    transformedData.push({
-      name: record.first_name + " " + record.middle_name + " " + record.last_name,
-      email: record.email,
-      role: record.role,
-      institution: institution,
-      national_id: record.national_id,
-      birth_date: moment(record.birth_date).format("YYYY-MM-DD"),
-      age: record.age,
-    });
-  });
-
-  return transformedData;
-};
-
-const BulkInster = async (formData: FormData): Promise<SubmissionData[]> => {
-  const res = await apiUserImport.post("/auth/institution/users/register/csv/", formData);
-  const session = await getSession();
-  if (!session) {
-    throw new Error("Session not found");
-  }
-  return transformData(res.data, session.user.name);
-};
+// Schema
+import { BulkUserSchema, BulkUserSchemaType } from "@/schema/bulkUserSchema";
+import { toast } from "sonner";
 
 export default function AddStudentPage() {
   const [open, setOpen] = useState(false);
@@ -106,7 +36,10 @@ export default function AddStudentPage() {
     isSuccess,
     data,
   } = useMutation({
-    mutationFn: (formData: FormData) => BulkInster(formData),
+    mutationFn: (formData: FormData) => bulkUserInsert(formData),
+    onError: () => {
+      toast.error("Failed to add students");
+    },
   });
 
   useEffect(() => {
@@ -115,21 +48,21 @@ export default function AddStudentPage() {
     }
   }, [isSuccess]);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<BulkUserSchemaType>({
+    resolver: zodResolver(BulkUserSchema),
     defaultValues: {
       excelFile: undefined,
     },
   });
 
-  const handleAddStudent = async (data: z.infer<typeof formSchema>) => {
+  const handleAddStudent = async (data: BulkUserSchemaType) => {
     const formData = new FormData();
     formData.append("file", data.excelFile);
 
     try {
       submitData(formData);
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-      if (fileInput) fileInput.value = "";
+      // const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+      // if (fileInput) fileInput.value = "";
     } catch (error) {
       if (error instanceof AxiosError) {
         console.log("Error uploading file:", error.response?.data);

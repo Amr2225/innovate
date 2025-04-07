@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Form, useForm } from "react-hook-form";
+// import { Form, useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+// import { zodResolver } from "@hookform/resolvers/zod";
+// import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 
 export default function VerifyEmailPage() {
@@ -25,6 +25,7 @@ export default function VerifyEmailPage() {
       router.push(`/verify-email/${token}`);
     },
     onError: (e) => {
+      console.log(e);
       toast.error(e.message);
     },
   });
@@ -80,35 +81,6 @@ export default function VerifyEmailPage() {
               )}
             </Button>
           </div>
-          {/* <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)}>
-              <FormField
-                control={form.control}
-                name='email'
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder='Enter your email' {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className='flex flex-col'>
-                <Button type='submit' className='w-full font-bold text-base'>
-                  {isPending ? (
-                    <div className='flex items-center gap-2'>
-                      <Spinner size='small' className='text-white' />
-                      Verifying...
-                    </div>
-                  ) : (
-                    "Verify"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Form> */}
         </CardContent>
       </Card>
     </div>
