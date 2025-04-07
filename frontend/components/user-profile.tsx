@@ -28,6 +28,12 @@ const handleLogout = async () => {
   redirect("/");
 };
 
+export const getNameInitials = (name: string) => {
+  const nameSplitted = name.split(" ");
+  if (nameSplitted.length === 1) return nameSplitted[0][0] + nameSplitted[0][1];
+  return nameSplitted[0][0] + nameSplitted[1][0];
+};
+
 export default function UserProfile({
   name,
   email,
@@ -35,8 +41,7 @@ export default function UserProfile({
   variant = "default",
   className,
 }: UserProfileProps) {
-  const nameSplitted = name.split(" ");
-  const nameInitial = nameSplitted[0][0] + nameSplitted[1][0];
+  const nameInitial = getNameInitials(name);
 
   return (
     <DropdownMenu>

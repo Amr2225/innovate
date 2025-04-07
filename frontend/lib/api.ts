@@ -1,6 +1,6 @@
 import axios from "axios";
 import { getSession, setSession, logout } from "./session";
-import { redirect } from "next/navigation";
+// import { redirect } from "next/navigation";
 import moment from "moment";
 
 export const BASE_URL = process.env.NEXT_PUBLIC_API_URL
@@ -25,7 +25,7 @@ const refreshToken = async () => {
         const session = await getSession();
         if (!session?.refreshToken) throw new Error("No refresh token");
 
-        const response = await api.post("/auth/token/refresh/", {
+        const response = await axios.post(`${BASE_URL}/auth/token/refresh/`, {
             refresh: session.refreshToken,
         });
 
@@ -34,10 +34,12 @@ const refreshToken = async () => {
             refreshToken: session.refreshToken
         });
 
+
         return response.data.access;
     } catch {
         await logout();
-        redirect("/login");
+        throw new Error("Failed to refresh token");
+        // redirect("/login");
     }
 };
 
@@ -46,7 +48,8 @@ apiUserImport.interceptors.request.use(
         let session = await getSession();
         if (!session) {
             await logout();
-            redirect("/login");
+            throw new Error("Failed to get session");
+            // redirect("/login");
         }
 
         // Refresh token if expired
@@ -69,7 +72,8 @@ api.interceptors.request.use(
         let session = await getSession();
         if (!session) {
             await logout();
-            redirect("/login");
+            throw new Error("Failed to get session");
+            // redirect("/login");
         }
 
         // Refresh token if expired

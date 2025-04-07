@@ -4,6 +4,7 @@ from nanoid_field import NanoidField
 from .validation import nationalId_length_validation
 import random
 import uuid
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 
@@ -72,8 +73,10 @@ class User(AbstractBaseUser, PermissionsMixin):
         upload_to='uploads/institution/logo/', null=True, blank=True)
 
     # Relation
-    institution = models.ForeignKey('self', on_delete=models.CASCADE, blank=True,
-                                    null=True, related_name="members", limit_choices_to={"role": "Institution"})
+    # institution = models.ForeignKey('self', on_delete=models.CASCADE, blank=True,
+    #                                 null=True, related_name="members", limit_choices_to={"role": "Institution"})
+    institution = models.ManyToManyField(
+        'self', blank=True, symmetrical=False, related_name="members", limit_choices_to={"role": "Institution"})
 
     objects = CustomManager()
 
@@ -89,3 +92,40 @@ class User(AbstractBaseUser, PermissionsMixin):
         if self.role == "Institution":
             return f"{self.name} - {self.credits}"
         return f"{self.full_name} ({self.role})"
+
+
+# class UserInstitutions(models.Model):
+#     user = models.ForeignKey(
+#         User, on_delete=models.CASCADE, limit_choices_to={"role__in": ["Student", "Teacher"]})
+#     institution = models.ForeignKey(
+#         User, on_delete=models.CASCADE, limit_choices_to={"role": "Institution"})
+#     is_active = models.BooleanField(default=True)
+
+#     class Meta:
+#         constraints = [
+#             models.UniqueConstraint(
+#                 fields=['user', 'is_active'],
+#                 condition=models.Q(is_active=True),
+#                 name='unique_active_institution_per_user'
+#             )
+#         ]
+
+#     def clean(self):
+#         if self.is_active and self.user.role == "Student":
+#             # Check if user already has an active institution
+#             active_institutions = UserInstitutions.objects.filter(
+#                 user=self.user,
+#                 is_active=True
+#             ).exclude(pk=self.pk if self.pk else None)
+
+#             if active_institutions.exists():
+#                 raise ValidationError(
+#                     "A student can only be associated with one active institution at a time."
+#                 )
+
+#     def save(self, *args, **kwargs):
+#         self.full_clean()
+#         super().save(*args, **kwargs)
+
+#     def __str__(self):
+#         return f"{self.user.full_name} - {self.institution.name if self.institution.name else None}"
