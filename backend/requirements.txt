@@ -1,7 +1,0 @@
-djangorestframework
-django-cors-headers
-djangorestframework-simplejwt
-django_extensions
-psycopg2
-python-dotenv
-django-nanoid-field
