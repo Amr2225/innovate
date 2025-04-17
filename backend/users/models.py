@@ -62,6 +62,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     national_id = models.CharField(
         max_length=14, blank=True, null=True, unique=True, validators=[nationalId_length_validation])
     level = models.PositiveSmallIntegerField(null=True, blank=True)
+    semester = models.PositiveSmallIntegerField(null=True, blank=True)
 
     # Institution Fields
     SCHOOL = 'school'

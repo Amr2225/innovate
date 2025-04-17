@@ -43,8 +43,9 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
         potential_courses = Course.objects.exclude(id__in=enrolled_course_ids)
 
         eligible_courses = potential_courses.filter(
-            Q(prerequisite_course__isnull=True) |
-            Q(prerequisite_course__in=completed_course_ids)
+            (Q(prerequisite_course__isnull=True) |
+            Q(prerequisite_course__in=completed_course_ids)) &
+            Q(semester__lte=user.semester)
         )
 
         return eligible_courses
