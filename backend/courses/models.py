@@ -17,6 +17,7 @@ class Course(models.Model):
     
     # Faculty fields
     credit_hours = models.PositiveSmallIntegerField(null=True, blank=True)
+    semester = models.PositiveSmallIntegerField(null=True, blank=True)
 
     # School fields
     level = models.PositiveSmallIntegerField(null=True, blank=True)

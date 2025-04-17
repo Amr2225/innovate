@@ -14,6 +14,7 @@ class CourseSerializer(serializers.ModelSerializer):
             'prerequisite_course',
             'instructor',
             'credit_hours',
+            'semester',
             'level'
         )
 

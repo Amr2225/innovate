@@ -92,6 +92,8 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
             "last_name",
             "role",
             "national_id",
+            "level",
+            "semester",
             "birth_date",
             "age",
             "institution",
