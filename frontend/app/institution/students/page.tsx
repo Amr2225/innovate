@@ -1,5 +1,6 @@
 "use client";
 import { getMembers } from "@/api/institution/users";
+import { DataTableSkeleton } from "@/components/helpers/data-table-skeleton";
 import {
   Table,
   TableHeader,
@@ -19,9 +20,21 @@ export default function StudentsPage() {
     queryFn: getMembers,
   });
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading)
+    return (
+      <div className='px-4 py-3'>
+        <h1 className='text-2xl font-bold'>Users Data</h1>
+        <DataTableSkeleton
+          columnCount={12}
+          rowCount={5}
+          withPagination={false}
+          withViewOptions={false}
+        />
+      </div>
+    );
   if (isError || !data) return <div>Error</div>;
 
+  // TODO: implement pagination and filtering
   return (
     <div className='px-4 py-3'>
       <h1 className='text-2xl font-bold mb-4'>Users Data</h1>

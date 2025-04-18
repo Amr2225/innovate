@@ -25,11 +25,15 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
-import UserProfile from "../user-profile";
+import UserProfile from "../../../components/user-profile";
 import { redirect, usePathname } from "next/navigation";
 import Image from "next/image";
 import { Session } from "@/types/auth.type";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../../../components/ui/collapsible";
 
 // Menu items.
 const items = [
@@ -71,7 +75,7 @@ const items = [
 ];
 
 export function AppSidebar({ session }: { session: Session }) {
-  const currentPath = "/institution";
+  const currentPath = "/teacher";
   if (!session) redirect("/login");
 
   const pathname = usePathname();

@@ -8,11 +8,7 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import React from "react";
 
-export default async function InstitutionDashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function TeacherDashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
@@ -24,15 +20,11 @@ export default async function InstitutionDashboardLayout({
           <SidebarTrigger className='-ml-1' />
           <Separator orientation='vertical' className='mr-2 h-4' />
           <Breadcrumbs />
-          <div className='flex flex-col items-start justify-center ml-auto'>
-            <h1 className='text-sm font-bold'>Credits</h1>
-            <p className='text-sm text-muted-foreground'>100</p>
-          </div>
           <UserProfile
             email={session.user.email}
             name={session.user.name}
             role={session.user.role}
-            className='ml-3'
+            className='ml-auto'
             variant='icon'
           />
         </header>

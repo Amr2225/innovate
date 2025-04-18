@@ -40,6 +40,7 @@ export default function AccessLogin() {
     console.log(data);
     startTransition(() => {
       loginAccess(data).then((data) => {
+        console.log(data);
         if (data?.error) setError({ message: data.error, type: data.type });
         else if (data?.isFirstLogin) redirect(firstLoginRoutes[0]);
         else if (data?.role) redirect(`/${data.role.toLowerCase()}/dashboard`);

@@ -1,20 +1,20 @@
-from rest_framework.exceptions import AuthenticationFailed
-from rest_framework import serializers
+# Django
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
+from django.core.signing import Signer
 from django.utils import timezone
-from django.core.signing import TimestampSigner, Signer
-import random
-import uuid
 
-from users.exceptions import EmailVerificationError
+# DRF
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework import serializers
+
+# Validation & Errors & Helpers
+from users.errors import EmailNotVerifiedError, UserAccountDisabledError
 from users.validation import nationalId_length_validation
+from users.helper import generateOTP, sendEmail
 
-# Helpers
-from .helper import generateOTP, sendEmail, generateTokens
-
-# Errors
-from .errors import EmailNotVerifiedError, UserAccountDisabledError, UserNotFoundError
+# Python
+import random
 User = get_user_model()
 
 
@@ -173,9 +173,10 @@ class FirstLoginSerializer(serializers.Serializer):
             raise AuthenticationFailed(
                 "Please provide both access code and national id")
 
-        user = User.objects.get(national_id=national_id)
+        user = User.objects.get(national_id=national_id,
+                                institution__access_code=access_code)
 
-        if not user.institution.access_code == access_code:
+        if not user:
             raise AuthenticationFailed(
                 "Invalid institution Code or National ID")
 
@@ -183,7 +184,7 @@ class FirstLoginSerializer(serializers.Serializer):
             raise UserAccountDisabledError()
 
         if user.email and not user.is_email_verified:
-            raise EmailVerificationError()
+            raise EmailNotVerifiedError()
 
         data['user'] = user
 
