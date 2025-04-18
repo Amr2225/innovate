@@ -27,6 +27,7 @@ export async function loginAccess(data: LoginAccessSchemaType): Promise<LoginRes
             if (error.status === 403) return { error: "Email not verified", type: "Verification" }
             if (error.status === 451) return { error: "Account is suspended, Please contact your institution", type: "ActiveAccount" }
         }
+        return { error: "Something went wrong", type: "CredentialsSignin" }
     }
 }
 

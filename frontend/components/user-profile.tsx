@@ -17,6 +17,7 @@ import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { User } from "@/types/user.types";
 import Link from "next/link";
+import { getNameInitials } from "@/lib/getNameInitials";
 
 interface UserProfileProps extends User {
   variant?: "default" | "icon";
@@ -26,12 +27,6 @@ interface UserProfileProps extends User {
 const handleLogout = async () => {
   await logout();
   redirect("/");
-};
-
-export const getNameInitials = (name: string) => {
-  const nameSplitted = name.split(" ");
-  if (nameSplitted.length === 1) return nameSplitted[0][0] + nameSplitted[0][1];
-  return nameSplitted[0][0] + nameSplitted[1][0];
 };
 
 export default function UserProfile({

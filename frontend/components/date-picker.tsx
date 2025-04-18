@@ -8,8 +8,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface DatePickerProps {
-  date: Date;
-  setDate: (...event: unknown[]) => void;
+  date?: Date;
+  setDate?: (...event: unknown[]) => void;
 }
 export default function DatePicker({ date, setDate }: DatePickerProps) {
   return (
