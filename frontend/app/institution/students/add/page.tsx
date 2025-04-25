@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 
@@ -33,20 +33,16 @@ export default function AddStudentPage() {
   const {
     mutate: submitData,
     isPending,
-    isSuccess,
     data,
   } = useMutation({
     mutationFn: (formData: FormData) => bulkUserInsert(formData),
     onError: () => {
       toast.error("Failed to add students");
     },
-  });
-
-  useEffect(() => {
-    if (isSuccess) {
+    onSuccess: () => {
       setOpen(true);
-    }
-  }, [isSuccess]);
+    },
+  });
 
   const form = useForm<BulkUserSchemaType>({
     resolver: zodResolver(BulkUserSchema),

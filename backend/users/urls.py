@@ -11,7 +11,7 @@ urlpatterns = [
     path('login/', views.UserLoginView.as_view(), name='user_login'),
     path("login-access/", views.LoginAccessView.as_view(), name="first_login"),
 
-    # Google Auth
+    # Google Auth TODO: Implement this
     path("google-auth/", views.GoogleAuthView.as_view(), name="google_auth"),
 
     # Token
