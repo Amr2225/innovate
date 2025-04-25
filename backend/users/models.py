@@ -2,9 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from nanoid_field import NanoidField
 from .validation import nationalId_length_validation
-import random
 import uuid
-from django.core.exceptions import ValidationError
 
 # Create your models here.
 
