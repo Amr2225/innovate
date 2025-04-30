@@ -4,6 +4,9 @@ from rest_framework import generics
 from users.permissions import isInstitution, isStudent, isTeacher
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.exceptions import NotFound
+
 
 
 class CourseListCreateAPIView(generics.ListCreateAPIView):
@@ -37,10 +40,16 @@ class RetrieveUpdateDestroyCourseDetailAPIView(generics.RetrieveUpdateDestroyAPI
             self.permission_classes = [isInstitution]
         return super().get_permissions()
 
-class CoursesByInstitutionAPIView(generics.ListAPIView):
-    serializer_class = CourseSerializer
+
+class CourseProgressListAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        institution_id = self.kwargs.get("institution_id")
-        return Course.objects.filter(institution_id=institution_id)
+        # We don't actually need a queryset because it's just a calculation
+        return []
+
+    def list(self, request, *args, **kwargs):
+        course_id = self.kwargs.get('course_id')
+        course = Course.objects.get(id=course_id)
+        progress = course.get_user_course_progress(request.user)
+        return Response({"course_progress": progress})

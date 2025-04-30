@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from users.models import User
+from lecture.models import Lecture, LectureProgress
 
 
 class Course(models.Model):
@@ -21,6 +22,19 @@ class Course(models.Model):
 
     # School fields
     level = models.PositiveSmallIntegerField(null=True, blank=True)
+
+
+    def get_user_course_progress(self, user):
+        lectures = Lecture.objects.filter(chapter__course=self)
+        
+        completed_lectures = LectureProgress.objects.filter(user=user, lecture__in=lectures, completed=True).count()
+        total_lectures = lectures.count()
+        if total_lectures > 0:
+            progress = (completed_lectures / total_lectures) * 100
+        else:
+            progress = 0
+        
+        return progress
 
     def __str__(self):
         return self.name
