@@ -6,6 +6,9 @@ from django.utils import timezone
 from django.core.signing import TimestampSigner, Signer
 import random
 import uuid
+from enrollments.models import Enrollments
+from courses.models import Course
+from lecture.models import Lecture, LectureProgress
 
 from users.exceptions import EmailVerificationError
 from users.validation import nationalId_length_validation
@@ -118,6 +121,22 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
         user = User.objects.create(**data, access_code=None)
         user.save()
         user.institution.set([request.user])
+
+        if data.get("role") == "Student":
+            institution = request.user
+            if getattr(institution, 'institution_type', None) == "school":
+                matching_courses = Course.objects.filter(
+                    semester=user.semester,
+                    institution=institution
+                )
+                for course in matching_courses:
+                    Enrollments.objects.create(user=user, course=course)
+                    lectures = Lecture.objects.filter(chapter__course=course)
+                    LectureProgress.objects.bulk_create([
+                        LectureProgress(user=user, lecture=lecture)
+                        for lecture in lectures
+                    ])
+
         return user
 
 
