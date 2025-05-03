@@ -8,6 +8,7 @@ from enrollments.models import Enrollments
 from courses.serializers import CourseSerializer
 from enrollments.serializers import EnrollMultipleCoursesSerializer
 from enrollments.serializers import EnrollmentsSerializer
+from lecture.models import Lecture, LectureProgress
 
 class EnrolledCoursesAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
@@ -88,6 +89,13 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
 
             enrollment = Enrollments.objects.create(user=user, course=course)
             enrolled_courses.append(enrollment)
+
+            lectures = Lecture.objects.filter(chapter__course=course)
+            progress_entries = [LectureProgress(user=user, lecture=lecture) for lecture in lectures]
+            try:
+                LectureProgress.objects.bulk_create(progress_entries)
+            except Exception as e:
+                print(f"Error creating progress entries: {e}")
 
         return Response({
             "enrolled": EnrollmentsSerializer(enrolled_courses, many=True).data,

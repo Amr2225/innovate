@@ -61,8 +61,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     age = models.PositiveIntegerField(blank=True, null=True)
     national_id = models.CharField(
         max_length=14, blank=True, null=True, unique=True, validators=[nationalId_length_validation])
-    level = models.PositiveSmallIntegerField(null=True, blank=True)
     semester = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    @property
+    def level(self):
+        if self.semester:
+            return (self.semester + 1) // 2
+        return None
 
     # Institution Fields
     SCHOOL = 'school'

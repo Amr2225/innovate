@@ -7,21 +7,25 @@ from lecture.models import Lecture, LectureProgress
 
 class Course(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, null=True)
     prerequisite_course = models.ForeignKey(
     'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='dependent_courses')
-    instructor = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='courses_taught')
-    institution = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name='courses', limit_choices_to={"role": "Institution"})
-    
-    # Faculty fields
-    credit_hours = models.PositiveSmallIntegerField(null=True, blank=True)
+    instructors = models.ManyToManyField(User, related_name='courses_taught', limit_choices_to={"role": "Teacher"})
+    institution = models.ForeignKey(User, on_delete=models.CASCADE, related_name='courses', limit_choices_to={"role": "Institution"})
     semester = models.PositiveSmallIntegerField(null=True, blank=True)
 
+    # Faculty fields
+    credit_hours = models.PositiveSmallIntegerField(null=True, blank=True)
+    
     # School fields
-    level = models.PositiveSmallIntegerField(null=True, blank=True)
+    total_grade = models.PositiveIntegerField(null=True, blank=True)
+
+    @property
+    def level(self):
+        if self.semester:
+            return (self.semester + 1) // 2
+        return None
 
 
     def get_user_course_progress(self, user):
@@ -38,6 +42,3 @@ class Course(models.Model):
 
     def __str__(self):
         return self.name
-
-
-# TODO: add another table for instructor courses (many-to-many) because many instuctors can be in the same course and vice-versa

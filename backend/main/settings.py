@@ -15,7 +15,7 @@ DEBUG = os.environ.get("DEBUG", default=0)
 SITE_ID = 1
 
 # ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
-ALLOWED_HOSTS = [ "10.40.10.97", "127.0.0.1", "localhost" ]
+ALLOWED_HOSTS = [ "192.168.1.11", "127.0.0.1", "localhost" ]
 
 WEBSITE_URL = "http://localhost:8000"
 
@@ -24,8 +24,8 @@ AUTH_USER_MODEL = "users.User"
 
 # CORS
 CORS_ALLOWED_ORIGINS = [
-    "http://10.40.10.97:3000",
-    "http://10.40.10.97:8000",
+    "http://192.168.1.11:3000",
+    "http://192.168.1.11:8000",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:8000",
     "http://localhost:3000",
@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_filters',
 
     # Rest Framework
     'rest_framework',
@@ -129,7 +130,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'lms',
         'USER': 'postgres',
-        'PASSWORD': 'root',
+        'PASSWORD': 'admin',
         'HOST': 'localhost',
         'PORT': '5432'
     }
@@ -189,6 +190,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSIONS_CLASSES": (
         "rest_framework.permissions.IsAuthenticated"
     ),
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
     # TODO: Enable this in production

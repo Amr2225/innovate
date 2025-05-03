@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 # Create your views here.
 class ChapterListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = ChapterSerializer
+    filterset_fields = ['id', 'title', 'course']
 
     def get_queryset(self):
         user = self.request.user
@@ -26,12 +27,15 @@ class ChapterListCreateAPIView(generics.ListCreateAPIView):
     def get_permissions(self):
         self.permission_classes = [IsAuthenticated]
         if self.request.method == 'POST':
-            self.permission_classes = [isInstitution]
+            self.permission_classes = [isTeacher | isInstitution]
         return super().get_permissions()
 
     def perform_create(self, serializer):
         course = serializer.validated_data['course']
-        if course.institution != self.request.user:
+        user = self.request.user
+        if user.role == "Institution" and course.institution != user:
+            raise serializers.ValidationError("You do not have permission to add a chapter to this course.")
+        elif user.role == "Teacher" and course.institution not in user.institution.all():
             raise serializers.ValidationError("You do not have permission to add a chapter to this course.")
         serializer.save()
 
@@ -43,7 +47,7 @@ class ChapterRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
     def get_permissions(self):
         self.permission_classes = [IsAuthenticated]
         if self.request.method in ['PUT', 'PATCH', 'DELETE']:
-            self.permission_classes = [isInstitution]
+            self.permission_classes = [isInstitution | isTeacher]
         return super().get_permissions()
 
     def get_queryset(self):
@@ -70,22 +74,3 @@ class ChapterRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
         if instance.course.institution != user:
             raise serializers.ValidationError("You do not have permission to delete this chapter.")
         instance.delete()
-
-
-class CourseChaptersAPIView(generics.ListAPIView):
-    serializer_class = ChapterSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        course_id = self.kwargs['course_id']
-        user = self.request.user
-
-        if user.role == "Institution":
-            return Chapter.objects.filter(course__id=course_id, course__institution=user)
-
-        elif user.role in ["Student", "Teacher"]:
-            institutions = user.institution.all()
-            if institutions.exists():
-                return Chapter.objects.filter(course__id=course_id, course__institution__in=institutions)
-
-        return Chapter.objects.none()
