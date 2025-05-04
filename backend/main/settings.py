@@ -3,6 +3,10 @@ from dotenv import load_dotenv
 from datetime import timedelta
 import os
 load_dotenv()
+from dotenv import load_dotenv
+from datetime import timedelta
+import os
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,6 +45,7 @@ GOOGLE_OAUTH2_CLIENT_ID = os.environ.get('GOOGLE_OAUTH2_CLIENT_ID', "")
 
 INSTALLED_APPS = [
     # Django Core Apps
+    # Django Core Apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -58,8 +63,19 @@ INSTALLED_APPS = [
     "drf_spectacular",
 
     # Apps
+    'rest_framework_simplejwt',
+
+    # Third-Party Apps
+    "django_extensions",
+    "nanoid_field",
+    "drf_spectacular",
+
+    # Apps
     'users',
     "courses",
+    'enrollments',
+    'chapter',
+    'lecture',
 ]
 
 MIDDLEWARE = [
@@ -70,6 +86,15 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.auth.middleware.RemoteUserMiddleware',
+]
+
+# To enable non active users to authenticate
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.AllowAllUsersModelBackend',
+]
+
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.RemoteUserMiddleware',
 ]
@@ -154,12 +179,15 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
+MEDIA_URL = '/uploads/'
+MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# REST FRAMEWORK
 # REST FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
@@ -170,6 +198,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSIONS_CLASSES": (
         "rest_framework.permissions.IsAuthenticated"
     ),
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
     # TODO: Enable this in production
     # 'DEFAULT_RENDERER_CLASSES': [
     #     'rest_framework.renderers.JSONRenderer',
