@@ -32,11 +32,19 @@ class CustomManager(UserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+<<<<<<< HEAD
     class Role(models.Choices):
         INSTITUTION = "Institution"
         STUDENT = "Student"
         TEACHER = "Teacher"
         ADMIN = "Admin"
+=======
+    class Role(models.TextChoices):  # Use TextChoices for better structure
+        INSTITUTION = "Institution", "Institution"
+        STUDENT = "Student", "Student"
+        TEACHER = "Teacher", "Teacher"
+        ADMIN = "Admin", "Admin"
+>>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
 
     # Common Fields
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -44,9 +52,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     otp = models.CharField(max_length=6, blank=True, null=True)
     otp_created_at = models.DateTimeField(blank=True, null=True)
     otp_expiry_time_minutes = models.PositiveSmallIntegerField(default=5)
+<<<<<<< HEAD
     # TODO: if password rasise error add it here and make it nullable
     date_joined = models.DateTimeField(auto_now_add=True)
     role = models.CharField(max_length=15, choices=Role, default=Role.STUDENT)
+=======
+    date_joined = models.DateTimeField(auto_now_add=True)
+    role = models.CharField(max_length=15, choices=Role.choices, default=Role.STUDENT)  # Use Role.choices
+>>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
     is_email_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_superuser = models.BooleanField(default=False)
@@ -62,8 +75,27 @@ class User(AbstractBaseUser, PermissionsMixin):
     age = models.PositiveIntegerField(blank=True, null=True)
     national_id = models.CharField(
         max_length=14, blank=True, null=True, unique=True, validators=[nationalId_length_validation])
+<<<<<<< HEAD
 
     # Institution Fields
+=======
+    semester = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    @property
+    def level(self):
+        if self.semester:
+            return (self.semester + 1) // 2
+        return None
+
+    # Institution Fields
+    SCHOOL = 'school'
+    FACULTY = 'faculty'
+    TYPE_CHOICES = [
+        (SCHOOL, 'School'),
+        (FACULTY, 'Faculty'),
+    ]
+    institution_type = models.CharField(max_length=10, choices=TYPE_CHOICES, null=True)
+>>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
     access_code = NanoidField(max_length=8, blank=True,
                               null=True, unique=True, editable=True)
     name = models.CharField(max_length=255, blank=True,
@@ -73,8 +105,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         upload_to='uploads/institution/logo/', null=True, blank=True)
 
     # Relation
+<<<<<<< HEAD
     # institution = models.ForeignKey('self', on_delete=models.CASCADE, blank=True,
     #                                 null=True, related_name="members", limit_choices_to={"role": "Institution"})
+=======
+>>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
     institution = models.ManyToManyField(
         'self', blank=True, symmetrical=False, related_name="members", limit_choices_to={"role": "Institution"})
 
