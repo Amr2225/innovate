@@ -16,7 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from .views import AssessmentScoreListCreateView, AssessmentScoreDetailView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('assessment-scores/', AssessmentScoreListCreateView.as_view(), name='assessment-score-list-create'),
+    path('assessment-scores/<int:pk>/', AssessmentScoreDetailView.as_view(), name='assessment-score-detail'),
 ]

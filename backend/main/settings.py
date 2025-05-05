@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_filters',
+    'main',
 ]
 
 MIDDLEWARE = [
@@ -75,8 +77,12 @@ WSGI_APPLICATION = 'main.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'AssessmentScore',      # Replace with your actual DB name
+        'USER': 'postgres',      # Your PostgreSQL username (default: postgres)
+        'PASSWORD': '1234',  # Your password
+        'HOST': 'localhost',               # Or your DB host/IP
+        'PORT': '5432',                    # Default PostgreSQL port
     }
 }
 
