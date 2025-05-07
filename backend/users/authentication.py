@@ -1,24 +1,14 @@
-<<<<<<< HEAD
 # Django
 from django.core.signing import Signer, BadSignature
 from django.contrib.auth import get_user_model
 
 # DRF
-=======
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
 from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.settings import api_settings
-<<<<<<< HEAD
 from rest_framework_simplejwt.authentication import JWTAuthentication
 import jwt
-=======
-from django.core.signing import Signer, BadSignature
-from django.contrib.auth import get_user_model
-import jwt
-from rest_framework_simplejwt.authentication import JWTAuthentication
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
 
 AUTH_HEADER_TYPES = api_settings.AUTH_HEADER_TYPES
 

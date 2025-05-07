@@ -3,10 +3,7 @@ from dotenv import load_dotenv
 from datetime import timedelta
 import os
 load_dotenv()
-from dotenv import load_dotenv
-from datetime import timedelta
-import os
-load_dotenv()
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -45,7 +42,6 @@ GOOGLE_OAUTH2_CLIENT_ID = os.environ.get('GOOGLE_OAUTH2_CLIENT_ID', "")
 
 INSTALLED_APPS = [
     # Django Core Apps
-    # Django Core Apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -63,19 +59,13 @@ INSTALLED_APPS = [
     "drf_spectacular",
 
     # Apps
-    'rest_framework_simplejwt',
-
-    # Third-Party Apps
-    "django_extensions",
-    "nanoid_field",
-    "drf_spectacular",
-
-    # Apps
     'users',
     "courses",
     'enrollments',
     'chapter',
     'lecture',
+    'assessment',
+    'mcqQuestion'
 ]
 
 MIDDLEWARE = [
@@ -93,7 +83,7 @@ MIDDLEWARE = [
 # To enable non active users to authenticate
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.AllowAllUsersModelBackend',
-]
+
 
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.RemoteUserMiddleware',

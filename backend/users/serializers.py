@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Django
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
@@ -9,6 +8,11 @@ from django.utils import timezone
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import serializers
 
+# Models
+from enrollments.models import Enrollments
+from courses.models import Course
+from lecture.models import Lecture, LectureProgress
+
 # Validation & Errors & Helpers
 from users.errors import EmailNotVerifiedError, UserAccountDisabledError
 from users.validation import nationalId_length_validation
@@ -16,28 +20,6 @@ from users.helper import generateOTP, sendEmail
 
 # Python
 import random
-=======
-from rest_framework.exceptions import AuthenticationFailed
-from rest_framework import serializers
-from django.contrib.auth import get_user_model
-from django.contrib.auth import authenticate
-from django.utils import timezone
-from django.core.signing import TimestampSigner, Signer
-import random
-import uuid
-from enrollments.models import Enrollments
-from courses.models import Course
-from lecture.models import Lecture, LectureProgress
-
-from users.exceptions import EmailVerificationError
-from users.validation import nationalId_length_validation
-
-# Helpers
-from .helper import generateOTP, sendEmail, generateTokens
-
-# Errors
-from .errors import EmailNotVerifiedError, UserAccountDisabledError, UserNotFoundError
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
 User = get_user_model()
 
 
@@ -52,10 +34,7 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
             "name",
             "credits",
             "email",
-<<<<<<< HEAD
-=======
             "institution_type",
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
             "password",
             "confirm_password",
             "detail",
@@ -73,10 +52,7 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
             email=validated_data['email'],
             name=validated_data['name'],
             credits=validated_data['credits'],
-<<<<<<< HEAD
-=======
             institution_type=validated_data['institution_type'],
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
             role="Institution",
             otp=otp,
             otp_created_at=timezone.now()
@@ -110,11 +86,7 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
 
     role = serializers.ChoiceField(choices=Role)
     institution = serializers.CharField(
-<<<<<<< HEAD
-        read_only=True, source="institution.name")
-=======
         read_only=True, source="institution.id")
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
 
     class Meta:
         model = User
@@ -125,11 +97,8 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
             "last_name",
             "role",
             "national_id",
-<<<<<<< HEAD
-=======
             "level",
             "semester",
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
             "birth_date",
             "age",
             "institution",
@@ -154,8 +123,6 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
         user = User.objects.create(**data, access_code=None)
         user.save()
         user.institution.set([request.user])
-<<<<<<< HEAD
-=======
 
         if data.get("role") == "Student":
             institution = request.user
@@ -172,7 +139,6 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
                         for lecture in lectures
                     ])
 
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
         return user
 
 
@@ -232,16 +198,10 @@ class FirstLoginSerializer(serializers.Serializer):
             raise AuthenticationFailed(
                 "Please provide both access code and national id")
 
-<<<<<<< HEAD
         user = User.objects.get(national_id=national_id,
                                 institution__access_code=access_code)
 
         if not user:
-=======
-        user = User.objects.get(national_id=national_id)
-
-        if not user.institution.access_code == access_code:
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
             raise AuthenticationFailed(
                 "Invalid institution Code or National ID")
 
@@ -249,11 +209,7 @@ class FirstLoginSerializer(serializers.Serializer):
             raise UserAccountDisabledError()
 
         if user.email and not user.is_email_verified:
-<<<<<<< HEAD
             raise EmailNotVerifiedError()
-=======
-            raise EmailVerificationError()
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
 
         data['user'] = user
 

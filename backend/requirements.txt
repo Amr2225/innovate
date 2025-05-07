@@ -5,9 +5,5 @@ django_extensions
 psycopg2
 python-dotenv
 django-nanoid-field
-<<<<<<< HEAD
-drf-spectacular
-=======
 drf-spectacular
 django-filter
->>>>>>> c18b18b6528a743c9eafe47cb0522e151360994c
