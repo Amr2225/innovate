@@ -5,12 +5,9 @@ from .serializers import McqQuestionSerializer
 
 
 class McqQuestionListCreateAPIView(generics.ListCreateAPIView):
-    """
-    View to list all MCQ questions for a specific assessment and create new ones.
-    Only users with 'Teacher' or 'Institution' roles can create questions.
-    """
     serializer_class = McqQuestionSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ['created_by', 'assessment']
 
     def get_queryset(self):
         assessment_id = self.kwargs.get('assessment_id')
