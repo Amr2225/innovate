@@ -6,7 +6,7 @@ from courses.models import Course
 class Assessment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='assessments')
-    institution = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_assessments')
+    institution = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_assessments', limit_choices_to={"role": "Teacher"})
     title = models.CharField(max_length=255)
     type = models.CharField(max_length=50, choices=[('Exam', 'Exam'), ('Assignment', 'Assignment'), ('Quiz', 'Quiz')])
     due_date = models.DateTimeField()

@@ -9,6 +9,7 @@ from .serializers import AssessmentSerializer, AssessmentScoreSerializer
 class AssessmentListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = AssessmentSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ['due_date', 'type', 'title']
 
     def get_queryset(self):
         return Assessment.objects.filter(institution=self.request.user)
