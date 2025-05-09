@@ -14,6 +14,7 @@
     "react-dom": "$react-dom"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-alert-dialog": "^1.1.6",
     "@radix-ui/react-avatar": "^1.1.3",
@@ -58,12 +59,23 @@
   "devDependencies": {
     "@types/crypto-js": "^4.2.2",
     "@types/js-cookie": "^3.0.6",
+=======
+    "frontend": "file:",
+    "next": "15.0.3",
+    "react": "19.0.0-rc-66855b96-20241106",
+    "react-dom": "19.0.0-rc-66855b96-20241106"
+  },
+  "devDependencies": {
+>>>>>>> b7648cdfd3ee01ba35e1a8aa651f3fd15b177562
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",
+<<<<<<< HEAD
     "framer-motion": "^11.11.17",
+=======
+>>>>>>> b7648cdfd3ee01ba35e1a8aa651f3fd15b177562
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
