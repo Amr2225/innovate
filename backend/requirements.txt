@@ -6,3 +6,5 @@ psycopg2
 python-dotenv
 django-nanoid-field
 drf-spectacular
+django-filter
+google-auth

@@ -1,6 +1,7 @@
 "use client";
 import { institutionService } from "@/apiService/services";
 import { DataTableSkeleton } from "@/components/helpers/data-table-skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableHeader,
@@ -10,14 +11,29 @@ import {
   TableCell,
   TableCaption,
 } from "@/components/ui/table";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import moment from "moment";
 import React from "react";
 
 export default function StudentsPage() {
-  const { data, isLoading, isError } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    hasNextPage,
+    fetchNextPage,
+    hasPreviousPage,
+    fetchPreviousPage,
+  } = useInfiniteQuery({
     queryKey: ["institution-users"],
-    queryFn: institutionService.getMembers,
+    queryFn: ({ pageParam }) => institutionService.getMembers(pageParam, 2),
+    initialPageParam: 1,
+    maxPages: 1,
+    getNextPageParam: (lastPage) => lastPage.next,
+    getPreviousPageParam: (firstPage) => firstPage.previous,
+    select(data) {
+      return data.pages.flatMap((page) => page.data);
+    },
   });
 
   if (isLoading)
@@ -33,6 +49,8 @@ export default function StudentsPage() {
       </div>
     );
   if (isError || !data) return <div>Error</div>;
+
+  console.log(data, hasNextPage);
 
   // TODO: implement pagination and filtering
   return (
@@ -77,6 +95,14 @@ export default function StudentsPage() {
           ))}
         </TableBody>
       </Table>
+      <div className='flex justify-between items-center gap-2'>
+        <Button disabled={!hasPreviousPage} onClick={() => fetchPreviousPage()}>
+          Previous
+        </Button>
+        <Button disabled={!hasNextPage} onClick={() => fetchNextPage()}>
+          Next
+        </Button>
+      </div>
     </div>
   );
 }
