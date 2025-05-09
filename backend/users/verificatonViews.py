@@ -2,6 +2,7 @@
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.core.signing import Signer, BadSignature
+from django.core.cache import cache
 
 # DRF
 from rest_framework import status
@@ -38,7 +39,6 @@ class VerifyEmailView(APIView):
 
     def post(self, request, token):
         otp = request.data.get("otp")
-        print(otp)
 
         try:
             # Validate Input
@@ -71,6 +71,66 @@ class VerifyEmailView(APIView):
             return Response({"message": "User not found."}, status=status.HTTP_404_NOT_FOUND)
         except BadSignature:
             return Response({"message": "Invalid token"}, status=status.HTTP_403_FORBIDDEN)
+
+
+class InstitutionResendVerificationEmailView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+
+        # Check if email is passed
+        if not email:
+            return Response({"message": "Email is required"}, status=status.HTTP_403_FORBIDDEN)
+
+        # Check if user with the email already exists
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            user = None
+        if user:
+            return Response({"message": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if OTP is already stored
+        stored_otp = cache.get(email, None)
+        if stored_otp:
+            sendEmail(email, stored_otp)
+            return Response({"message": "Verification email already resent"}, status=status.HTTP_200_OK)
+
+        # Generate a new OTP
+        otp = str(random.randint(100000, 999999))
+        # timeout in seconds (60 seconds * 15 = 15 minutes)
+        cache.set(email, otp, timeout=60 * 15)
+        sendEmail(email, otp)
+
+        return Response({"message": "Verification email sent"}, status=status.HTTP_200_OK)
+
+
+class InstitutionVerifyEmail(APIView):
+    def get(self, request, email):
+        if not email:
+            return Response({"message": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        found = cache.get(email, None)
+
+        if not found:
+            return Response({"message": "Email not found, please resend the verification email"}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(status=status.HTTP_200_OK)
+
+    def post(self, request, email=None):
+        otp = request.data.get("otp")
+        storedOTP = cache.get(email, None)
+
+        if not storedOTP:
+            return Response({"message": "Email not found, please resend the verification email"}, status=status.HTTP_404_NOT_FOUND)
+
+        if not otp == int(storedOTP):
+            return Response({"message": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not email or not otp:
+            return Response({"message": "Email and OTP are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        cache.delete(email)
+        return Response({"message": "Email verified successfully"}, status=status.HTTP_200_OK)
 
 
 class ResendVerificationEmailView(APIView):

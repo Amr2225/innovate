@@ -1,6 +1,6 @@
 import axios from "axios";
 import { useSession, signOut } from "next-auth/react";
-import api, { BASE_URL } from "@/lib/api";
+import api, { BASE_URL } from "@/apiService/api";
 import { useEffect } from "react";
 import moment from "moment";
 

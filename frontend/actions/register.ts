@@ -1,6 +1,6 @@
 'use server'
 import { RegisterSchema, RegisterSchemaType } from '@/schema/registerSchema'
-import { api } from '@/lib/api'
+import { api } from '@/apiService/api'
 import { AxiosError } from 'axios'
 import { logout } from '@/lib/session'
 

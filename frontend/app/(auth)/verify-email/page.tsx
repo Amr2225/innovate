@@ -1,18 +1,21 @@
 "use client";
 import React, { useState } from "react";
-import { resendEmail } from "@/api/auth/verifyEmail";
+import { useRouter } from "next/navigation";
+import { z } from "zod";
+
+// Components
 import { Spinner } from "@/components/helpers/Spinner";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle, CardHeader, CardDescription, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-// import { Form, useForm } from "react-hook-form";
-import { z } from "zod";
-// import { zodResolver } from "@hookform/resolvers/zod";
-// import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+
+// Utils
 import { cn } from "@/lib/utils";
+
+// Services & Hooks
+import { useMutation } from "@tanstack/react-query";
+import { userVerificationService } from "@/apiService/services";
+import { toast } from "sonner";
 
 export default function VerifyEmailPage() {
   const [email, setEmail] = useState("");
@@ -20,12 +23,11 @@ export default function VerifyEmailPage() {
   const router = useRouter();
 
   const { mutate: resendEmailMutation, isPending } = useMutation({
-    mutationFn: () => resendEmail(email),
+    mutationFn: () => userVerificationService.resendVerificationEmail(undefined, email),
     onSuccess: (token) => {
       router.push(`/verify-email/${token}`);
     },
     onError: (e) => {
-      console.log(e);
       toast.error(e.message);
     },
   });

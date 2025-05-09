@@ -11,6 +11,7 @@ export const authRoutes = [
     '/login',
     '/login-access',
     '/register-institution',
+    '/verify-email',
 ]
 
 // Only Authenticated users
