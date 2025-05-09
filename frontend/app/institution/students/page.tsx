@@ -1,5 +1,5 @@
 "use client";
-import { getMembers } from "@/api/institution/users";
+import { institutionService } from "@/apiService/services";
 import { DataTableSkeleton } from "@/components/helpers/data-table-skeleton";
 import {
   Table,
@@ -17,7 +17,7 @@ import React from "react";
 export default function StudentsPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["institution-users"],
-    queryFn: getMembers,
+    queryFn: institutionService.getMembers,
   });
 
   if (isLoading)

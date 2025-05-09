@@ -36,7 +36,7 @@ export default async function NavBar({ isAuth }: NavBarProps) {
           <NavigationMenu className='hidden md:block'>
             <NavigationMenuList>
               <NavigationMenuItem>
-                <Link href='/about' legacyBehavior passHref>
+                <Link href='/about'>
                   <NavigationMenuLink className={cn(navigationMenuTriggerStyle())}>
                     About Us
                   </NavigationMenuLink>
@@ -44,7 +44,7 @@ export default async function NavBar({ isAuth }: NavBarProps) {
               </NavigationMenuItem>
 
               <NavigationMenuItem>
-                <Link href='/contact' legacyBehavior passHref>
+                <Link href='/contact'>
                   <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                     Contact Us
                   </NavigationMenuLink>
@@ -52,7 +52,7 @@ export default async function NavBar({ isAuth }: NavBarProps) {
               </NavigationMenuItem>
 
               <NavigationMenuItem>
-                <Link href='/faq' legacyBehavior passHref>
+                <Link href='/faq'>
                   <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                     FAQs
                   </NavigationMenuLink>

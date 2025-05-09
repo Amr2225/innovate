@@ -7,8 +7,13 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('courses/', include('courses.urls')),
+
     # Auth API
     path("auth/", include("users.urls")),
+
+    # Institution API
+    path("institution/", include("institution.urls")),
+
 
     # Swagger Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

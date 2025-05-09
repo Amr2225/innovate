@@ -32,7 +32,7 @@ class Payment(models.Model):
     institution = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='institution_payments', limit_choices_to={"role": "Institution"})
     plan = models.ForeignKey(
-        Plan, on_delete=models.CASCADE, related_name='plans')
+        Plan, on_delete=models.CASCADE, related_name='plan_payments')
     valid_from = models.DateTimeField(auto_now_add=True)
     valid_to = models.DateTimeField(null=True, blank=True)
     is_current = models.BooleanField(default=True)
@@ -48,7 +48,7 @@ class Offer(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     discount_percentage = models.PositiveIntegerField()
     plan = models.ForeignKey(
-        Plan, on_delete=models.CASCADE, related_name='plans', to_field='type')
+        Plan, on_delete=models.CASCADE, related_name='plan_offers', to_field='type')
     valid_from = models.DateTimeField(auto_now_add=True)
     valid_to = models.DateTimeField(null=True, blank=True)
 

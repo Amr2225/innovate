@@ -20,12 +20,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 
 // API
-import { bulkUserInsert } from "@/api/institution/users";
 import { AxiosError } from "axios";
 
 // Schema
 import { BulkUserSchema, BulkUserSchemaType } from "@/schema/bulkUserSchema";
 import { toast } from "sonner";
+
+// Services
+import { institutionService } from "@/apiService/services";
 
 export default function AddStudentPage() {
   const [open, setOpen] = useState(false);
@@ -35,7 +37,7 @@ export default function AddStudentPage() {
     isPending,
     data,
   } = useMutation({
-    mutationFn: (formData: FormData) => bulkUserInsert(formData),
+    mutationFn: (formData: FormData) => institutionService.bulkUserInsert(formData),
     onError: () => {
       toast.error("Failed to add students");
     },

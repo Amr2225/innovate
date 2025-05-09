@@ -1,11 +1,13 @@
 # Django
+import uuid
 from django.contrib.auth import get_user_model
+from django.conf import settings
 
 # DRF
-from rest_framework import generics
-from rest_framework import status
+from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
+import requests
 
 # Institution Serializers
 from institution.serializers import InstitutionRegisterSeralizer, InstitutionUserSeralizer
@@ -17,7 +19,6 @@ from users.permissions import isInstitution
 import io
 import csv
 
-import secrets
 
 User = get_user_model()
 
@@ -25,6 +26,21 @@ User = get_user_model()
 class InstitutionRegisterView(generics.CreateAPIView):
     model = User
     serializer_class = InstitutionRegisterSeralizer
+
+
+class WebhookView(views.APIView):
+    def post(self, request, *args, **kwargs):
+        print(request.data)
+        print("Type: ", request.data['type'])
+        print("Transaction ID: ", request.data['obj']['id'])
+        print("Success: ", request.data['obj']['success'])
+        print("Transaction type: ",
+              request.data['obj']['source_data']['sub_type'])
+        print("Number: ",
+              request.data['obj']['source_data']['pan'])
+        print("Created At: ", request.data['obj']['created_at'])
+
+        return Response(status=status.HTTP_200_OK)
 
 
 class BulkUserImportView(generics.CreateAPIView):
@@ -118,3 +134,63 @@ class InstitutionUserView(generics.ListCreateAPIView):
         print(secrets.token_urlsafe(48))
         user = self.request.user
         return User.objects.filter(institution=user)
+
+
+# class InititationPaymentView(generics.CreateAPIView):
+#     permission_classes = [isInstitution]
+#     serializer_class = InititationPaymentSerializer
+
+#     def post(self, request):
+#         serializer = self.get_serializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+
+class TestRequestView(views.APIView):
+    def post(self, request, *args, **kwargs):
+        print("payment request")
+        try:
+            payload = {
+                'amount': 300000,
+                'currency': 'EGP',
+                "payment_methods": [
+                    4877887,
+                    4877830
+                ],
+                "items": [
+                    {
+                        "name": "Credits",
+                        "amount": 200,
+                        "description": "Innovate Credits",
+                        "quantity": 1500,
+                        "plan_id": "1234567890"
+                    }
+                ],
+                "billing_data": {
+                    "first_name": "cairo",
+                    "last_name": "cairo",
+                    "email": "cairo@gmail.com",
+                    "phone_number": "+2010101010"
+                },
+                "special_reference": str(uuid.uuid4()),
+                "redirection_url": f"{settings.CLIENT_URL}/institution-register/",
+                "expiration": 3600
+            }
+
+            response = requests.post(
+                'https://accept.paymob.com/v1/intention/',
+                json=payload,
+                headers={'Authorization': f'Token {settings.PAYMOB_SK}'}
+            )
+            print(response.json())
+
+            client_secret = response.json().get('client_secret')
+
+            URL = f"https://accept.paymob.com/unifiedcheckout/?publicKey={settings.PAYMOB_PK}&clientSecret={client_secret}"
+
+            # Return the response from the external service
+            return Response(URL, status=status.HTTP_200_OK)
+
+        except requests.RequestException as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
