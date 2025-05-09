@@ -7,6 +7,12 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('courses/', include('courses.urls')),
+    path('enrollments/', include('enrollments.urls')),
+    path('chapter/', include('chapter.urls')),
+    path('lecture/', include('lecture.urls')),
+    path('assessment/', include('assessment.urls')),
+    # Assuming your app is mcqquestions
+    path('mcqQuestion/', include('mcqQuestion.urls')),
 
     # Auth API
     path("auth/", include("users.urls")),

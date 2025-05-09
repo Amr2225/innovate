@@ -3,8 +3,18 @@ import { transformData } from "@/lib/transformations";
 import { InstitutionMembersType, SubmissionData } from "@/types/user.types";
 import { getSession } from "@/lib/session";
 
-export const getMembers = async (): Promise<InstitutionMembersType[]> => {
-    const res = await api.get("/auth/institution/users/")
+
+interface GetMembersResponse {
+    data: InstitutionMembersType[]
+    next: number | null
+    previous: number | null
+    page_size: number
+    total_pages: number
+    total_items: number
+}
+
+export const getMembers = async (pageParam: number, pageSize: number): Promise<GetMembersResponse> => {
+    const res = await api.get("/institution/users/", { params: { page: pageParam, page_size: pageSize } })
 
     if (res.status === 200) return res.data
     throw new Error(res.data.message || "Failed to get users")
