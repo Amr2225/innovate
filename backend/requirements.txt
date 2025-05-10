@@ -7,3 +7,6 @@ python-dotenv
 django-nanoid-field
 drf-spectacular
 django-filter
+channels
+channels-redis
+daphne
