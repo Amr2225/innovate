@@ -12,6 +12,9 @@ urlpatterns = [
     path('webhook/', views.WebhookView.as_view(),
          name="institution_webhook"),
 
-    path('payment/', views.TestRequestView.as_view(),
+    path('payment/', views.InstitutionGeneratePaymentIntentView.as_view(),
          name="institution_payment"),
+
+    path('payment/verify/', views.InstitutionVerifyPaymentView.as_view(),
+         name="institution_payment_verify"),
 ]

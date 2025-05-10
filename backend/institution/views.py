@@ -2,6 +2,7 @@
 import uuid
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.core.cache import cache
 
 # DRF
 from rest_framework import generics, status, views
@@ -33,6 +34,8 @@ class InstitutionRegisterView(generics.CreateAPIView):
 class WebhookView(views.APIView):
     def post(self, request, *args, **kwargs):
         print(request.data)
+        hmac = request.query_params.get('hmac')
+        print("HMAC: ", hmac)
         print("Type: ", request.data['type'])
         print("Transaction ID: ", request.data['obj']['id'])
         print("Success: ", request.data['obj']['success'])
@@ -41,6 +44,17 @@ class WebhookView(views.APIView):
         print("Number: ",
               request.data['obj']['source_data']['pan'])
         print("Created At: ", request.data['obj']['created_at'])
+
+        data = {
+            "transaction_id": request.data['obj']['id'],
+            "success": request.data['obj']['success'],
+            "transaction_type": request.data['obj']['source_data']['sub_type'],
+            "number": request.data['obj']['source_data']['pan'],
+            "created_at": request.data['obj']['created_at'],
+            "plan_id": request.data['obj']['extras']['plan_id']
+        }
+
+        cache.set(hmac, data, timeout=60 * 15)
 
         return Response(status=status.HTTP_200_OK)
 
@@ -155,17 +169,28 @@ class InstitutionUserView(generics.ListCreateAPIView):
         return User.objects.filter(institution=user)
 
 
-# class InititationPaymentView(generics.CreateAPIView):
-#     permission_classes = [isInstitution]
-#     serializer_class = InititationPaymentSerializer
-
-#     def post(self, request):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-
-class TestRequestView(views.APIView):
+class InstitutionVerifyPaymentView(views.APIView):
     def post(self, request, *args, **kwargs):
-        print("payment request")
+        try:
+            hmac = request.data.get('hmac')
+            data = cache.get(hmac)
+            print("Saved Data: ", data)
+            if not data:
+                return Response(
+                    {'error': 'Invalid HMAC'}, status=status.HTTP_400_BAD_REQUEST)
+            if not data.success:
+                return Response(
+                    {'error': 'Payment Failed'}, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response(status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class InstitutionGeneratePaymentIntentView(views.APIView):
+    def post(self, request, *args, **kwargs):
+        credits_amount = request.data.get('credits_amount')
         try:
             payload = {
                 'amount': 300000,
@@ -180,7 +205,6 @@ class TestRequestView(views.APIView):
                         "amount": 200,
                         "description": "Innovate Credits",
                         "quantity": 1500,
-                        "plan_id": "1234567890"
                     }
                 ],
                 "billing_data": {
@@ -188,6 +212,9 @@ class TestRequestView(views.APIView):
                     "last_name": "cairo",
                     "email": "cairo@gmail.com",
                     "phone_number": "+2010101010"
+                },
+                "extras": {
+                    "plan_id": "1234567890"
                 },
                 "special_reference": str(uuid.uuid4()),
                 "redirection_url": f"{settings.CLIENT_URL}/institution-register/",
