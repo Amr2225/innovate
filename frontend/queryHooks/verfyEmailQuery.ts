@@ -19,8 +19,8 @@ export default function useVerifyEmailQuery({ emailToken,
     const { isError, isLoading } = useQuery({
         queryKey: ["verifyEmailToken"],
         queryFn: () => verifyEmailExists(emailToken),
-        retry: 15,
-        staleTime: 1000 * 60 * 15,
+        retry: 5,
+        // staleTime: 1000 * 60 * 15,
     });
 
     const { mutate: verifyEmailMutation, isPending } = useMutation({

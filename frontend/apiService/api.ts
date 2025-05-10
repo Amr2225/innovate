@@ -11,19 +11,11 @@ export const api = axios.create({
     validateStatus: status => status < 500
 })
 
-// export const apiUserImport = axios.create({
-//     baseURL: BASE_URL,
-//     headers: {
-//         'Content-Type': "multipart/form-data"
-//     },
-//     validateStatus: status => status < 500
-// })
-
 
 const refreshToken = async () => {
     try {
         const session = await getSession();
-        if (!session?.refreshToken) throw new Error("No refresh token");
+        if (!session || session?.refreshToken) throw new Error("No refresh token");
 
         const response = await axios.post(`${BASE_URL}/auth/token/refresh/`, {
             refresh: session.refreshToken,
@@ -42,29 +34,6 @@ const refreshToken = async () => {
         // redirect("/login");
     }
 };
-
-// apiUserImport.interceptors.request.use(
-//     async (config) => {
-//         let session = await getSession();
-//         if (!session) {
-//             await logout();
-//             throw new Error("Failed to get session");
-//         }
-
-//         // Refresh token if expired
-//         if (session?.exp && moment.unix(session.exp).isBefore(moment())) {
-//             await refreshToken();
-//             session = await getSession();
-//         }
-
-//         if (session?.accessToken) {
-//             config.headers.Authorization = `Bearer ${session.accessToken}`;
-//         }
-//         return config;
-//     },
-//     (error) => Promise.reject(error)
-// );
-
 
 api.interceptors.request.use(
     async (config) => {
@@ -89,5 +58,3 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 
 )
-
-

@@ -17,7 +17,7 @@ export default function StepsProgress({
           <React.Fragment key={index}>
             {/* Number of Steps */}
             <span
-              className={`flex items-center justify-center rounded-full min-h-[50px] min-w-[50px] aspect-square border-2 ${
+              className={`flex items-center justify-center rounded-full md:size-[50px] size-[30px] text-sm md:text-base aspect-square border-2 ${
                 index + 1 <= currentStep ? "border-primary" : "border-neutral-200 ease-in-out"
               } text-lg font-bold`}
             >

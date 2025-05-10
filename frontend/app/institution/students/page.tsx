@@ -11,7 +11,7 @@ import {
   TableCell,
   TableCaption,
 } from "@/components/ui/table";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import moment from "moment";
 import React from "react";
 

@@ -2,6 +2,7 @@ import { api } from "@/apiService/api";
 import { transformData } from "@/lib/transformations";
 import { InstitutionMembersType, SubmissionData } from "@/types/user.types";
 import { getSession } from "@/lib/session";
+import axios from "axios";
 
 
 interface GetMembersResponse {
@@ -31,4 +32,9 @@ export const bulkUserInsert = async (formData: FormData): Promise<SubmissionData
         throw new Error("Session not found");
     }
     return transformData(res.data, session.user.name);
+};
+
+export const verifyPayment = async (hmac: string, data: unknown): Promise<boolean> => {
+    const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/institution/payment/verify/`, { hmac, data });
+    return res.status === 201;
 };

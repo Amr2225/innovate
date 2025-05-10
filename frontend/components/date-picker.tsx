@@ -1,5 +1,6 @@
 "use client";
-import { format } from "date-fns";
+// import { format } from "date-fns";
+import moment from "moment";
 import { CalendarIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ export default function DatePicker({ date, setDate }: DatePickerProps) {
             )}
           >
             <CalendarIcon />
-            {date ? format(date, "PPP") : <span>Pick a date</span>}
+            {date ? moment(date).format("DD/MM/YYYY") : <span>Pick a date</span>}
           </Button>
         </PopoverTrigger>
         <PopoverContent className='w-auto p-0' align='start'>

@@ -24,6 +24,7 @@ export interface Session {
     accessToken: string
     refreshToken: string
     exp: number
+    credit?: number
 }
 
 export interface ITokens {
