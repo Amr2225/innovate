@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     "django_extensions",
     "nanoid_field",
     "drf_spectacular",
+    'channels',
+    'corsheaders',
 
     # Apps
     'users',
@@ -66,8 +68,18 @@ INSTALLED_APPS = [
     'chapter',
     'lecture',
     'assessment',
-    'mcqQuestion'
+    'mcqQuestion',
+    'chat',
 ]
+
+ASGI_APPLICATION = 'main.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -226,6 +238,13 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+
+# Payment Config
 PAYMOB_PK = os.environ.get('PAYMOB_PK')
 PAYMOB_SK = os.environ.get('PAYMOB_SK')
 CLIENT_URL = os.environ.get('CLIENT_URL')
+
+# AI CONFIG
+AI_API_KEY = os.environ.get('AI_API_KEY')
+AI_PROVIDER = os.environ.get('AI_PROVIDER')
+AI_MODEL = os.environ.get('AI_MODEL')
