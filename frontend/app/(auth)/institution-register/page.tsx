@@ -22,6 +22,9 @@ import { verifyPayment } from "@/actions/verify-payment";
 
 // Store
 import { useInstitutionRegistrationStore } from "@/store/institutionRegistrationStore";
+import { institutionRegister } from "@/actions/register";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface StepsLookup {
   [key: number]: {
@@ -37,27 +40,74 @@ export default function InstitutionRegisterPage() {
     current_step,
     goBack,
     setIsVerified,
-    email,
     verifcationFaildCallback,
     setIsPaymentSuccess,
     is_payment_success,
+
+    name,
+    email,
+    password,
+    confirm_password,
+    credits,
   } = useInstitutionRegistrationStore();
   const [isVerifyingPayment, startTransition] = useTransition();
+  const [isRegistering, startRegisterTransition] = useTransition();
 
   const [isPending, setIsPending] = useState(false);
   const params = useSearchParams();
+  const router = useRouter();
 
   const hmac = useMemo(() => params.get("hmac"), [params]);
 
   useEffect(() => {
     if (hmac) {
       startTransition(() => {
-        verifyPayment(hmac, {}).then((isVerified) => {
-          setIsPaymentSuccess(isVerified);
-        });
+        verifyPayment(hmac, {})
+          .then((isVerified) => {
+            setIsPaymentSuccess(isVerified);
+          })
+          .catch((err) => {
+            toast.error(err.message);
+            router.replace("/institution-register");
+          });
       });
     }
-  }, [hmac, setIsPaymentSuccess]);
+  }, [hmac, router, setIsPaymentSuccess]);
+
+  useEffect(() => {
+    if (is_payment_success) {
+      startRegisterTransition(() => {
+        institutionRegister({
+          name,
+          email,
+          password,
+          confirm_password,
+          credits,
+          hmac: hmac!,
+        })
+          .then((res) => {
+            if (res) {
+              console.log("Registration successful", res);
+              toast.success(`Registration successful ${res.access_token}`);
+            }
+          })
+          .catch((err) => {
+            toast.error(err.message);
+          });
+      });
+    }
+  }, [
+    hmac,
+    setIsPaymentSuccess,
+    is_payment_success,
+    setIsVerified,
+    name,
+    email,
+    password,
+    confirm_password,
+    credits,
+    router,
+  ]);
 
   const setPendingCallback = useCallback(
     (pending: boolean) => {

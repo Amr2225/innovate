@@ -4,7 +4,6 @@ import { InstitutionMembersType, SubmissionData } from "@/types/user.types";
 import { getSession } from "@/lib/session";
 import axios from "axios";
 
-
 interface GetMembersResponse {
     data: InstitutionMembersType[]
     next: number | null
@@ -12,6 +11,13 @@ interface GetMembersResponse {
     page_size: number
     total_pages: number
     total_items: number
+}
+
+interface IGeneratePayment {
+    name: string
+    email: string
+    plan_id: string
+    credits: number
 }
 
 export const getMembers = async (pageParam: number, pageSize: number): Promise<GetMembersResponse> => {
@@ -34,7 +40,8 @@ export const bulkUserInsert = async (formData: FormData): Promise<SubmissionData
     return transformData(res.data, session.user.name);
 };
 
-export const verifyPayment = async (hmac: string, data: unknown): Promise<boolean> => {
-    const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/institution/payment/verify/`, { hmac, data });
-    return res.status === 201;
+export const generatePaymentLink = async (data: IGeneratePayment): Promise<string> => {
+    const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/institution/payment/`, data);
+    return res.data.url;
 };
+

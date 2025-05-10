@@ -4,7 +4,6 @@ import json
 import re
 import json5
 
-
 client = InferenceClient(
     provider=settings.AI_PROVIDER,
     api_key=settings.AI_API_KEY,

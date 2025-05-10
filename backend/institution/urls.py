@@ -1,5 +1,5 @@
 from django.urls import path
-from institution import views
+from institution import views, paymentViews
 
 urlpatterns = [
     path('register/', views.InstitutionRegisterView.as_view(),
@@ -9,12 +9,12 @@ urlpatterns = [
          name="institution_register_csv"),
     path('users/', views.InstitutionUserView.as_view(),
          name="institution_register_user"),
-    path('webhook/', views.WebhookView.as_view(),
+
+    # Payment
+    path('webhook/', paymentViews.InstitutionPaymentWebhookView.as_view(),
          name="institution_webhook"),
-
-    path('payment/', views.InstitutionGeneratePaymentIntentView.as_view(),
+    path('payment/', paymentViews.InstitutionGeneratePaymentIntentView.as_view(),
          name="institution_payment"),
-
-    path('payment/verify/', views.InstitutionVerifyPaymentView.as_view(),
+    path('payment/verify/', paymentViews.InstitutionVerifyPaymentView.as_view(),
          name="institution_payment_verify"),
 ]

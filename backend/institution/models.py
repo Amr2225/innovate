@@ -37,11 +37,12 @@ class Payment(models.Model):
     valid_to = models.DateTimeField(null=True, blank=True)
     is_current = models.BooleanField(default=True)
     credits_amount = models.PositiveIntegerField()
-    paymob_url = models.URLField(null=True, blank=True)
+    transaction_id = models.PositiveIntegerField(null=True, blank=True)
+    order_id = models.PositiveIntegerField(null=True, blank=True)
     payment_status = models.CharField(max_length=255, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.institution.name} - {self.plan.type} - {self.valid_from} to {self.valid_to} Current: {self.is_current}"
+        return f"{self.plan.type} - {self.institution.name} ({self.credits_amount} Credits) - {self.valid_from.strftime('%m/%d/%Y')} to {self.valid_to.strftime('%m/%d/%Y') if self.valid_to else 'N/A'} Current: {self.is_current}"
 
 
 class Offer(models.Model):
