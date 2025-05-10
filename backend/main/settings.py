@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     "django_extensions",
     "nanoid_field",
     "drf_spectacular",
+    'channels',
+    'corsheaders',
 
     # Apps
     'users',
@@ -65,8 +67,18 @@ INSTALLED_APPS = [
     'chapter',
     'lecture',
     'assessment',
-    'mcqQuestion'
+    'mcqQuestion',
+    'chat',
 ]
+
+ASGI_APPLICATION = 'main.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

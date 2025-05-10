@@ -12,6 +12,7 @@ urlpatterns = [
     path('lecture/', include('lecture.urls')),
     path('assessment/', include('assessment.urls')),
     path('mcqQuestion/', include('mcqQuestion.urls')),  # Assuming your app is mcqquestions
+    path('chat/', include('chat.urls')),  # Assuming your app is mcqquestions
 
     # Auth API
     path("auth/", include("users.urls")),
