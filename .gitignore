@@ -9,6 +9,10 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
 
 # testing
 /coverage
@@ -34,6 +38,7 @@ yarn-error.log*
 
 # vercel
 .vercel
+
 
 
 # Python venv
