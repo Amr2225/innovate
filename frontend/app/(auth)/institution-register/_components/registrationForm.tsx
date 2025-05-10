@@ -31,7 +31,6 @@ import { useInstitutionRegistrationStore as store } from "@/store/institutionReg
 export default function RegistrationForm({
   setIsPending,
 }: {
-  setCurrentStep?: (step: number) => void;
   setIsPending: (isPending: boolean) => void;
 }) {
   const { addCreds } = store();
@@ -51,7 +50,6 @@ export default function RegistrationForm({
     mutationFn: (email: string) => institutionVerificationService.resendVerificationEmail(email),
     onSuccess: (message) => {
       toast.success(message as string);
-      // setCurrentStep(2);
       addCreds(
         form.getValues("name"),
         form.getValues("email"),
@@ -67,9 +65,6 @@ export default function RegistrationForm({
   }, [isPending, setIsPending]);
 
   const handleNext = (data: InstitutionRegisterSchemaType) => {
-    //TODO: Save the data in the persistant storage
-    // addCreds(data.name, data.email, data.password, data.confirm_password);
-    // console.log(data);
     sendEmail(data.email);
   };
 
@@ -135,9 +130,6 @@ export default function RegistrationForm({
             </FormItem>
           )}
         />
-        {/* <Button type='submit' className='w-full'>
-          Next
-        </Button> */}
       </form>
     </Form>
   );

@@ -12,6 +12,8 @@ type InstitutionStore = {
     current_step: number
     credits: number
     logo?: string
+    reset: () => void
+    setIsPaymentSuccess: (isVerified: boolean) => void
     addCreds: (name: string, email: string, password: string, confirm_password: string) => void
     setIsVerified: () => void
     setCurrentStep: () => void
@@ -28,6 +30,8 @@ const initialState: InstitutionStore = {
     is_payment_success: false,
     current_step: 1,
     credits: 0,
+    reset: () => { },
+    setIsPaymentSuccess: () => { },
     addCreds: () => { },
     setIsVerified: () => { },
     setCurrentStep: () => { },
@@ -44,6 +48,13 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
                 set({ name, email, password, confirm_password });
                 get().setCurrentStep();
             },
+            setIsPaymentSuccess: (isVerified: boolean) => {
+                set({ is_payment_success: isVerified });
+                get().setCurrentStep();
+            },
+            reset: () => {
+                set(initialState);
+            },
             setIsVerified: () => {
                 set({ is_verified: true });
                 get().setCurrentStep();
@@ -51,10 +62,10 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
             setCurrentStep: () => {
                 if (get().name && !get().is_verified) set({ current_step: 2 })
                 if (get().is_verified) set({ current_step: 3 })
-                if (get().credits > 0) set({ current_step: 4 })
+                if (get().is_payment_success) set({ current_step: 4 })
             },
             goBack: () => {
-                if (get().current_step === 1 || get().is_verified) return;// 
+                if (get().current_step === 1 || get().is_verified) return;
                 set({ current_step: get().current_step - 1 })
             },
             verifcationFaildCallback: () => set({ current_step: 1 })

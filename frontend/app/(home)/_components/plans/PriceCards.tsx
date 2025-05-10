@@ -4,9 +4,10 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { X, Check } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+// import { cn } from "@/lib/utils";
 
 interface PriceCardsProps {
   type: PricePlans;
@@ -98,9 +99,12 @@ export default function PriceCards({ type }: PriceCardsProps) {
     <motion.div variants={variant} className='border shadow-lg rounded-lg w-full md:w-fit'>
       <header className='bg-gradient-to-r from-primary-dark to-primary flex justify-between items-center px-8 h-14 rounded-se-md rounded-ss-md'>
         <h1 className='font-bold text-xl text-white'>{getTitle(type)}</h1>
-        <div className={cn(type, "text-white rounded-full px-4 py-0.3 capitalize shadow-md")}>
+        {/* <div className={cn(type, "text-white rounded-full px-4 py-0.3 capitalize shadow-md")}>
           {type}
-        </div>
+        </div> */}
+        <Badge className='py-1' variant={type}>
+          {type}
+        </Badge>
       </header>
       <div className='p-5'>
         <h1 className='text-2xl mt-5 font-bold'>

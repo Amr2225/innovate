@@ -26,7 +26,7 @@ export default async function InstitutionDashboardLayout({
           <Breadcrumbs />
           <div className='flex flex-col items-start justify-center ml-auto'>
             <h1 className='text-sm font-bold'>Credits</h1>
-            <p className='text-sm text-muted-foreground'>100</p>
+            <p className='text-sm text-muted-foreground'>{session.user.credits}</p>
           </div>
           <UserProfile
             email={session.user.email}
