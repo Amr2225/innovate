@@ -10,6 +10,7 @@ class McqQuestion(models.Model):
     answer = models.JSONField()
     answer_key = models.CharField(max_length=255)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='mcq_questions_created')
+    is_ai_generated = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.assessment.title} - {self.question}"
