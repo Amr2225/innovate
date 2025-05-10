@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'assessment',
     'mcqQuestion',
     'chat',
+    'Code_Questions',
 ]
 
 ASGI_APPLICATION = 'main.asgi.application'

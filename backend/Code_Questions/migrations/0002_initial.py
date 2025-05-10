@@ -10,13 +10,13 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('assessment', '0001_initial'),
-        ('courses', '0001_initial'),
+        ('Code_Questions', '0001_initial'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='assessment',
-            name='course',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assessments', to='courses.course'),
+            model_name='codingquestion',
+            name='assessment_Id',
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='assessment.assessment'),
         ),
     ]

@@ -20,12 +20,15 @@ urlpatterns = [
 
     # Institution API
     path("institution/", include("institution.urls")),
+    
+    # Code Questions API
+    path("Code_Questions/", include("Code_Questions.urls")),
 
 
     # Swagger Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('swagger/',
-         SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+        SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 
     # Rest Framework
     path("api-auth/", include("rest_framework.urls")),
