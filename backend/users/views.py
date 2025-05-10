@@ -119,9 +119,6 @@ class UserAddCredentialsView(generics.CreateAPIView):
     serializer_class = UserAddCredentialsSerializer
     allowed_methods = ["POST"]
 
-    # def post(self, request):
-    #     return JsonResponse({"Message": "message"})
-
 
 class GoogleAuthView(APIView):
     permission_classes = []

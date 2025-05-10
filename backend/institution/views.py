@@ -1,7 +1,5 @@
 # Django
-import uuid
 from django.contrib.auth import get_user_model
-from django.conf import settings
 from django.core.cache import cache
 
 # DRF
@@ -9,7 +7,6 @@ from rest_framework import generics, status, views
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
-import requests
 
 # Institution Serializers
 from institution.serializers import InstitutionRegisterSeralizer, InstitutionUserSeralizer
@@ -29,34 +26,6 @@ User = get_user_model()
 class InstitutionRegisterView(generics.CreateAPIView):
     model = User
     serializer_class = InstitutionRegisterSeralizer
-
-
-class WebhookView(views.APIView):
-    def post(self, request, *args, **kwargs):
-        print(request.data)
-        hmac = request.query_params.get('hmac')
-        print("HMAC: ", hmac)
-        print("Type: ", request.data['type'])
-        print("Transaction ID: ", request.data['obj']['id'])
-        print("Success: ", request.data['obj']['success'])
-        print("Transaction type: ",
-              request.data['obj']['source_data']['sub_type'])
-        print("Number: ",
-              request.data['obj']['source_data']['pan'])
-        print("Created At: ", request.data['obj']['created_at'])
-
-        data = {
-            "transaction_id": request.data['obj']['id'],
-            "success": request.data['obj']['success'],
-            "transaction_type": request.data['obj']['source_data']['sub_type'],
-            "number": request.data['obj']['source_data']['pan'],
-            "created_at": request.data['obj']['created_at'],
-            "plan_id": request.data['obj']['extras']['plan_id']
-        }
-
-        cache.set(hmac, data, timeout=60 * 15)
-
-        return Response(status=status.HTTP_200_OK)
 
 
 class BulkUserImportView(generics.CreateAPIView):
@@ -97,16 +66,11 @@ class BulkUserImportView(generics.CreateAPIView):
                     # Create user with institution relationship
                     self.perform_create(serializer)
                     created_users.append(serializer.data)
-                    # instance = serializer.save()
-                    # created_users.append(
-                    #     InstitutionUserSeralizer(instance).data)
                 else:
                     if 'national_id' in serializer.errors:
                         try:
                             existing_user = User.objects.exclude(
                                 institution__in=[request.user]).get(national_id=serializer.data['national_id'])
-                            # existing_user = User.objects.get(
-                            #     national_id=serializer.data['national_id'])
                             existing_user.institution.add(request.user)
                             created_users.append(
                                 self.get_serializer(existing_user).data)
@@ -117,8 +81,6 @@ class BulkUserImportView(generics.CreateAPIView):
                                 'errors': serializer.errors
                             })
                     else:
-                        # existing_user = User.objects.filter(national_id=cleaned_row['national_id'])
-                        # Track errors for this row
                         errors.append({
                             'row': serializer.data,
                             'errors': serializer.errors
@@ -167,76 +129,3 @@ class InstitutionUserView(generics.ListCreateAPIView):
         print(secrets.token_urlsafe(48))
         user = self.request.user
         return User.objects.filter(institution=user)
-
-
-class InstitutionVerifyPaymentView(views.APIView):
-    def post(self, request, *args, **kwargs):
-        try:
-            hmac = request.data.get('hmac')
-            data = cache.get(hmac)
-            print("Saved Data: ", data)
-            if not data:
-                return Response(
-                    {'error': 'Invalid HMAC'}, status=status.HTTP_400_BAD_REQUEST)
-            if not data.success:
-                return Response(
-                    {'error': 'Payment Failed'}, status=status.HTTP_400_BAD_REQUEST)
-
-            return Response(status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response(
-                {'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class InstitutionGeneratePaymentIntentView(views.APIView):
-    def post(self, request, *args, **kwargs):
-        credits_amount = request.data.get('credits_amount')
-        try:
-            payload = {
-                'amount': 300000,
-                'currency': 'EGP',
-                "payment_methods": [
-                    4877887,
-                    4877830
-                ],
-                "items": [
-                    {
-                        "name": "Credits",
-                        "amount": 200,
-                        "description": "Innovate Credits",
-                        "quantity": 1500,
-                    }
-                ],
-                "billing_data": {
-                    "first_name": "cairo",
-                    "last_name": "cairo",
-                    "email": "cairo@gmail.com",
-                    "phone_number": "+2010101010"
-                },
-                "extras": {
-                    "plan_id": "1234567890"
-                },
-                "special_reference": str(uuid.uuid4()),
-                "redirection_url": f"{settings.CLIENT_URL}/institution-register/",
-                "expiration": 3600
-            }
-
-            response = requests.post(
-                'https://accept.paymob.com/v1/intention/',
-                json=payload,
-                headers={'Authorization': f'Token {settings.PAYMOB_SK}'}
-            )
-            print(response.json())
-
-            client_secret = response.json().get('client_secret')
-
-            URL = f"https://accept.paymob.com/unifiedcheckout/?publicKey={settings.PAYMOB_PK}&clientSecret={client_secret}"
-
-            # Return the response from the external service
-            return Response(URL, status=status.HTTP_200_OK)
-
-        except requests.RequestException as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )

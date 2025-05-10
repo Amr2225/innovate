@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from nanoid_field import NanoidField
+from django.core.exceptions import ValidationError
 from .validation import nationalId_length_validation
 import uuid
 
@@ -43,7 +44,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     otp = models.CharField(max_length=6, blank=True, null=True)
     otp_created_at = models.DateTimeField(blank=True, null=True)
     otp_expiry_time_minutes = models.PositiveSmallIntegerField(default=5)
-    # TODO: if password rasise error add it here and make it nullable
     date_joined = models.DateTimeField(auto_now_add=True)
     role = models.CharField(max_length=15, choices=Role, default="Student")
     is_email_verified = models.BooleanField(default=False)
@@ -63,12 +63,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         max_length=14, blank=True, null=True, unique=True, validators=[nationalId_length_validation])
     semester = models.PositiveSmallIntegerField(null=True, blank=True)
 
-    @property
-    def level(self):
-        if self.semester:
-            return (self.semester + 1) // 2
-        return None
-
     # Institution Fields
     SCHOOL = 'school'
     FACULTY = 'faculty'
@@ -77,7 +71,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         (FACULTY, 'Faculty'),
     ]
     institution_type = models.CharField(
-        max_length=10, choices=TYPE_CHOICES, null=True)
+        max_length=10, choices=TYPE_CHOICES, null=True, blank=True,
+        help_text="This field is required")
+
     access_code = NanoidField(max_length=8, blank=True,
                               null=True, unique=True, editable=True)
     name = models.CharField(max_length=255, blank=True,
@@ -99,6 +95,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def full_name(self):
         return f"{self.first_name} {self.middle_name} {self.last_name}"
+
+    @property
+    def level(self):
+        if self.semester:
+            return (self.semester + 1) // 2
+        return None
+
+    def clean(self):
+        super().clean()
+        if self.role == "Institution" and not self.institution_type:
+            raise ValidationError(
+                "Institution type is required for institutions")
 
     def __str__(self):
         if self.role == "Institution":

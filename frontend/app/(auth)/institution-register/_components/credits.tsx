@@ -5,28 +5,37 @@ import { Label } from "@radix-ui/react-label";
 import { Input } from "@/components/ui/input";
 // import { Button } from "@/components/ui/button";
 import { useMutation } from "@tanstack/react-query";
-import axios from "axios";
-import { BASE_URL } from "@/apiService/api";
+import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { paymentService } from "@/apiService/services";
+import { useInstitutionRegistrationStore } from "@/store/institutionRegistrationStore";
 // import { useInstitutionRegistrationStore } from "@/store/institutionRegistrationStore";
 
+const planId = "b784f4f9-7734-46f9-854c-4f641060a361";
 export default function Credits({ setIsPending }: { setIsPending: (isPending: boolean) => void }) {
   const [credits, setCredits] = useState<number>(0);
+  const { email, name } = useInstitutionRegistrationStore();
 
   const { mutate: purchaseCredits } = useMutation({
-    mutationFn: async () => {
-      const response = await axios.post(`${BASE_URL}/institution/payment/`, {});
-      return response.data;
-    },
+    mutationFn: () =>
+      paymentService.generatePaymentLink({
+        credits: credits,
+        plan_id: planId,
+        name: name,
+        email: email,
+      }),
     onSuccess: (url) => {
       window.location.href = url;
     },
+    onError: (error) => {
+      setIsPending(false);
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data.errors || "Something went wrong, please try again");
+      }
+    },
     onSettled: () => {
       setIsPending(false);
-    },
-    onError: () => {
-      toast.error("Something went wrong, please try again");
     },
   });
 
