@@ -12,4 +12,9 @@ urlpatterns = [
         views.McqQuestionRetrieveUpdateDestroyAPIView.as_view(),
         name='mcq-question-detail'
     ),
+    path(
+        'generate-mcqs/',
+        views.GenerateMCQsView.as_view(),
+        name='mcq-generate'
+    ),
 ]

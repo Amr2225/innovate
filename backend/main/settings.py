@@ -242,3 +242,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+
+AI_API_KEY = os.environ.get('AI_API_KEY')
+AI_PROVIDER = os.environ.get('AI_PROVIDER')
+AI_MODEL = os.environ.get('AI_MODEL')
