@@ -7,3 +7,6 @@ python-dotenv
 django-nanoid-field
 drf-spectacular
 django-filter
+huggingface-hub
+pdf2image
+json5
