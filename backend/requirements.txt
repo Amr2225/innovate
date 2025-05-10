@@ -8,3 +8,9 @@ django-nanoid-field
 drf-spectacular
 django-filter
 google-auth
+huggingface-hub
+pdf2image
+json5
+channels
+channels-redis
+daphne
