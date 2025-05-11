@@ -4,7 +4,9 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DJANGO_SETTINGS_MODULE=main.settings
+    DJANGO_SETTINGS_MODULE=main.settings \
+    DJANGO_ALLOWED_HOSTS="localhost 127.0.0.1 [::1] *" \
+    DEBUG=False
 
 # Set work directory
 WORKDIR /app
