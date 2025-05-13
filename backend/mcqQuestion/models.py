@@ -16,6 +16,7 @@ class McqQuestion(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='mcq_questions_created')
+    is_ai_generated = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['created_at']

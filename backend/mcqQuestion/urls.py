@@ -14,14 +14,9 @@ urlpatterns = [
         name='mcq-question-detail'
     ),
     path(
-        'assessments/<str:assessment_id>/generate-from-text/',
-        views.GenerateMCQsFromTextView.as_view(),
-        name='mcq-generate-from-text'
-    ),
-    path(
-        'assessments/<str:assessment_id>/generate-from-pdf/',
-        views.GenerateMCQsFromPDFView.as_view(),
-        name='mcq-generate-from-pdf'
+        'generate-mcqs/',
+        views.GenerateMCQsView.as_view(),
+        name='mcq-generate'
     ),
     path('', MCQQuestionListCreateView.as_view(), name='mcq-question-list-create'),
     path('assessment/<uuid:assessment_id>/submit/', SubmitAssessmentAnswersView.as_view(), name='submit-assessment-answers'),
