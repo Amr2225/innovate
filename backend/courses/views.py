@@ -7,7 +7,7 @@ from users.permissions import isInstitution, isStudent, isTeacher
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound
 from rest_framework.parsers import MultiPartParser, FormParser
 import csv
 
@@ -57,27 +57,12 @@ class CourseProgressListAPIView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         course_id = self.kwargs.get('course_id')
-        try:
-            course = Course.objects.get(id=course_id)
-            
-            # Check if user has access to this course
-            user = request.user
-            if user.role == "Student":
-                if not Enrollments.objects.filter(user=user, course=course).exists():
-                    raise PermissionDenied("You are not enrolled in this course.")
-            elif user.role == "Teacher":
-                if not course.instructors.filter(id=user.id).exists():
-                    raise PermissionDenied("You are not an instructor of this course.")
-            elif user.role != "Institution" or course.institution != user:
-                raise PermissionDenied("You don't have access to this course.")
-            
-            progress = course.get_user_course_progress(request.user)
-            return Response({"course_progress": progress})
-        except Course.DoesNotExist:
-            raise NotFound("Course not found.")
+        course = Course.objects.get(id=course_id)
+        progress = course.get_user_course_progress(request.user)
+        return Response({"course_progress": progress})
 
 class BulkCourseImportView(APIView):
-    permission_classes = [isInstitution]
+    permission_classes = [IsAuthenticated]
     parser_classes = (MultiPartParser, FormParser)
 
     def post(self, request):
