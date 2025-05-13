@@ -5,8 +5,6 @@ from users.models import User
 from django.utils import timezone
 
 class AssessmentSerializer(serializers.ModelSerializer):
-    accepting_submissions = serializers.BooleanField(read_only=True)
-    
     class Meta:
         model = Assessment
         fields = (
@@ -16,8 +14,14 @@ class AssessmentSerializer(serializers.ModelSerializer):
             'due_date',
             'grade',
             'course',
-            'accepting_submissions',
+            'institution',
         )
+        read_only_fields = ('institution',)
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        validated_data['institution'] = request.user
+        return super().create(validated_data)
 
 
 class AssessmentScoreSerializer(serializers.ModelSerializer):
@@ -25,5 +29,5 @@ class AssessmentScoreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssessmentScore
-        fields = ['id', 'submit_date', 'score', 'assessment', 'user']
-        read_only_fields = ['id', 'user']
+        fields = ['id', 'submit_date', 'score', 'assessment']
+        read_only_fields = ['id']
