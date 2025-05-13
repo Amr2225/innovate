@@ -2,46 +2,74 @@ from rest_framework import serializers
 from .models import McqQuestion
 
 class McqQuestionSerializer(serializers.ModelSerializer):
-    created_by = serializers.ReadOnlyField(source='created_by.email')
-    options = serializers.ListField(
-        child=serializers.CharField(max_length=1000),
-        min_length=4,
-        max_length=4,
-        required=False,
-        write_only=True
-    )
+    choices_count = serializers.SerializerMethodField()
 
     class Meta:
         model = McqQuestion
-        fields = ('id', 'assessment', 'question', 'answer', 'answer_key', 'created_by', 'options')
-        read_only_fields = ('answer',)
+        fields = [
+            'id',
+            'assessment',
+            'question',
+            'points',
+            'answer',
+            'answer_key',
+            'choices_count',
+            'created_at',
+            'updated_at',
+            'created_by'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
         extra_kwargs = {
-            'answer_key': {'required': False}
+            'answer_key': {'write_only': True}  # Hide correct answer in GET responses
         }
+
+    def get_choices_count(self, obj):
+        return obj.get_choices_count()
+
+    def validate_answer(self, value):
+        """
+        Validate the answer format
+        Expected format: [{"key": "A", "text": "Choice text"}, ...]
+        """
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Choices must be a list")
+        
+        if not value:
+            raise serializers.ValidationError("Must provide at least one choice")
+        
+        # Validate each choice
+        valid_keys = []
+        for i, choice in enumerate(value):
+            if not isinstance(choice, dict):
+                raise serializers.ValidationError(f"Choice {i} must be a dictionary")
+            
+            if 'key' not in choice or 'text' not in choice:
+                raise serializers.ValidationError(f"Choice {i} must have 'key' and 'text' fields")
+            
+            # Validate key format
+            key = choice['key'].upper()
+            if not key.isalpha() or len(key) != 1:
+                raise serializers.ValidationError(f"Choice key '{key}' must be a single letter")
+            
+            valid_keys.append(key)
+        
+        # Check for duplicate keys
+        if len(valid_keys) != len(set(valid_keys)):
+            raise serializers.ValidationError("Choice keys must be unique")
+        
+        return value
 
     def validate(self, data):
         """
-        Validate the MCQ data for manual creation
+        Validate that answer_key corresponds to one of the choices
         """
-        if self.context['request'].method in ['POST', 'PUT']:
-            options = data.get('options')
-            answer_key = data.get('answer_key')
-
-            if options is not None:
-                if not answer_key:
-                    raise serializers.ValidationError({"answer_key": "Answer key is required when providing options"})
-                if answer_key not in options:
-                    raise serializers.ValidationError({"answer_key": "Answer key must be one of the provided options"})
-                # Store options in answer field
-                data['answer'] = options
-
-        return data
-
-    def to_representation(self, instance):
-        """
-        Customize the output representation
-        """
-        data = super().to_representation(instance)
-        # Add options from answer field
-        data['options'] = instance.answer
+        answer = data.get('answer', [])
+        answer_key = data.get('answer_key', '').upper()
+        
+        valid_keys = [choice['key'].upper() for choice in answer]
+        if answer_key not in valid_keys:
+            raise serializers.ValidationError({
+                "answer_key": "Must be one of the choice keys"
+            })
+        
         return data

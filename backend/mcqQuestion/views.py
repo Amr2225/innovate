@@ -10,6 +10,13 @@ from .serializers import McqQuestionSerializer
 from rest_framework.parsers import MultiPartParser, JSONParser
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .AI import generate_mcqs_from_text, extract_text_from_pdf
+from rest_framework.views import APIView
+from django.db import transaction
+from django.db.models import Sum
+from assessment.models import Assessment, AssessmentScore
+from QuestionScore.models import QuestionScore
+from enrollments.models import Enrollments
+from users.permissions import isTeacher, isStudent
 
 
 class McqQuestionPermission(permissions.BasePermission):
@@ -289,5 +296,153 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
                 'error': str(e),
                 'error_type': 'processing_error'
             }, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+
+class MCQQuestionListCreateView(generics.ListCreateAPIView):
+    serializer_class = McqQuestionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        assessment_id = self.request.query_params.get('assessment')
+        if not assessment_id:
+            return McqQuestion.objects.none()
+
+        if user.role == "Teacher":
+            return McqQuestion.objects.filter(assessment__course__instructors=user, assessment_id=assessment_id)
+        elif user.role == "Student":
+            return McqQuestion.objects.filter(
+                assessment_id=assessment_id,
+                assessment__course__id__in=Enrollments.objects.filter(user=user).values_list('course', flat=True)
+            )
+        return McqQuestion.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role != "Teacher":
+            raise PermissionDenied("Only teachers can create questions.")
+        assessment = serializer.validated_data.get('assessment')
+        if not assessment.course.instructors.filter(id=user.id).exists():
+            raise PermissionDenied("You can only create questions for your courses.")
+        serializer.save()
+
+
+class SubmitAssessmentAnswersView(APIView):
+    permission_classes = [permissions.IsAuthenticated, isStudent]
+
+    @transaction.atomic
+    def post(self, request, assessment_id):
+        """
+        Submit answers for an entire assessment.
+        Expected format:
+        {
+            "answers": [
+                {"question_id": "uuid", "answer": "A"},
+                {"question_id": "uuid", "answer": "B"},
+                ...
+            ]
+        }
+        """
+        try:
+            # Verify student is enrolled in the course
+            assessment = Assessment.objects.get(id=assessment_id)
+            if not Enrollments.objects.filter(user=request.user, course=assessment.course).exists():
+                raise PermissionDenied("You must be enrolled in this course to submit answers.")
+
+            # Check if assessment is still accepting submissions
+            if not assessment.accepting_submissions:
+                raise PermissionDenied("This assessment is no longer accepting submissions.")
+
+            # Check if student has already submitted
+            if QuestionScore.objects.filter(student=request.user, question__assessment=assessment).exists():
+                raise PermissionDenied("You have already submitted answers for this assessment.")
+
+            # Get all questions for this assessment
+            questions = McqQuestion.objects.filter(assessment_id=assessment_id)
+            question_dict = {str(q.id): q for q in questions}
+
+            # Validate that all questions are answered
+            submitted_question_ids = {str(answer['question_id']) for answer in request.data.get('answers', [])}
+            missing_questions = set(question_dict.keys()) - submitted_question_ids
+            if missing_questions:
+                raise ValidationError(f"Missing answers for questions: {', '.join(missing_questions)}")
+
+            # Process each answer
+            total_score = 0
+            question_scores = []
+            answer_details = []
+
+            for answer_data in request.data.get('answers', []):
+                question_id = answer_data.get('question_id')
+                student_answer = answer_data.get('answer')
+
+                question = question_dict.get(question_id)
+                if not question:
+                    continue
+
+                # Check answer and calculate score
+                is_correct = question.check_answer(student_answer)
+                score = question.points if is_correct else 0
+                total_score += score
+
+                # Store answer details
+                answer_details.append({
+                    'question_id': question_id,
+                    'question_text': question.question,
+                    'your_answer': student_answer,
+                    'your_answer_text': question.get_choice_text(student_answer),
+                    'correct_answer': question.answer_key,
+                    'correct_answer_text': question.get_choice_text(question.answer_key),
+                    'is_correct': is_correct,
+                    'points_earned': score,
+                    'points_possible': question.points
+                })
+
+                # Create QuestionScore
+                question_scores.append(QuestionScore(
+                    question=question,
+                    student=request.user,
+                    score=score,
+                    selected_choice=student_answer,
+                    is_correct=is_correct
+                ))
+
+            # Bulk create all question scores
+            QuestionScore.objects.bulk_create(question_scores)
+
+            # Create or update AssessmentScore
+            assessment_score, created = AssessmentScore.objects.get_or_create(
+                assessment=assessment,
+                user=request.user,
+                defaults={'score': total_score}
+            )
+            if not created:
+                assessment_score.score = total_score
+                assessment_score.save()
+
+            # Calculate statistics
+            total_possible = questions.aggregate(total=Sum('points'))['total']
+            percentage = (total_score / total_possible * 100) if total_possible else 0
+
+            return Response({
+                'assessment_id': assessment_id,
+                'total_score': total_score,
+                'max_score': total_possible,
+                'percentage': round(percentage, 2),
+                'question_count': questions.count(),
+                'correct_answers': sum(1 for qs in question_scores if qs.is_correct),
+                'answer_details': answer_details
+            })
+
+        except Assessment.DoesNotExist:
+            return Response(
+                {'error': 'Assessment not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except ValidationError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
