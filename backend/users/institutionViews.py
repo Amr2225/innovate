@@ -79,14 +79,11 @@ class BulkUserImportView(generics.CreateAPIView):
                             created_users.append(
                                 self.get_serializer(existing_user).data)
                         except User.DoesNotExist:
-                            print("user doesn't exist")
                             errors.append({
                                 'row': serializer.data,
                                 'errors': serializer.errors
                             })
                     else:
-                        # existing_user = User.objects.filter(national_id=cleaned_row['national_id'])
-                        # Track errors for this row
                         errors.append({
                             'row': serializer.data,
                             'errors': serializer.errors
@@ -109,12 +106,9 @@ class BulkUserImportView(generics.CreateAPIView):
 
 
 class InstitutionUserView(generics.ListCreateAPIView):
-    # model = User
-    # queryset = User.objects.all()
     serializer_class = InstitutionUserSeralizer
     permission_classes = [isInstitution]
 
     def get_queryset(self):
-        print(secrets.token_urlsafe(48))
         user = self.request.user
         return User.objects.filter(institution=user)

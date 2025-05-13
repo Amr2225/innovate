@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import MCQQuestionListCreateView, SubmitAssessmentAnswersView
 
 urlpatterns = [
     path(
@@ -22,4 +23,6 @@ urlpatterns = [
         views.GenerateMCQsFromPDFView.as_view(),
         name='mcq-generate-from-pdf'
     ),
+    path('', MCQQuestionListCreateView.as_view(), name='mcq-question-list-create'),
+    path('assessment/<uuid:assessment_id>/submit/', SubmitAssessmentAnswersView.as_view(), name='submit-assessment-answers'),
 ]
