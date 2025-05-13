@@ -19,19 +19,15 @@ class ChatRoom(models.Model):
         elif user2.role == "Institution":
             return user1.role in ["Student", "Teacher"] and user1.institution.filter(id=user2.id).exists()
         
-        # Students can only chat with teachers and institutions
-        if user1.role == "Student" and user2.role in ["Teacher", "Institution"]:
+        # Students can chat with their teachers and other students in same institution
+        if user1.role == "Student" and user2.role in ["Student", "Teacher"]:
             return bool(set(user1.institution.all()) & set(user2.institution.all()))
-        elif user2.role == "Student" and user1.role in ["Teacher", "Institution"]:
+        elif user2.role == "Student" and user1.role in ["Student", "Teacher"]:
             return bool(set(user1.institution.all()) & set(user2.institution.all()))
         
-        # Teachers can chat with their students and institution only
-        if user1.role == "Teacher" and user2.role in ["Student", "Institution"]:
-            # Check if user2 is a student or institution that belongs to teacher's institutions
-            if user2.role == "Student":
-                return bool(set(user1.institution.all()) & set(user2.institution.all()))
-            elif user2.role == "Institution":
-                return user1.institution.filter(id=user2.id).exists()
+        # Teachers can chat with their students and other teachers in same institution
+        if user1.role == "Teacher" and user2.role in ["Student", "Teacher"]:
+            return bool(set(user1.institution.all()) & set(user2.institution.all()))
         
         return False
 
