@@ -8,3 +8,5 @@ django-nanoid-field
 drf-spectacular
 django-filter
 google-auth
+requests
+pillow

@@ -11,17 +11,13 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('enrollments', '0001_initial'),
+        ('assessment', '0002_initial'),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='enrollments',
-            name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollments', to=settings.AUTH_USER_MODEL),
-        ),
-        migrations.AlterUniqueTogether(
-            name='enrollments',
-            unique_together={('user', 'course')},
+            model_name='assessment',
+            name='institution',
+            field=models.ForeignKey(limit_choices_to={'role': 'Teacher'}, on_delete=django.db.models.deletion.CASCADE, related_name='created_assessments', to=settings.AUTH_USER_MODEL),
         ),
     ]

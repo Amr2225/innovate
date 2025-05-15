@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'writtenquestion',
 
     # Rest Framework
     'rest_framework',
@@ -229,3 +230,7 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 PAYMOB_PK = os.environ.get('PAYMOB_PK')
 PAYMOB_SK = os.environ.get('PAYMOB_SK')
 CLIENT_URL = os.environ.get('CLIENT_URL')
+
+AI_API_KEY = os.environ.get('AI_API_KEY')
+AI_PROVIDER = os.environ.get('AI_PROVIDER')
+AI_MODEL = os.environ.get('AI_MODEL')
