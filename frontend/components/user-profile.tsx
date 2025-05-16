@@ -33,10 +33,11 @@ export default function UserProfile({
   name,
   email,
   role,
+  profile_picture,
   variant = "default",
   className,
 }: UserProfileProps) {
-  const nameInitial = getNameInitials(name);
+  const nameInitial = React.useMemo(() => getNameInitials(name), [name]);
 
   return (
     <DropdownMenu>
@@ -48,7 +49,7 @@ export default function UserProfile({
       >
         <>
           <Avatar className='h-8 w-8 rounded-lg'>
-            <AvatarImage src='https://github.com/shadcn.png' alt={"user-profile"} />
+            <AvatarImage src={profile_picture} alt={"user-profile"} />
             <AvatarFallback className='rounded-lg bg-primary text-white items-center justify-center flex'>
               {nameInitial}
             </AvatarFallback>
@@ -74,7 +75,7 @@ export default function UserProfile({
         <DropdownMenuLabel className='p-0 font-normal'>
           <div className='flex items-center gap-2 px-1 py-1.5 text-left text-sm'>
             <Avatar className='h-8 w-8 rounded-lg'>
-              <AvatarImage src='/next.svg' alt={"google"} />
+              <AvatarImage src={profile_picture} alt={"user-profile"} />
               <AvatarFallback className='rounded-lg'>CN</AvatarFallback>
             </Avatar>
             <div className='grid flex-1 text-left text-sm leading-tight'>

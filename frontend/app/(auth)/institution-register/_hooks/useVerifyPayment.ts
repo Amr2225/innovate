@@ -12,7 +12,6 @@ export default function useVerifyPayment() {
 
     useEffect(() => {
         if (hmac) {
-            console.log("Verify Payment HMAC: ", hmac);
             startTransition(() => {
                 verifyPayment(hmac)
                     .then((isVerified) => {

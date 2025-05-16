@@ -92,7 +92,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.RemoteUserMiddleware',
     # TODO: will be removed in production
-    'users.middleware.CustomExceptionMiddleware',
+    # 'users.middleware.CustomExceptionMiddleware',
 ]
 
 # To enable non active users to authenticate

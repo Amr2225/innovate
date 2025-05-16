@@ -292,8 +292,10 @@ class CustomTokenRefreshSerializer(TokenRefreshSerializer):
         if user.role == "Institution":
             new_access_token['name'] = user.name
             new_access_token['credits'] = user.credits
+            new_access_token['profile_picture'] = user.logo.url if user.logo else None
         else:
             new_access_token['name'] = user.full_name
+            new_access_token['profile_picture'] = user.avatar.url if user.avatar else None
 
         new_access_token['role'] = user.role
         new_access_token['email'] = user.email

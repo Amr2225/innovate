@@ -20,7 +20,6 @@ export default function useRegister({ logo }: { logo: File | null }) {
             formData.append("confirm_password", confirm_password);
             formData.append("credits", credits.toString());
             formData.append("hmac", hmac);
-            console.log("Logo Instance of", logo instanceof File);
 
             if (logo instanceof File) {
                 formData.append("logo", logo);
@@ -39,7 +38,6 @@ export default function useRegister({ logo }: { logo: File | null }) {
             } else {
                 toast.error(res.error);
                 setStatus("isRegistrationSuccess", false);
-                console.log("Registration Failed", res);
                 reset();
             }
         });

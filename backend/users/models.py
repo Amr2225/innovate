@@ -56,7 +56,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     middle_name = models.CharField(max_length=255, blank=True, null=True)
     last_name = models.CharField(max_length=255, blank=True, null=True)
     avatar = models.ImageField(
-        upload_to='uploads/user/avatars', blank=True, null=True)
+        upload_to='user/avatars', blank=True, null=True)
     birth_date = models.DateTimeField(blank=True, null=True)
     age = models.PositiveIntegerField(blank=True, null=True)
     national_id = models.CharField(
@@ -80,7 +80,7 @@ class User(AbstractBaseUser, PermissionsMixin):
                             null=True, unique=True)
     credits = models.PositiveIntegerField(blank=True, null=True)
     logo = models.ImageField(
-        upload_to='uploads/institution/logo/', null=True, blank=True)
+        upload_to='institution/logo/', null=True, blank=True)
 
     # Relation
     institution = models.ManyToManyField(

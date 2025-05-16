@@ -41,6 +41,7 @@ export const bulkUserInsert = async (formData: FormData): Promise<SubmissionData
     return transformData(res.data, session.user.name);
 };
 
+
 export const generatePaymentLink = async (data: IGeneratePayment): Promise<string> => {
     const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/institution/payment/`, data);
     return res.data.url;

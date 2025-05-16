@@ -32,6 +32,7 @@ export default async function InstitutionDashboardLayout({
             email={session.user.email}
             name={session.user.name}
             role={session.user.role}
+            profile_picture={session.user.profile_picture}
             className='ml-3'
             variant='icon'
           />

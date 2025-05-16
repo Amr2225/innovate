@@ -33,7 +33,8 @@ export const getSession = async (): Promise<Session | null> => {
             email: tokenClaims?.email,
             name: tokenClaims?.name,
             role: tokenClaims?.role,
-            credits: tokenClaims?.credits
+            credits: tokenClaims?.credits,
+            profile_picture: `${process.env.NEXT_PUBLIC_API_URL}${tokenClaims?.profile_picture}`
         }
         return { user, accessToken: session.accessToken, refreshToken: session.refreshToken, exp: tokenClaims.exp }
     }
