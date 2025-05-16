@@ -9,6 +9,7 @@ import uuid
 from enrollments.models import Enrollments
 from courses.models import Course
 from lecture.models import Lecture, LectureProgress
+from institution_policy.models import InstitutionPolicy
 
 from users.exceptions import EmailVerificationError
 from users.validation import nationalId_length_validation
@@ -64,6 +65,8 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
         )
         user.set_password(validated_data['password'])
         user.save()
+
+        InstitutionPolicy.objects.create(institution=user)
 
         # Sending Email
         sendEmail(user.email, user.otp)

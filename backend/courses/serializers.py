@@ -34,6 +34,7 @@ class CourseSerializer(serializers.ModelSerializer):
             'prerequisite_course_data',
             'instructors',
             'instructors_data',
+            'passing_grade',
             'total_grade',
             'credit_hours',
             'semester',
