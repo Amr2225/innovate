@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from users.models import User
 from courses.models import Course
+from chapter.serializers import ChapterSerializer
+from users.models import User
 from enrollments.models import Enrollments
 
 class InstructorSerializer(serializers.ModelSerializer):
@@ -21,6 +22,7 @@ class CourseSerializer(serializers.ModelSerializer):
     )
     instructors_data = InstructorSerializer(source='instructors', many=True, read_only=True)
     prerequisite_course_data = PrerequisiteCourseSerializer(source='prerequisite_course', read_only=True)
+    chapters = ChapterSerializer(many=True, read_only=True)
 
     class Meta:
         model = Course
@@ -35,9 +37,10 @@ class CourseSerializer(serializers.ModelSerializer):
             'total_grade',
             'credit_hours',
             'semester',
-            'level'
+            'level',
+            'chapters'
         )
-
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -46,13 +49,13 @@ class CourseSerializer(serializers.ModelSerializer):
             institution_id = request.user.id
             self.fields['prerequisite_course'].queryset = Course.objects.filter(institution_id=institution_id)
             self.fields['instructors'].queryset = User.objects.filter(role="Teacher", institution=institution_id)
-
+    
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep.pop('instructors', None)
         rep.pop('prerequisite_course', None)
         return rep
-
+    
     def create(self, validated_data):
         request = self.context.get('request')
         instructors = validated_data.pop('instructors', [])
