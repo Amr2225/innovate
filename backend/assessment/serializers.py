@@ -16,13 +16,13 @@ class AssessmentSerializer(serializers.ModelSerializer):
 
 
 class AssessmentScoreSerializer(serializers.ModelSerializer):
-    student_email = serializers.ReadOnlyField(source='student.email')
+    student_email = serializers.ReadOnlyField(source='enrollment.user.email')
     assessment_title = serializers.ReadOnlyField(source='assessment.title')
     course_title = serializers.ReadOnlyField(source='assessment.course.title')
 
     class Meta:
         model = AssessmentScore
-        fields = ('id', 'student', 'student_email', 'assessment', 'assessment_title', 
+        fields = ('id', 'enrollment', 'student_email', 'assessment', 'assessment_title', 
                  'course_title', 'total_score', 'submitted_at')
         read_only_fields = ('student_email', 'assessment_title', 'course_title', 
                           'submitted_at', 'total_score')

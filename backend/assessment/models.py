@@ -38,20 +38,20 @@ class Assessment(models.Model):
     
 class AssessmentScore(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assessment_scores')
+    enrollment = models.ForeignKey('enrollments.Enrollments', on_delete=models.CASCADE, related_name='assessment_scores')
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='scores')
     total_score = models.DecimalField(max_digits=5, decimal_places=2)
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('student', 'assessment')
+        unique_together = ('enrollment', 'assessment')
         ordering = ['-submitted_at']
 
     def __str__(self):
-        return f"{self.student.email} - {self.assessment.title} - {self.total_score}"
+        return f"{self.enrollment.user.email} - {self.assessment.title} - {self.total_score}"
 
     def save(self, *args, **kwargs):
         # Calculate total score from MCQQuestionScores
-        self.total_score = self.assessment.get_student_score(self.student)
+        self.total_score = self.assessment.get_student_score(self.enrollment.user)
         super().save(*args, **kwargs)
 
