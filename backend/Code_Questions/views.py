@@ -1,8 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import generics
-from .models import CodingQuestion
-from .serializers import CodingQuestionSerializer
+from .models import CodingQuestion, CodingQuestionScore
+from .serializers import CodingQuestionSerializer, CodingQuestionScoreSerializer
 from .utils.judge0 import run_code
 
 
@@ -49,3 +49,7 @@ class CodeSubmissionView(APIView):
             "score": sum(1 for r in results if r["passed"]),
             "total": len(results)
         })
+
+class CodequestionScoreListView(generics.ListAPIView):
+    queryset = CodingQuestionScore.objects.all()
+    serializer_class = CodingQuestionScoreSerializer

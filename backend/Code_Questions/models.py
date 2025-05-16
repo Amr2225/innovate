@@ -1,7 +1,7 @@
-# models.py
 import uuid
 from django.db import models
 from assessment.models import Assessment
+from users.models import User
 
 class CodingQuestion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
@@ -24,3 +24,9 @@ class TestCase(models.Model):
 
     def __str__(self):
         return f"Test case for {self.question.title}"
+
+class CodingQuestionScore(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    question = models.ForeignKey(CodingQuestion, on_delete=models.CASCADE)
+    student_id = models.ForeignKey(User, on_delete=models.CASCADE)
+    score = models.IntegerField()
