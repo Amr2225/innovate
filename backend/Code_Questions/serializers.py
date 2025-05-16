@@ -1,6 +1,5 @@
-# serializers.py
 from rest_framework import serializers
-from .models import CodingQuestion, TestCase
+from .models import CodingQuestion, TestCase, CodingQuestionScore
 
 class TestCaseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -39,3 +38,13 @@ class CodingQuestionSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         validated_data['Teacher'] = request.user
         return super().create(validated_data)
+
+class CodingQuestionScoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CodingQuestionScore
+        fields = (
+            'id',
+            'question',
+            'student_id',
+            'score'
+        )
