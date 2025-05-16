@@ -3,7 +3,7 @@ from .models import MCQQuestionScore
 from courses.serializers import CourseSerializer
 
 class MCQQuestionScoreSerializer(serializers.ModelSerializer):
-    student_email = serializers.ReadOnlyField(source='student.email')
+    student_email = serializers.ReadOnlyField(source='enrollment.user.email')
     student_name = serializers.SerializerMethodField()
     question_text = serializers.ReadOnlyField(source='question.question')
     assessment_title = serializers.ReadOnlyField(source='question.assessment.title')
@@ -13,37 +13,39 @@ class MCQQuestionScoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = MCQQuestionScore
         fields = (
-            'id', 'question', 'student', 'student_email', 'student_name',
+            'id', 'question', 'enrollment', 'student_email', 'student_name',
             'selected_answer', 'is_correct', 'score',
             'created_at', 'updated_at', 'question_text', 'assessment_title',
-            'course', 'course_details', 'total_attempts'
+            'course_details', 'total_attempts'
         )
         read_only_fields = (
             'is_correct', 'score', 'created_at', 'updated_at',
             'student_email', 'student_name', 'question_text',
-            'assessment_title', 'course_details', 'total_attempts', 'student'
+            'assessment_title', 'course_details', 'total_attempts', 'enrollment'
         )
         extra_kwargs = {
-            'course': {'required': False},  # Will be set automatically
-            'student': {'required': False}  # Will be set from request
+            'enrollment': {'required': False}  # Will be set from request
         }
 
     def get_student_name(self, obj):
-        if hasattr(obj, 'student'):
-            return f"{obj.student.first_name} {obj.student.last_name}"
+        if hasattr(obj, 'enrollment') and hasattr(obj.enrollment, 'user'):
+            return f"{obj.enrollment.user.first_name} {obj.enrollment.user.last_name}"
         return None
 
     def get_total_attempts(self, obj):
-        if hasattr(obj, 'question') and hasattr(obj, 'student'):
+        if hasattr(obj, 'question') and hasattr(obj, 'enrollment'):
             return MCQQuestionScore.objects.filter(
                 question=obj.question,
-                student=obj.student
+                enrollment=obj.enrollment
             ).count()
         return 0
 
     def get_course_details(self, obj):
-        if hasattr(obj, 'course') and obj.course:
-            return CourseSerializer(obj.course, context=self.context).data
+        if hasattr(obj, 'question') and hasattr(obj.question, 'assessment'):
+            return {
+                'id': str(obj.question.assessment.course.id),
+                'name': obj.question.assessment.course.name
+            }
         return None
 
     def validate(self, data):
@@ -67,8 +69,8 @@ class MCQQuestionScoreSerializer(serializers.ModelSerializer):
         if request and request.user.role in ['Teacher', 'Institution']:
             data.update({
                 'student_details': {
-                    'id': str(instance.student.id),
-                    'email': instance.student.email,
+                    'id': str(instance.enrollment.user.id),
+                    'email': instance.enrollment.user.email,
                     'name': self.get_student_name(instance)
                 },
                 'assessment_details': {

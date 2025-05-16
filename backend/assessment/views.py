@@ -267,31 +267,31 @@ class StudentGradesAPIView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            student_id = request.data.get('student_id')
+            enrollment_id = request.data.get('enrollment_id')
             assessment_id = request.data.get('assessment_id')
 
-            if not student_id or not assessment_id:
+            if not enrollment_id or not assessment_id:
                 return Response({
-                    'detail': 'Both student_id and assessment_id are required in request body'
+                    'detail': 'Both enrollment_id and assessment_id are required in request body'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # Get the assessment score
             try:
                 assessment_score = AssessmentScore.objects.select_related(
                     'assessment__course',
-                    'student'
+                    'enrollment__user'
                 ).get(
-                    student_id=student_id,
+                    enrollment_id=enrollment_id,
                     assessment_id=assessment_id
                 )
             except AssessmentScore.DoesNotExist:
                 return Response({
-                    'detail': 'No assessment score found for this student and assessment'
+                    'detail': 'No assessment score found for this Student and assessment'
                 }, status=status.HTTP_404_NOT_FOUND)
 
             # Check permissions
             user = request.user
-            if user.role == "Student" and str(student_id) != str(user.id):
+            if user.role == "Student" and str(assessment_score.enrollment.user.id) != str(user.id):
                 return Response({
                     'detail': 'You can only view your own grades'
                 }, status=status.HTTP_403_FORBIDDEN)
@@ -307,7 +307,7 @@ class StudentGradesAPIView(generics.GenericAPIView):
             # Get all MCQ questions and scores for this assessment and student
             mcq_scores = MCQQuestionScore.objects.filter(
                 question__assessment=assessment_score.assessment,
-                student=assessment_score.student
+                enrollment=assessment_score.enrollment
             ).select_related('question')
 
             # Calculate total score of answered questions
@@ -336,8 +336,8 @@ class StudentGradesAPIView(generics.GenericAPIView):
             response_data = {
                 'assessment_id': str(assessment_score.assessment.id),
                 'assessment_title': assessment_score.assessment.title,
-                'student_id': str(assessment_score.student.id),
-                'student_name': f"{assessment_score.student.first_name} {assessment_score.student.last_name}",
+                'enrollment_id': str(assessment_score.enrollment.id),
+                'student_name': f"{assessment_score.enrollment.user.first_name} {assessment_score.enrollment.user.last_name}",
                 'questions': questions_data,
                 'total_score': int(total_answered_score),
                 'total_max_score': int(assessment_score.assessment.grade)
