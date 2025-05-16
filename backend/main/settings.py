@@ -240,12 +240,15 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
+<<<<<<< HEAD
 # Payment Config
 PAYMOB_PK = os.environ.get('PAYMOB_PK')
 PAYMOB_SK = os.environ.get('PAYMOB_SK')
 CLIENT_URL = os.environ.get('CLIENT_URL')
 
 # AI CONFIG
+=======
+>>>>>>> 9064f4615db64b7d608f8497fb2bd37446c8b5bf
 AI_API_KEY = os.environ.get('AI_API_KEY')
 AI_PROVIDER = os.environ.get('AI_PROVIDER')
 AI_MODEL = os.environ.get('AI_MODEL')
