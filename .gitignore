@@ -40,8 +40,7 @@ yarn-error.log*
 .vercel
 
 # Uploaded files
-uploads/*
-
+/backend/uploads/*
 
 
 # Python venv
