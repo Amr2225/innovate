@@ -17,6 +17,7 @@ interface IBuyCreditsResponse {
 export const buyCredits = async (hmac: string): Promise<IBuyCreditsResponse> => {
     const res = await api.post('/institution/buy-credits/', { hmac })
     if (res.status == 201) return { isSuccess: true }
+    console.log(res.data);
     return { isSuccess: false, message: res.data.message || "Failed to buy credits, please try again" }
 }
 

@@ -62,7 +62,6 @@ export default function InstitutionRegisterPage() {
   const { planId }: { planId: string } = useParams();
 
   const hmac = useMemo(() => searchParams.get("hmac"), [searchParams]);
-  console.log("LOGO on page", getFile());
 
   useEffect(() => {
     const loadFile = async () => {

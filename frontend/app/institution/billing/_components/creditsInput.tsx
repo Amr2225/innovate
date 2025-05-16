@@ -6,8 +6,15 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { paymentService } from "@/apiService/services";
 
-const planId = "b784f4f9-7734-46f9-854c-4f641060a361";
-export default function CreditsInput({ name, email }: { name: string; email: string }) {
+export default function CreditsInput({
+  name,
+  email,
+  planId,
+}: {
+  name: string;
+  email: string;
+  planId: string;
+}) {
   const [credits, setCredits] = useState(0);
 
   const [isPending, startTransition] = useTransition();
@@ -31,10 +38,11 @@ export default function CreditsInput({ name, email }: { name: string; email: str
           window.location.href = url;
         })
         .catch((err) => {
-          toast.error(err.message);
+          console.log("Error", err);
+          toast.error(err.response.data.errors);
         });
     });
-  }, [credits, email, name]);
+  }, [credits, email, name, planId]);
 
   return (
     <div>

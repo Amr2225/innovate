@@ -15,7 +15,6 @@ export const InstitutionRegisterSchema = BaseRegisterSchema.pick({
         .nullable()
         .refine((file) => {
             if (!file) return true;
-            console.log(file);
             return file.size <= MAX_FILE_SIZE && ACCEPTED_IMAGE_TYPES.includes(file.type);
         }, "Max image size is 5MB.")
         .refine(

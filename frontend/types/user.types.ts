@@ -6,6 +6,7 @@ export interface User {
     email: string
     role: Role
     credits?: number | undefined
+    profile_picture?: string
 }
 
 export interface NewUser {

@@ -100,8 +100,10 @@ def generateTokens(user):
     if user.role == "Institution":
         refresh['name'] = user.name
         refresh['credits'] = user.credits
+        refresh['profile_picture'] = user.logo.url if user.logo else None
     else:
         refresh['name'] = user.full_name
+        refresh['profile_picture'] = user.avatar.url if user.avatar else None
 
     refresh['role'] = user.role
     refresh['email'] = user.email

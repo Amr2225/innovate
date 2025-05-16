@@ -57,7 +57,6 @@ export default function RegisterUser() {
   });
 
   const handleRegister = (data: RegisterSchemaType) => {
-    console.log(data);
     startTransition(() => submitAction(data));
   };
 

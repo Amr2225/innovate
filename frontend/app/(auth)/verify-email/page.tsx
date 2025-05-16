@@ -36,10 +36,9 @@ export default function VerifyEmailPage() {
     setError("");
 
     const emailSchema = z.string().email({ message: "Invalid email" });
-    const { success, error } = emailSchema.safeParse(email);
+    const { success } = emailSchema.safeParse(email);
 
     if (!success) {
-      console.log(error);
       setError("Invalid email");
       return;
     }

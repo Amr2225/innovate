@@ -1,6 +1,7 @@
 # Django
 from django.conf import settings
 from django.core.cache import cache
+from django.contrib.auth import get_user_model
 
 # DRF
 from rest_framework import views, status, generics
@@ -8,7 +9,6 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 
 # Python
-import uuid
 import requests
 
 from institution.models import Plan
@@ -17,7 +17,10 @@ from institution.serializers import InstitutionGeneratePaymentSerializer, Instit
 
 from users.permissions import isInstitution
 
+
 from institution.models import Payment
+
+User = get_user_model()
 
 
 class InstitutionBuyCreditsView(generics.CreateAPIView):
@@ -95,12 +98,14 @@ class InstitutionGeneratePaymentIntentView(views.APIView):
             )
 
         try:
+            user = request.user
             plan = Plan.objects.get(id=plan_id)
-            if (plan.minimum_credits > request.data.get('credits')):
-                return Response(
-                    {'errors': f"Minimum credits for {plan.type} plan is {plan.minimum_credits}"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            if not user:
+                if (plan.minimum_credits > request.data.get('credits')):
+                    return Response(
+                        {'errors': f"Minimum credits for {plan.type} plan is {plan.minimum_credits}"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
         except Plan.DoesNotExist:
             return Response(
                 {'errors': "Invalid plan ID"},

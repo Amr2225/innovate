@@ -61,6 +61,7 @@ export default async function NavBar({ isAuth }: NavBarProps) {
                 name={session.user.name}
                 email={session.user.email}
                 role={session.user.role}
+                profile_picture={session.user.profile_picture}
               />
             </div>
           ) : (

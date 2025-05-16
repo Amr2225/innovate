@@ -50,8 +50,6 @@ export default function StudentsPage() {
     );
   if (isError || !data) return <div>Error</div>;
 
-  console.log(data, hasNextPage);
-
   // TODO: implement pagination and filtering
   return (
     <div className='px-4 py-3'>

@@ -73,7 +73,6 @@ export default function RegistrationForm({
     onSuccess: (message) => {
       toast.success(message as string);
       const formValues = form.getValues();
-      console.log("Form Logo", formValues.logo);
       addCreds(formValues.name, formValues.email, formValues.password, formValues.confirm_password);
       if (formValues.logo) {
         setFile(formValues.logo);

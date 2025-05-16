@@ -20,7 +20,6 @@ type InstitutionStore = {
     isRegistrationSuccess: boolean
     current_step: number
     credits: number
-    logo: File | null
     logoData: FileData | null
     hmac: string | null
     reset: () => void
@@ -35,7 +34,7 @@ type InstitutionStore = {
     verficationFailedCallback: () => void
 }
 
-const initialState: InstitutionStore = {
+const initialState: Pick<InstitutionStore, 'name' | 'email' | 'password' | 'confirm_password' | 'isEmailVerified' | 'isPaymentSuccess' | 'isRegistrationSuccess' | 'current_step' | 'credits' | 'logoData' | 'hmac'> = {
     name: '',
     email: '',
     password: '',
@@ -45,19 +44,18 @@ const initialState: InstitutionStore = {
     isRegistrationSuccess: false,
     current_step: 1,
     credits: 0,
-    logo: null,
     logoData: null,
     hmac: null,
-    setHmac: () => { },
-    reset: () => { },
-    setStatus: () => { },
-    setCredits: () => { },
-    addCreds: () => { },
-    setCurrentStep: () => { },
-    goBack: () => { },
-    verficationFailedCallback: () => { },
-    setFile: () => { },
-    getFile: () => Promise.resolve(null)
+    // setHmac: () => { },
+    // reset: () => { },
+    // setStatus: () => { },
+    // setCredits: () => { },
+    // addCreds: () => { },
+    // setCurrentStep: () => { },
+    // goBack: () => { },
+    // verficationFailedCallback: () => { },
+    // setFile: () => { },
+    // getFile: () => Promise.resolve(null)
 }
 
 
@@ -70,7 +68,6 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
                 get().setCurrentStep();
             },
             setFile: async (file: File) => {
-                console.log("Setting file", file);
                 const arrayBuffer = await file.arrayBuffer();
                 // Convert ArrayBuffer to Base64 string for storage
                 const base64String = btoa(
@@ -115,19 +112,20 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
                 set({ credits });
             },
             reset: () => {
-                set({
-                    name: initialState.name,
-                    email: initialState.email,
-                    password: initialState.password,
-                    confirm_password: initialState.confirm_password,
-                    isEmailVerified: initialState.isEmailVerified,
-                    isPaymentSuccess: initialState.isPaymentSuccess,
-                    isRegistrationSuccess: initialState.isRegistrationSuccess,
-                    current_step: initialState.current_step,
-                    credits: initialState.credits,
-                    logo: initialState.logo,
-                    hmac: initialState.hmac
-                });
+                // set({
+                //     name: initialState.name,
+                //     email: initialState.email,
+                //     password: initialState.password,
+                //     confirm_password: initialState.confirm_password,
+                //     isEmailVerified: initialState.isEmailVerified,
+                //     isPaymentSuccess: initialState.isPaymentSuccess,
+                //     isRegistrationSuccess: initialState.isRegistrationSuccess,
+                //     current_step: initialState.current_step,
+                //     credits: initialState.credits,
+                //     logoData: initialState.logoData,
+                //     hmac: initialState.hmac
+                // });
+                set({ ...initialState });
                 get().setCurrentStep();
             },
             setStatus: (key, value) => {
@@ -135,7 +133,6 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
                 get().setCurrentStep();
             },
             setCurrentStep: () => {
-                console.log("isEmailVerified", get().isEmailVerified);
                 if (get().name && get().email && !get().isEmailVerified) set({ current_step: 2 })
                 if (get().isEmailVerified) set({ current_step: 3 })
                 if (get().credits > 0 && get().isEmailVerified) set({ current_step: 4 })
