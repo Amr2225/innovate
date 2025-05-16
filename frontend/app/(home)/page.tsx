@@ -6,6 +6,7 @@ import Plans from "./_components/plans/Plans";
 import AssessmentSystemIntro from "./_components/assessment/page";
 import Testimonial from "./_components/testimonial/page";
 import Institutions from "./_components/institutions/Institutions";
+import PriceCardsWrapper from "./_components/plans/PriceCardsWrapper";
 
 export default function HomePage() {
   return (
@@ -16,7 +17,9 @@ export default function HomePage() {
         <Learning />
         <hr className='my-5 border-none ' />
         <Join />
-        <Plans />
+        <Plans>
+          <PriceCardsWrapper />
+        </Plans>
         <hr className='my-5 border-none ' />
         <AssessmentSystemIntro />
         <hr className='my-5 border-none ' />

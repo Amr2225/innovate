@@ -1,6 +1,8 @@
 import { getSession } from "@/lib/session";
 import { User } from "@/types/user.types";
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import { refreshToken as updateToken } from "@/apiService/api";
+
 
 export function useAuth() {
     const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -22,11 +24,17 @@ export function useAuth() {
         getToken()
     }, [])
 
+
+    const updateUser = useCallback(async () => {
+        await updateToken();
+    }, [])
+
     return {
         user,
         accessToken,
         refreshToken,
-        isLoggedIn
+        isLoggedIn,
+        updateUser
     }
 
 }

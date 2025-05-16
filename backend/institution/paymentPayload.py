@@ -4,7 +4,7 @@ from institution.models import Plan
 from users.models import User
 
 
-def get_payment_payload(plan_id: str, institution: User) -> dict:
+def get_payment_payload(plan_id: str, institution: User, redirection_url: str) -> dict:
     print(institution)
     credit_price = float(Plan.objects.get(id=plan_id).credit_price)
     currency = Plan.objects.get(id=plan_id).currency
@@ -35,7 +35,7 @@ def get_payment_payload(plan_id: str, institution: User) -> dict:
             "plan_id": plan_id
         },
         # "special_reference": str(uuid.uuid4()),
-        "redirection_url": f"{settings.CLIENT_URL}/institution-register/",
+        "redirection_url": redirection_url,
         "expiration": 3600
     }
 

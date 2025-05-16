@@ -4,13 +4,13 @@ import { BASE_URL } from "./api"
 
 export interface IVerifyEmail {
     verifyEmailExists: (email: string) => Promise<boolean>
-    resendVerificationEmail: (token?: string, email?: string) => Promise<string>
+    resendVerificationEmail: (token?: string, email?: string, name?: string) => Promise<string>
     verifyEmail: (otp: number, email: string) => Promise<boolean>
 }
 
 // Institution Verification
-export const institutionSendVerificationEmail = async (email?: string): Promise<string> => {
-    const res = await axios.post(`${BASE_URL}/auth/institution-resend-verification-email/`, { email }, { validateStatus: status => status < 500 })
+export const institutionSendVerificationEmail = async (email?: string, name?: string): Promise<string> => {
+    const res = await axios.post(`${BASE_URL}/auth/institution-resend-verification-email/`, { email, name }, { validateStatus: status => status < 500 })
 
     if (res.status === 200) return res.data.message
     throw new Error(res.data.message || "Failed to send verification email")
@@ -53,4 +53,16 @@ export const resendEmail = async (token?: string, email?: string): Promise<strin
 
     if (res.status === 200) return res.data.token
     throw new Error(res.data.message || "Failed to resend email")
+}
+
+export const institutionVerificationService: IVerifyEmail = {
+    resendVerificationEmail: institutionSendVerificationEmail,
+    verifyEmailExists: institutionVerifyEmailExists,
+    verifyEmail: institutionVerifyEmail,
+}
+
+export const userVerificationService: IVerifyEmail = {
+    resendVerificationEmail: resendEmail,
+    verifyEmailExists: verifyEmailToken,
+    verifyEmail: verifyEmail,
 }

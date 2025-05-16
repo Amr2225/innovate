@@ -16,7 +16,8 @@ class McqQuestionListCreateAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user
         if user.role not in ["Teacher", "Institution"]:
-            raise PermissionDenied("Only Teachers or Institutions can create MCQ questions.")
+            raise PermissionDenied(
+                "Only Teachers or Institutions can create MCQ questions.")
         serializer.save(created_by=user)
 
 
@@ -32,5 +33,6 @@ class McqQuestionRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIV
     def get_object(self):
         obj = super().get_object()
         if self.request.user != obj.created_by:
-            raise PermissionDenied("You do not have permission to modify this question.")
+            raise PermissionDenied(
+                "You do not have permission to modify this question.")
         return obj

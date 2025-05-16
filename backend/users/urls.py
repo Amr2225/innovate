@@ -1,4 +1,3 @@
-from django.contrib import admin
 from django.urls import path
 
 from users import verificatonViews, views
@@ -11,12 +10,15 @@ urlpatterns = [
     path('login/', views.UserLoginView.as_view(), name='user_login'),
     path("login-access/", views.LoginAccessView.as_view(), name="first_login"),
     path('add-credentials/', views.UserAddCredentialsView.as_view(), name="add_creds"),
+    path('token/refresh/', views.CustomTokenRefreshView.as_view(),
+         name='token_refresh'),
+
 
     # Google Auth TODO: Implement this
     path("google-auth/", views.GoogleAuthView.as_view(), name="google_auth"),
 
     # Token
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    #     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # Email Verification
     path('verify-email/<str:token>/',

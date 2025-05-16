@@ -91,6 +91,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.RemoteUserMiddleware',
+    # TODO: will be removed in production
+    'users.middleware.CustomExceptionMiddleware',
 ]
 
 # To enable non active users to authenticate
@@ -205,7 +207,7 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(minutes=30),
     "SIGNING_KEY": os.environ.get('JWT_MAIN', SECRET_KEY),
     "ISSUER": None,
-    "USER_ID_FIELD": "id",
+    "USER_ID_FIELD": "id",  # The id field in the model
     "USER_ID_CLAIM": "user_id",
 }
 

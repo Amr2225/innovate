@@ -10,7 +10,7 @@ export const publicRoutes = [
 export const authRoutes = [
     '/login',
     '/login-access',
-    '/register-institution',
+    '/institution-register',
     '/verify-email',
 ]
 

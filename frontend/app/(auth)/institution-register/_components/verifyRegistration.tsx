@@ -1,11 +1,18 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { useInstitutionRegistrationStore } from "@/store/institutionRegistrationStore";
 import { CheckCheck, X } from "lucide-react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
-export function PaymentVerification({ isPaymentSuccess }: { isPaymentSuccess: boolean | null }) {
+export function RegistrationVerification({
+  isRegistrationSuccess,
+  planId,
+}: {
+  isRegistrationSuccess: boolean | null;
+  planId: string;
+}) {
   const [timer, setTimer] = useState(5);
+  const router = useRouter();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -14,23 +21,25 @@ export function PaymentVerification({ isPaymentSuccess }: { isPaymentSuccess: bo
 
     if (timer === 0) {
       useInstitutionRegistrationStore.getState().reset();
-      redirect("/dashboard");
+
+      if (isRegistrationSuccess) router.push("/institution/dashboard");
+      else router.push(`/institution-register/${planId}`);
     }
 
     return () => clearInterval(interval);
-  }, [timer]);
+  }, [timer, isRegistrationSuccess, router, planId]);
 
   return (
     <Card className='md:w-[500px] w-[350px] mx-auto'>
       <CardContent className='flex justify-center items-center'>
         <div>
-          {isPaymentSuccess ? (
+          {isRegistrationSuccess ? (
             <div className='flex flex-col items-center justify-center p-5'>
               <span className='bg-green-600 rounded-full p-5'>
                 <CheckCheck size={60} className='text-white' />
               </span>
               <h4 className='text-xl mt-3 text-center font-semibold capitalize'>
-                Payment Verified Successfully
+                Registration Successfully
               </h4>
               <p className='text-sm text-center text-gray-500'>
                 Redirecting to your dashboard in {timer} seconds
@@ -42,10 +51,10 @@ export function PaymentVerification({ isPaymentSuccess }: { isPaymentSuccess: bo
                 <X size={60} className='text-white' />
               </span>
               <h4 className='text-xl mt-3 text-center font-semibold capitalize'>
-                Payment Verification Failed
+                Registration Failed
               </h4>
               <p className='text-sm text-center text-gray-500'>
-                Contact Customer Support If You need help
+                Contact Customer Support If You need help {timer}
               </p>
             </div>
           )}

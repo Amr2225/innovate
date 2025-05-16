@@ -106,4 +106,4 @@ def generateTokens(user):
     refresh['role'] = user.role
     refresh['email'] = user.email
 
-    return [str(refresh), str(refresh.access_token)]
+    return [str(refresh.access_token), str(refresh)]

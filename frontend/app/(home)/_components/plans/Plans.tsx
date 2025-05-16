@@ -1,9 +1,9 @@
 "use client";
-import React from "react";
-import PriceCards from "./PriceCards";
+import React, { Suspense } from "react";
 import { motion } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function Plans() {
+export default function Plans({ children }: { children: React.ReactNode }) {
   const container = {
     show: {
       transition: { staggerChildren: 0.2, delayChildren: 0.4 },
@@ -11,20 +11,17 @@ export default function Plans() {
   };
 
   return (
-    <section className='-mt-10'>
+    <section id='plans' className='-mt-10'>
       <motion.div
         variants={container}
-        initial={"hidden"}
-        whileInView={"show"}
+        initial='hidden'
+        whileInView='show'
+        animate='show'
         viewport={{ once: true }}
         className='bg-white border shadow-md rounded-md md:p-10 p-2 md:!max-w-[70%] !max-w-[95%]'
       >
         <h1 className='text-3xl font-bold text-center mb-10'>Our Plans</h1>
-        <div className='flex flex-col md:flex-row gap-2 gap-y-8 items-center justify-between overflow-y-hidden'>
-          <PriceCards type='silver' />
-          <PriceCards type='gold' />
-          <PriceCards type='diamond' />
-        </div>
+        <Suspense fallback={<Skeleton className='w-full h-[500px]' />}>{children}</Suspense>
       </motion.div>
     </section>
   );

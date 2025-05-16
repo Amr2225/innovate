@@ -104,9 +104,11 @@ export default function UserProfile({
             </Link>
           </DropdownMenuItem>
 
-          <DropdownMenuItem>
-            <CreditCard />
-            Billing
+          <DropdownMenuItem asChild>
+            <Link href='/institution/billing'>
+              <CreditCard />
+              Billing
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem>
             <Bell />
