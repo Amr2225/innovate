@@ -16,7 +16,7 @@ class Assessment(models.Model):
     accepting_submissions = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.course.title} - {self.title}"
+        return f"{self.course.name} - {self.title}"
 
     @property
     def is_active(self):

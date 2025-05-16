@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.conf import settings
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Count
 from .models import McqQuestion
 from .serializers import McqQuestionSerializer
 from rest_framework.parsers import MultiPartParser, JSONParser
@@ -14,25 +14,34 @@ from .AI import generate_mcqs_from_text, extract_text_from_pdf
 from decimal import Decimal
 from assessment.models import AssessmentScore, Assessment
 from django.db import transaction
+from users.permissions import isInstitution, isTeacher, isStudent
 
 
 class McqQuestionPermission(permissions.BasePermission):
     """Custom permission class for MCQ questions"""
     
     def has_permission(self, request, view):
-        # Anyone authenticated can view
+        if not request.user.is_authenticated:
+            return False
+            
         if request.method in permissions.SAFE_METHODS:
-            return request.user.is_authenticated
-        # Only teachers and institutions can create
+            return True
+            
         return request.user.role in ["Teacher", "Institution"]
     
     def has_object_permission(self, request, view, obj):
         user = request.user
-        # Anyone authenticated can view
+        
         if request.method in permissions.SAFE_METHODS:
+            # Students can only view questions for their enrolled courses
+            if user.role == "Student":
+                return obj.assessment.course.enrollments.filter(user=user).exists()
             return True
-        # Only the creator or the assessment institution can modify/delete
-        return obj.created_by == user or obj.assessment.institution == user
+            
+        # Only creator or course instructor/institution can modify
+        return (obj.created_by == user or 
+                obj.assessment.course.instructors.filter(id=user.id).exists() or
+                obj.assessment.course.institution == user)
 
 
 class McqQuestionListCreateAPIView(generics.ListCreateAPIView):
@@ -53,17 +62,57 @@ class McqQuestionListCreateAPIView(generics.ListCreateAPIView):
     permission_classes = [McqQuestionPermission]
 
     def get_queryset(self):
+        user = self.request.user
         assessment_id = self.kwargs.get('assessment_id')
-        return McqQuestion.objects.filter(assessment_id=assessment_id)
+        
+        try:
+            assessment = Assessment.objects.get(id=assessment_id)
+        except Assessment.DoesNotExist:
+            raise ValidationError({"assessment": "Assessment not found"})
+            
+        base_queryset = McqQuestion.objects.filter(assessment=assessment)
+        
+        if user.role == "Student":
+            # Students can only see questions for their enrolled courses
+            return base_queryset.filter(
+                assessment__course__enrollments__user=user
+            ).select_related('assessment', 'created_by')
+            
+        elif user.role in ["Teacher", "Institution"]:
+            # Teachers/Institutions can see questions they created or for their courses
+            return base_queryset.filter(
+                Q(created_by=user) |
+                Q(assessment__course__instructors=user) |
+                Q(assessment__course__institution=user)
+            ).select_related('assessment', 'created_by')
+            
+        return McqQuestion.objects.none()
 
     def perform_create(self, serializer):
-        # Ensure question_grade is provided or set default
+        assessment_id = self.kwargs.get('assessment_id')
+        try:
+            assessment = Assessment.objects.get(id=assessment_id)
+        except Assessment.DoesNotExist:
+            raise ValidationError({"assessment": "Assessment not found"})
+            
+        # Validate course ownership
+        user = self.request.user
+        if user.role == "Institution" and assessment.course.institution != user:
+            raise PermissionDenied("You don't have permission to add questions to this assessment")
+        elif user.role == "Teacher" and not assessment.course.instructors.filter(id=user.id).exists():
+            raise PermissionDenied("You don't have permission to add questions to this assessment")
+            
+        # Validate assessment status
+        if assessment.due_date < timezone.now():
+            raise ValidationError("Cannot add questions to past-due assessments")
+            
+        # Set default grade if not provided
         if 'question_grade' not in self.request.data:
             serializer.validated_data['question_grade'] = Decimal('0.00')
             
         serializer.save(
-            created_by=self.request.user,
-            assessment_id=self.kwargs.get('assessment_id')
+            created_by=user,
+            assessment=assessment
         )
 
 
@@ -80,14 +129,15 @@ class McqQuestionRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIV
         user = self.request.user
         base_queryset = McqQuestion.objects.select_related('assessment', 'created_by')
 
-        if user.role in ["Teacher", "Institution"]:
+        if user.role == "Student":
             return base_queryset.filter(
-                Q(created_by=user) | Q(assessment__institution=user)
+                assessment__course__enrollments__user=user
             )
-        elif user.role == "Student":
+        elif user.role in ["Teacher", "Institution"]:
             return base_queryset.filter(
-                assessment__due_date__lte=timezone.now(),
-                assessment__course__enrolled_students=user
+                Q(created_by=user) |
+                Q(assessment__course__instructors=user) |
+                Q(assessment__course__institution=user)
             )
         return McqQuestion.objects.none()
 
@@ -105,24 +155,28 @@ class McqQuestionRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIV
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
         
-        # Check if assessment is past due
+        # Validate assessment status
         if instance.assessment.due_date < timezone.now():
             raise ValidationError("Cannot modify questions for past-due assessments")
             
+        # Validate answer format
+        if 'answer' in request.data:
+            if not isinstance(request.data['answer'], list):
+                raise ValidationError({"answer": "Answer must be a list of options"})
+            if len(request.data['answer']) < 2:
+                raise ValidationError({"answer": "At least 2 options are required"})
+                
         partial = kwargs.pop('partial', False)
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         
-        # Re-fetch instance to get updated data
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         
-        # Check if assessment is past due
+        # Validate assessment status
         if instance.assessment.due_date < timezone.now():
             raise ValidationError("Cannot delete questions from past-due assessments")
             
@@ -333,135 +387,135 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
 
 class McqQuestionViewSet(viewsets.ModelViewSet):
     serializer_class = McqQuestionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [McqQuestionPermission]
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'Institution':
-            return McqQuestion.objects.all()
-        elif user.role == 'Teacher':
-            return McqQuestion.objects.filter(created_by=user)
-        elif user.role == 'Student':
-            # Get questions for courses the student is actively enrolled in
-            return McqQuestion.objects.filter(
-                assessment__course__enrollments__student=user,
-                assessment__course__enrollments__is_active=True,
-                assessment__start_date__lte=timezone.now(),
-                assessment__due_date__gte=timezone.now()
-            ).distinct()
+        base_queryset = McqQuestion.objects.select_related('assessment', 'created_by')
+
+        if user.role == "Student":
+            return base_queryset.filter(
+                assessment__course__enrollments__user=user
+            )
+        elif user.role in ["Teacher", "Institution"]:
+            return base_queryset.filter(
+                Q(created_by=user) |
+                Q(assessment__course__instructors=user) |
+                Q(assessment__course__institution=user)
+            )
         return McqQuestion.objects.none()
 
     @action(detail=False, methods=['get'])
     def get_available_assessments(self, request):
-        """Get list of available assessments for the current student"""
-        if request.user.role != 'Student':
-            return Response(
-                {"error": "This endpoint is only available for students"},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        # Get active assessments for enrolled courses
+        user = request.user
+        if user.role != "Student":
+            raise PermissionDenied("Only students can access this endpoint")
+            
         assessments = Assessment.objects.filter(
-            course__enrollments__student=request.user,
-            course__enrollments__is_active=True,
-            start_date__lte=timezone.now(),
-            due_date__gte=timezone.now(),
-            accepting_submissions=True
-        ).distinct()
-
-        # Get assessment details including question count and total possible score
-        assessment_data = []
-        for assessment in assessments:
-            questions = McqQuestion.objects.filter(assessment=assessment)
-            total_questions = questions.count()
-            total_possible_score = questions.aggregate(
-                total=Sum('question_grade')
-            )['total'] or 0
-
-            # Check if student has already submitted
-            has_submitted = AssessmentScore.objects.filter(
-                student=request.user,
-                assessment=assessment
-            ).exists()
-
-            assessment_data.append({
-                'id': assessment.id,
-                'title': assessment.title,
-                'description': assessment.description,
-                'start_date': assessment.start_date,
-                'due_date': assessment.due_date,
-                'total_questions': total_questions,
-                'total_possible_score': total_possible_score,
-                'has_submitted': has_submitted
-            })
-
-        return Response(assessment_data)
+            course__enrollments__user=user,
+            due_date__gt=timezone.now()
+        ).select_related('course')
+        
+        return Response([{
+            'id': str(assessment.id),
+            'title': assessment.title,
+            'course': assessment.course.name,
+            'due_date': assessment.due_date,
+            'total_questions': assessment.mcq_questions.count()
+        } for assessment in assessments])
 
     @action(detail=False, methods=['post'])
     def submit_answers(self, request):
-        assessment_id = request.data.get('assessment_id')
+        user = request.user
+        if user.role != "Student":
+            raise PermissionDenied("Only students can submit answers")
+            
         answers = request.data.get('answers', [])
-
-        if not assessment_id or not answers:
-            return Response(
-                {"error": "Assessment ID and answers are required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        try:
-            # Verify student has access to this assessment
-            assessment = Assessment.objects.get(
-                id=assessment_id,
-                course__enrollments__student=request.user,
-                course__enrollments__is_active=True,
-                start_date__lte=timezone.now(),
-                due_date__gte=timezone.now(),
-                accepting_submissions=True
-            )
-
-            with transaction.atomic():
-                # Create or update AssessmentScore
-                assessment_score = AssessmentScore.objects.update_or_create(
-                    student=request.user,
-                    assessment=assessment,
-                    defaults={'total_score': 0}  # Will be updated by MCQQuestionScore
-                )[0]
-
-                # Close the assessment
-                assessment.accepting_submissions = False
-                assessment.save()
-
-                return Response({
-                    "message": "Assessment submitted successfully",
-                    "assessment_id": assessment.id,
-                    "total_score": assessment_score.total_score
+        if not isinstance(answers, list):
+            raise ValidationError({"answers": "Answers must be a list"})
+            
+        results = []
+        with transaction.atomic():
+            for answer in answers:
+                question_id = answer.get('question_id')
+                selected_answer = answer.get('selected_answer')
+                
+                if not question_id or not selected_answer:
+                    raise ValidationError("Each answer must include question_id and selected_answer")
+                    
+                try:
+                    question = McqQuestion.objects.get(
+                        id=question_id,
+                        assessment__course__enrollments__user=user
+                    )
+                except McqQuestion.DoesNotExist:
+                    raise ValidationError(f"Question {question_id} not found or not accessible")
+                    
+                # Create or update score
+                score, created = MCQQuestionScore.objects.update_or_create(
+                    question=question,
+                    student=user,
+                    defaults={
+                        'selected_answer': selected_answer,
+                        'is_correct': selected_answer == question.answer_key,
+                        'score': question.question_grade if selected_answer == question.answer_key else 0
+                    }
+                )
+                
+                results.append({
+                    'question_id': str(question_id),
+                    'is_correct': score.is_correct,
+                    'score': str(score.score)
                 })
-
-        except Assessment.DoesNotExist:
-            return Response(
-                {"error": "Assessment not found or not available"},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+                
+        return Response({
+            'message': 'Answers submitted successfully',
+            'results': results
+        })
 
     @action(detail=False, methods=['get'])
     def get_student_answers(self, request):
+        user = request.user
+        if user.role not in ["Teacher", "Institution"]:
+            raise PermissionDenied("Only teachers and institutions can access this endpoint")
+            
         assessment_id = request.query_params.get('assessment_id')
         if not assessment_id:
-            return Response(
-                {"error": "Assessment ID is required"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        answers = StudentMCQAnswer.objects.filter(
-            student=request.user,
-            question__assessment_id=assessment_id
-        )
-        serializer = StudentMCQAnswerSerializer(answers, many=True)
-        return Response(serializer.data)
+            raise ValidationError("assessment_id is required")
+            
+        try:
+            assessment = Assessment.objects.get(id=assessment_id)
+        except Assessment.DoesNotExist:
+            raise ValidationError("Assessment not found")
+            
+        # Validate course ownership
+        if user.role == "Institution" and assessment.course.institution != user:
+            raise PermissionDenied("You don't have permission to view answers for this assessment")
+        elif user.role == "Teacher" and not assessment.course.instructors.filter(id=user.id).exists():
+            raise PermissionDenied("You don't have permission to view answers for this assessment")
+            
+        scores = MCQQuestionScore.objects.filter(
+            question__assessment=assessment
+        ).select_related('student', 'question')
+        
+        results = {}
+        for score in scores:
+            if score.student.id not in results:
+                results[score.student.id] = {
+                    'student': {
+                        'id': str(score.student.id),
+                        'email': score.student.email,
+                        'name': f"{score.student.first_name} {score.student.last_name}"
+                    },
+                    'answers': []
+                }
+            results[score.student.id]['answers'].append({
+                'question_id': str(score.question.id),
+                'selected_answer': score.selected_answer,
+                'is_correct': score.is_correct,
+                'score': str(score.score)
+            })
+            
+        return Response(list(results.values()))
 
 

@@ -5,6 +5,13 @@ from .models import Assessment, AssessmentScore
 from .serializers import AssessmentSerializer, AssessmentScoreSerializer
 from courses.models import Course
 from enrollments.models import Enrollments
+from mcqQuestion.models import McqQuestion
+from mcqQuestion.serializers import McqQuestionSerializer
+from MCQQuestionScore.models import MCQQuestionScore
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Sum
+from rest_framework.parsers import JSONParser
 
 # ----------------------
 # Assessment Views
@@ -26,10 +33,11 @@ class AssessmentPermission(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             if user.role == "Student":
                 # Students can only view assessments for courses they're enrolled in
+                is_completed = request.query_params.get('is_completed', 'false').lower() == 'true'
                 return Enrollments.objects.filter(
                     user=user,
                     course=obj.course,
-                    is_completed=False
+                    is_completed=is_completed
                 ).exists()
             elif user.role == "Teacher":
                 # Teachers can view assessments for courses they teach
@@ -63,9 +71,10 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
             return Assessment.objects.filter(course__instructors=user)
         elif user.role == "Student":
             # Students can only see assessments for courses they're enrolled in
+            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
             enrolled_courses = Enrollments.objects.filter(
                 user=user,
-                is_completed=False
+                is_completed=is_completed
             ).values_list('course', flat=True)
             return Assessment.objects.filter(course__id__in=enrolled_courses)
         return Assessment.objects.none()
@@ -97,9 +106,10 @@ class AssessmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
             return Assessment.objects.filter(course__instructors=user)
         elif user.role == "Student":
             # Students can only access assessments for courses they're enrolled in
+            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
             enrolled_courses = Enrollments.objects.filter(
                 user=user,
-                is_completed=False
+                is_completed=is_completed
             ).values_list('course', flat=True)
             return Assessment.objects.filter(course__id__in=enrolled_courses)
         return Assessment.objects.none()
@@ -133,9 +143,10 @@ class AssessmentScoreListCreateAPIView(generics.ListCreateAPIView):
             return queryset.filter(assessment__course__instructors=user)
         elif user.role == "Student":
             # Students can only see their own scores for enrolled courses
+            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
             enrolled_courses = Enrollments.objects.filter(
                 user=user,
-                is_completed=False
+                is_completed=is_completed
             ).values_list('course', flat=True)
             return queryset.filter(
                 assessment__course__id__in=enrolled_courses,
@@ -155,10 +166,11 @@ class AssessmentScoreListCreateAPIView(generics.ListCreateAPIView):
             raise PermissionDenied("This assessment is no longer accepting submissions as it has passed its due date")
         
         # Check if student is enrolled in the course
+        is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
         if not Enrollments.objects.filter(
             user=user,
             course=assessment.course,
-            is_completed=False
+            is_completed=is_completed
         ).exists():
             raise PermissionDenied("You are not enrolled in this course")
         
@@ -192,12 +204,148 @@ class AssessmentScoreRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroy
             return queryset.filter(assessment__course__instructors=user)
         elif user.role == "Student":
             # Students can only access their own scores for enrolled courses
+            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
             enrolled_courses = Enrollments.objects.filter(
                 user=user,
-                is_completed=False
+                is_completed=is_completed
             ).values_list('course', flat=True)
             return queryset.filter(
                 assessment__course__id__in=enrolled_courses,
                 student=user
             )
         return AssessmentScore.objects.none()
+
+class AssessmentQuestionsAPIView(generics.ListAPIView):
+    """View to get all questions for a specific assessment"""
+    serializer_class = McqQuestionSerializer
+    permission_classes = [AssessmentPermission]
+
+    def get_queryset(self):
+        assessment_id = self.kwargs.get('pk')
+        user = self.request.user
+
+        try:
+            assessment = Assessment.objects.get(id=assessment_id)
+        except Assessment.DoesNotExist:
+            return McqQuestion.objects.none()
+
+        # Check permissions
+        if user.role == "Student":
+            # Students can only view questions for courses they're enrolled in
+            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
+            if not Enrollments.objects.filter(
+                user=user,
+                course=assessment.course,
+                is_completed=is_completed
+            ).exists():
+                return McqQuestion.objects.none()
+        elif user.role == "Teacher":
+            # Teachers can view questions for courses they teach
+            if not assessment.course.instructors.filter(id=user.id).exists():
+                return McqQuestion.objects.none()
+        elif user.role == "Institution":
+            # Institution can view questions for their courses
+            if assessment.course.institution != user:
+                return McqQuestion.objects.none()
+        else:
+            return McqQuestion.objects.none()
+
+        # Get all questions for the assessment
+        return McqQuestion.objects.filter(assessment=assessment)
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        # Add request to context for role-based answer key visibility
+        context['request'] = self.request
+        return context
+
+class StudentGradesAPIView(generics.GenericAPIView):
+    """View to get total grade for a student's assessment"""
+    serializer_class = AssessmentScoreSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    def get(self, request, *args, **kwargs):
+        try:
+            student_id = request.data.get('student_id')
+            assessment_id = request.data.get('assessment_id')
+
+            if not student_id or not assessment_id:
+                return Response({
+                    'detail': 'Both student_id and assessment_id are required in request body'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get the assessment score
+            try:
+                assessment_score = AssessmentScore.objects.select_related(
+                    'assessment__course',
+                    'student'
+                ).get(
+                    student_id=student_id,
+                    assessment_id=assessment_id
+                )
+            except AssessmentScore.DoesNotExist:
+                return Response({
+                    'detail': 'No assessment score found for this student and assessment'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            # Check permissions
+            user = request.user
+            if user.role == "Student" and str(student_id) != str(user.id):
+                return Response({
+                    'detail': 'You can only view your own grades'
+                }, status=status.HTTP_403_FORBIDDEN)
+            elif user.role == "Teacher" and not assessment_score.assessment.course.instructors.filter(id=user.id).exists():
+                return Response({
+                    'detail': 'You can only view grades for your courses'
+                }, status=status.HTTP_403_FORBIDDEN)
+            elif user.role == "Institution" and assessment_score.assessment.course.institution != user:
+                return Response({
+                    'detail': 'You can only view grades for your institution'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            # Get all MCQ questions and scores for this assessment and student
+            mcq_scores = MCQQuestionScore.objects.filter(
+                question__assessment=assessment_score.assessment,
+                student=assessment_score.student
+            ).select_related('question')
+
+            # Calculate total score of answered questions
+            total_answered_score = mcq_scores.aggregate(total=Sum('score'))['total'] or 0
+
+            # Build questions data with student scores
+            questions_data = []
+            for mcq_score in mcq_scores:
+                question_data = {
+                    'question_id': str(mcq_score.question.id),
+                    'question_text': mcq_score.question.question,
+                    'student_answer': mcq_score.selected_answer,
+                    'is_correct': mcq_score.is_correct,
+                    'score': str(mcq_score.score),
+                    'max_score': str(mcq_score.question.question_grade)
+                }
+                
+                if user.role in ['Teacher', 'Institution','Student']:
+                    question_data.update({
+                        'options': mcq_score.question.answer,
+                        'correct_answer': mcq_score.question.answer_key
+                    })
+                
+                questions_data.append(question_data)
+
+            response_data = {
+                'assessment_id': str(assessment_score.assessment.id),
+                'assessment_title': assessment_score.assessment.title,
+                'student_id': str(assessment_score.student.id),
+                'student_name': f"{assessment_score.student.first_name} {assessment_score.student.last_name}",
+                'questions': questions_data,
+                'total_score': int(total_answered_score),
+                'total_max_score': int(assessment_score.assessment.grade)
+            }
+
+            return Response(response_data)
+
+        except Exception as e:
+            return Response({
+                'detail': f'An error occurred: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
