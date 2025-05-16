@@ -10,6 +10,7 @@ class McqQuestion(models.Model):
     answer = models.JSONField()
     answer_key = models.CharField(max_length=255)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='mcq_questions_created')
+    question_grade = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
 
     def __str__(self):
         return f"{self.assessment.title} - {self.question}"

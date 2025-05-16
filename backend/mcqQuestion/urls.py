@@ -1,25 +1,36 @@
-from django.urls import path
-from . import views
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import (
+    McqQuestionViewSet,
+    McqQuestionListCreateAPIView,
+    McqQuestionRetrieveUpdateDestroyAPIView,
+    GenerateMCQsFromTextView,
+    GenerateMCQsFromPDFView
+)
+
+router = DefaultRouter()
+router.register(r'mcq-questions', McqQuestionViewSet, basename='mcq-question')
 
 urlpatterns = [
+    path('', include(router.urls)),
     path(
         'assessments/<str:assessment_id>/mcq-questions/',
-        views.McqQuestionListCreateAPIView.as_view(),
+        McqQuestionListCreateAPIView.as_view(),
         name='mcq-question-list-create'
     ),
     path(
         'mcq-questions/<str:pk>/',
-        views.McqQuestionRetrieveUpdateDestroyAPIView.as_view(),
+        McqQuestionRetrieveUpdateDestroyAPIView.as_view(),
         name='mcq-question-detail'
     ),
     path(
         'assessments/<str:assessment_id>/generate-from-text/',
-        views.GenerateMCQsFromTextView.as_view(),
+        GenerateMCQsFromTextView.as_view(),
         name='mcq-generate-from-text'
     ),
     path(
         'assessments/<str:assessment_id>/generate-from-pdf/',
-        views.GenerateMCQsFromPDFView.as_view(),
+        GenerateMCQsFromPDFView.as_view(),
         name='mcq-generate-from-pdf'
     ),
 ]

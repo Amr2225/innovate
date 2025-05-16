@@ -5,29 +5,24 @@ from users.models import User
 from django.utils import timezone
 
 class AssessmentSerializer(serializers.ModelSerializer):
+    course_title = serializers.CharField(source='course.title', read_only=True)
+    accepting_submissions = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = Assessment
-        fields = (
-            'id',
-            'title',
-            'type',
-            'due_date',
-            'grade',
-            'course',
-            'institution',
-        )
-        read_only_fields = ('institution',)
-
-    def create(self, validated_data):
-        request = self.context.get('request')
-        validated_data['institution'] = request.user
-        return super().create(validated_data)
+        fields = ('id', 'course', 'course_title', 'title', 'type', 'due_date', 'grade', 
+                 'start_date', 'accepting_submissions')
+        read_only_fields = ('id', 'course_title', 'accepting_submissions')
 
 
 class AssessmentScoreSerializer(serializers.ModelSerializer):
-    submit_date = serializers.DateTimeField(default=timezone.now)
+    student_email = serializers.ReadOnlyField(source='student.email')
+    assessment_title = serializers.ReadOnlyField(source='assessment.title')
+    course_title = serializers.ReadOnlyField(source='assessment.course.title')
 
     class Meta:
         model = AssessmentScore
-        fields = ['id', 'submit_date', 'score', 'assessment']
-        read_only_fields = ['id']
+        fields = ('id', 'student', 'student_email', 'assessment', 'assessment_title', 
+                 'course_title', 'total_score', 'submitted_at')
+        read_only_fields = ('student_email', 'assessment_title', 'course_title', 
+                          'submitted_at', 'total_score')
