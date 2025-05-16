@@ -1,15 +1,19 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, Sum
 from .models import McqQuestion
 from .serializers import McqQuestionSerializer
 from rest_framework.parsers import MultiPartParser, JSONParser
 from django.core.exceptions import ValidationError as DjangoValidationError
 from .AI import generate_mcqs_from_text, extract_text_from_pdf
+from decimal import Decimal
+from assessment.models import AssessmentScore, Assessment
+from django.db import transaction
 
 
 class McqQuestionPermission(permissions.BasePermission):
@@ -40,17 +44,23 @@ class McqQuestionListCreateAPIView(generics.ListCreateAPIView):
     {
         "question": "What is...?",
         "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-        "answer_key": "Option 1"
+        "answer_key": "Option 1",
+        "question_grade": "10.00"
     }
     """
     serializer_class = McqQuestionSerializer
     parser_classes = (JSONParser,)
+    permission_classes = [McqQuestionPermission]
 
     def get_queryset(self):
         assessment_id = self.kwargs.get('assessment_id')
         return McqQuestion.objects.filter(assessment_id=assessment_id)
 
     def perform_create(self, serializer):
+        # Ensure question_grade is provided or set default
+        if 'question_grade' not in self.request.data:
+            serializer.validated_data['question_grade'] = Decimal('0.00')
+            
         serializer.save(
             created_by=self.request.user,
             assessment_id=self.kwargs.get('assessment_id')
@@ -128,7 +138,8 @@ class GenerateMCQsFromTextView(generics.GenericAPIView):
     Request body:
     {
         "context": "Your text content here...",
-        "num_questions": 10  // optional, default is 10
+        "num_questions": 10,  // optional, default is 10
+        "question_grade": "10.00"  // optional, default is 0.00
     }
     """
     parser_classes = (JSONParser,)
@@ -145,7 +156,18 @@ class GenerateMCQsFromTextView(generics.GenericAPIView):
         except (TypeError, ValueError):
             raise ValidationError("Number of questions must be a valid integer")
 
-    def save_mcq_questions(self, mcq_data):
+    def validate_question_grade(self, question_grade):
+        try:
+            grade = Decimal(str(question_grade)) if question_grade is not None else Decimal('0.00')
+            if grade < Decimal('0.00'):
+                raise ValidationError("Question grade cannot be negative")
+            if grade > Decimal('100.00'):
+                raise ValidationError("Question grade cannot exceed 100")
+            return grade
+        except (TypeError, ValueError):
+            raise ValidationError("Question grade must be a valid decimal number")
+
+    def save_mcq_questions(self, mcq_data, question_grade):
         saved_questions = []
         for mcq in mcq_data:
             try:
@@ -154,13 +176,15 @@ class GenerateMCQsFromTextView(generics.GenericAPIView):
                     answer=mcq['options'],
                     answer_key=mcq['correct_answer'],
                     created_by=self.request.user,
-                    assessment_id=self.kwargs['assessment_id']
+                    assessment_id=self.kwargs['assessment_id'],
+                    question_grade=question_grade
                 )
                 saved_questions.append({
                     'id': str(question.id),
                     'question': question.question,
                     'options': question.answer,
-                    'answer': question.answer_key
+                    'answer': question.answer_key,
+                    'question_grade': str(question.question_grade)
                 })
             except Exception as e:
                 # If any question fails, delete all previously saved questions
@@ -179,12 +203,13 @@ class GenerateMCQsFromTextView(generics.GenericAPIView):
                 raise ValidationError({"context": "Text context cannot be empty"})
             
             num_questions = self.validate_num_questions(request.data.get('num_questions'))
+            question_grade = self.validate_question_grade(request.data.get('question_grade'))
             
             # Generate MCQs
             mcq_data = generate_mcqs_from_text(context, num_questions)
             
             # Save to database
-            saved_questions = self.save_mcq_questions(mcq_data)
+            saved_questions = self.save_mcq_questions(mcq_data, question_grade)
             
             return Response({
                 'message': f'Successfully generated and saved {len(saved_questions)} MCQ questions',
@@ -212,6 +237,7 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
     Request body (multipart/form-data):
     - pdf_file: PDF file to generate questions from (required)
     - num_questions: number of questions (optional, default=10)
+    - question_grade: grade per question (optional, default=0.00)
     """
     parser_classes = (MultiPartParser,)
     serializer_class = McqQuestionSerializer
@@ -227,7 +253,18 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
         except (TypeError, ValueError):
             raise ValidationError("Number of questions must be a valid integer")
 
-    def save_mcq_questions(self, mcq_data):
+    def validate_question_grade(self, question_grade):
+        try:
+            grade = Decimal(str(question_grade)) if question_grade is not None else Decimal('0.00')
+            if grade < Decimal('0.00'):
+                raise ValidationError("Question grade cannot be negative")
+            if grade > Decimal('100.00'):
+                raise ValidationError("Question grade cannot exceed 100")
+            return grade
+        except (TypeError, ValueError):
+            raise ValidationError("Question grade must be a valid decimal number")
+
+    def save_mcq_questions(self, mcq_data, question_grade):
         saved_questions = []
         for mcq in mcq_data:
             try:
@@ -236,13 +273,15 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
                     answer=mcq['options'],
                     answer_key=mcq['correct_answer'],
                     created_by=self.request.user,
-                    assessment_id=self.kwargs['assessment_id']
+                    assessment_id=self.kwargs['assessment_id'],
+                    question_grade=question_grade
                 )
                 saved_questions.append({
                     'id': str(question.id),
                     'question': question.question,
                     'options': question.answer,
-                    'answer': question.answer_key
+                    'answer': question.answer_key,
+                    'question_grade': str(question.question_grade)
                 })
             except Exception as e:
                 # If any question fails, delete all previously saved questions
@@ -261,6 +300,7 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
                 raise ValidationError({"pdf_file": "Only PDF files are allowed"})
             
             num_questions = self.validate_num_questions(request.data.get('num_questions'))
+            question_grade = self.validate_question_grade(request.data.get('question_grade'))
             
             # Extract text from PDF
             context = extract_text_from_pdf(pdf_file)
@@ -271,7 +311,7 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
             mcq_data = generate_mcqs_from_text(context, num_questions)
             
             # Save to database
-            saved_questions = self.save_mcq_questions(mcq_data)
+            saved_questions = self.save_mcq_questions(mcq_data, question_grade)
             
             return Response({
                 'message': f'Successfully generated and saved {len(saved_questions)} MCQ questions',
@@ -289,5 +329,139 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
                 'error': str(e),
                 'error_type': 'processing_error'
             }, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+
+class McqQuestionViewSet(viewsets.ModelViewSet):
+    serializer_class = McqQuestionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'Institution':
+            return McqQuestion.objects.all()
+        elif user.role == 'Teacher':
+            return McqQuestion.objects.filter(created_by=user)
+        elif user.role == 'Student':
+            # Get questions for courses the student is actively enrolled in
+            return McqQuestion.objects.filter(
+                assessment__course__enrollments__student=user,
+                assessment__course__enrollments__is_active=True,
+                assessment__start_date__lte=timezone.now(),
+                assessment__due_date__gte=timezone.now()
+            ).distinct()
+        return McqQuestion.objects.none()
+
+    @action(detail=False, methods=['get'])
+    def get_available_assessments(self, request):
+        """Get list of available assessments for the current student"""
+        if request.user.role != 'Student':
+            return Response(
+                {"error": "This endpoint is only available for students"},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get active assessments for enrolled courses
+        assessments = Assessment.objects.filter(
+            course__enrollments__student=request.user,
+            course__enrollments__is_active=True,
+            start_date__lte=timezone.now(),
+            due_date__gte=timezone.now(),
+            accepting_submissions=True
+        ).distinct()
+
+        # Get assessment details including question count and total possible score
+        assessment_data = []
+        for assessment in assessments:
+            questions = McqQuestion.objects.filter(assessment=assessment)
+            total_questions = questions.count()
+            total_possible_score = questions.aggregate(
+                total=Sum('question_grade')
+            )['total'] or 0
+
+            # Check if student has already submitted
+            has_submitted = AssessmentScore.objects.filter(
+                student=request.user,
+                assessment=assessment
+            ).exists()
+
+            assessment_data.append({
+                'id': assessment.id,
+                'title': assessment.title,
+                'description': assessment.description,
+                'start_date': assessment.start_date,
+                'due_date': assessment.due_date,
+                'total_questions': total_questions,
+                'total_possible_score': total_possible_score,
+                'has_submitted': has_submitted
+            })
+
+        return Response(assessment_data)
+
+    @action(detail=False, methods=['post'])
+    def submit_answers(self, request):
+        assessment_id = request.data.get('assessment_id')
+        answers = request.data.get('answers', [])
+
+        if not assessment_id or not answers:
+            return Response(
+                {"error": "Assessment ID and answers are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Verify student has access to this assessment
+            assessment = Assessment.objects.get(
+                id=assessment_id,
+                course__enrollments__student=request.user,
+                course__enrollments__is_active=True,
+                start_date__lte=timezone.now(),
+                due_date__gte=timezone.now(),
+                accepting_submissions=True
+            )
+
+            with transaction.atomic():
+                # Create or update AssessmentScore
+                assessment_score = AssessmentScore.objects.update_or_create(
+                    student=request.user,
+                    assessment=assessment,
+                    defaults={'total_score': 0}  # Will be updated by MCQQuestionScore
+                )[0]
+
+                # Close the assessment
+                assessment.accepting_submissions = False
+                assessment.save()
+
+                return Response({
+                    "message": "Assessment submitted successfully",
+                    "assessment_id": assessment.id,
+                    "total_score": assessment_score.total_score
+                })
+
+        except Assessment.DoesNotExist:
+            return Response(
+                {"error": "Assessment not found or not available"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    @action(detail=False, methods=['get'])
+    def get_student_answers(self, request):
+        assessment_id = request.query_params.get('assessment_id')
+        if not assessment_id:
+            return Response(
+                {"error": "Assessment ID is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        answers = StudentMCQAnswer.objects.filter(
+            student=request.user,
+            question__assessment_id=assessment_id
+        )
+        serializer = StudentMCQAnswerSerializer(answers, many=True)
+        return Response(serializer.data)
 
 

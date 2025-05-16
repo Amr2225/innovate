@@ -13,6 +13,7 @@ urlpatterns = [
     path('assessment/', include('assessment.urls')),
     path('mcqQuestion/', include('mcqQuestion.urls')), 
     path('chat/', include('chat.urls')), 
+    path('mcqQuestionScore/', include('MCQQuestionScore.urls')), 
 
     # Auth API
     path("auth/", include("users.urls")),
