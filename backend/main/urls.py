@@ -10,6 +10,7 @@ urlpatterns = [
     path('enrollments/', include('enrollments.urls')),
     path('chapter/', include('chapter.urls')),
     path('lecture/', include('lecture.urls')),
+    path('policy/', include('institution_policy.urls')),
     # Auth API
     path("auth/", include("users.urls")),
 

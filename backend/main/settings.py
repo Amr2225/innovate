@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'enrollments',
     'chapter',
     'lecture',
+    'institution_policy',
 ]
 
 MIDDLEWARE = [

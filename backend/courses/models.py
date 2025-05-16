@@ -14,6 +14,7 @@ class Course(models.Model):
     instructors = models.ManyToManyField(User, related_name='courses_taught', limit_choices_to={"role": "Teacher"})
     institution = models.ForeignKey(User, on_delete=models.CASCADE, related_name='courses', limit_choices_to={"role": "Institution"})
     semester = models.PositiveSmallIntegerField(null=True, blank=True)
+    passing_grade = models.FloatField(default=50.0, null=True, blank=True)
 
     # Faculty fields
     credit_hours = models.PositiveSmallIntegerField(null=True, blank=True)

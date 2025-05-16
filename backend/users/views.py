@@ -29,6 +29,8 @@ from django.core.signing import Signer, BadSignature
 from google.oauth2 import id_token
 from google.auth.transport import requests
 
+from institution_policy.models import InstitutionPolicy
+
 from django.conf import settings
 User = get_user_model()
 
