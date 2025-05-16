@@ -48,6 +48,13 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
     def validate(self, data):
         if data['password'] != data['confirm_password']:
             raise serializers.ValidationError("Passwords do not match.")
+
+        # Validate institution_type is required for role Institution
+        if not data.get('institution_type'):
+            raise serializers.ValidationError({
+                'institution_type': 'This field is required for institutions.'
+            })
+
         return data
 
     def create(self, validated_data):
