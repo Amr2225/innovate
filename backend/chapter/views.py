@@ -5,8 +5,9 @@ from rest_framework import generics
 from rest_framework import serializers
 from users.permissions import isInstitution, isStudent, isTeacher
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from courses.models import Course
 
-# Create your views here.
+
 class ChapterListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = ChapterSerializer
     filterset_fields = ['id', 'title', 'course']
