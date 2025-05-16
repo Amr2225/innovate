@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.core.signing import Signer, BadSignature
 from django.core.cache import cache
+from django.db.models import Q
 
 # DRF
 from rest_framework import status
@@ -74,26 +75,47 @@ class VerifyEmailView(APIView):
 
 
 class InstitutionResendVerificationEmailView(APIView):
+    """
+    View for resending verification emails to institutions.
+
+    This view handles resending verification emails to institutions during registration.
+    It checks if the email/name already exists, manages OTP generation and caching,
+    and sends verification emails.
+
+    Methods:
+        post: Handles the email verification resend request
+            - Validates email/name
+            - Checks for existing users
+            - Manages OTP generation and caching
+            - Sends verification email
+    """
+
     def post(self, request):
         email = request.data.get("email")
+        name = request.data.get("name")
 
         # Check if email is passed
         if not email:
             return Response({"message": "Email is required"}, status=status.HTTP_403_FORBIDDEN)
 
         # Check if user with the email already exists
+        user = None
         try:
-            user = User.objects.get(email=email)
+            if name is None:
+                user = User.objects.get(email=email)
+            else:
+                user = User.objects.get(Q(email=email) | Q(name=name))
         except User.DoesNotExist:
             user = None
+
         if user:
-            return Response({"message": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "Name or Email already exists"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if OTP is already stored
         stored_otp = cache.get(email, None)
         if stored_otp:
             sendEmail(email, stored_otp)
-            return Response({"message": "Verification email already resent"}, status=status.HTTP_200_OK)
+            return Response({"message": "Verification email already sent"}, status=status.HTTP_200_OK)
 
         # Generate a new OTP
         otp = str(random.randint(100000, 999999))

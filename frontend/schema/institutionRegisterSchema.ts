@@ -11,10 +11,11 @@ export const InstitutionRegisterSchema = BaseRegisterSchema.pick({
 }).extend({
     name: z.string().min(1, { message: "Name is required" }),
     logo: z
-        .any()
+        .instanceof(File, { message: "Logo is required" })
         .nullable()
         .refine((file) => {
             if (!file) return true;
+            console.log(file);
             return file.size <= MAX_FILE_SIZE && ACCEPTED_IMAGE_TYPES.includes(file.type);
         }, "Max image size is 5MB.")
         .refine(

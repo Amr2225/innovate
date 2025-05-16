@@ -1,3 +1,4 @@
+import base64
 from huggingface_hub import InferenceClient
 from django.conf import settings
 import json
@@ -9,30 +10,50 @@ client = InferenceClient(
     api_key=settings.AI_API_KEY,
 )
 
-Evaluate = [
-    {
-        "role": "system",
-        "content": "You are a grading assistant who compares a student's answer to a key answer. Focus on content correctness and the structure of the student's answer. Ignore grammar, punctuation, or small differences in wording unless they change the meaning. If the student's answer is a numbered list, do not penalize for sentence structure. If the student's answer is unstructured, incoherent, or contains invalid information, provide appropriate feedback and adjust the score accordingly. Prioritize understanding, but ensure the student's answer follows a clear and correct structure."
-    },
+
+def encode_image(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
+
+
+image = [
     {
         "role": "user",
-        "content": """
-        question: What is an algorithm?
-        Student Answer: Set of rules to follow for solving a problem or performing a task.
+        "content": [
+            {
+                "type": "text",
+                "text": """
+                    What is written in this image give me only what is written
+                    Generate output in JSON format. Follow these rules:
+                    1. Only use double quotes
+                    2. No trailing commas
+                    3. No comments
+                    4. NEVER Wrap in ```json delimiters
 
-        Compare the student's answer with the key answer, ignoring grammar and small differences in wording. If the student's answer is a numbered list, ignore sentence structure. Ensure the student's answer contains valid programming languages and is structured properly. If the answer is unstructured, incoherent, or contains invalid entries, give an appropriate score and provide feedback explaining why. Your response must be strictly in the following JSON format:
 
-        {{
-            "score": 10,
-            "feedback": "<specific feedback about the student's answer>"
-        }}
-        """
+                    Example:
+                    {{
+                        "text": [
+                            <What is written in the image>
+                        ]
+                    }}
+                """
+            },
+            {
+                "type": "image_url",
+                "image_url": {
+                    # "url": "https://cdn.britannica.com/61/93061-050-99147DCE/Statue-of-Liberty-Island-New-York-Bay.jpg"
+                    "url": f"data:image/jpeg;base64,{encode_image('handwrite.jpg')}"
+                    # "url": f"data:image/jpeg;base64,{encode_image(images[0])}"
+                }
+            }
+        ]
     }
 ]
 
 completion = client.chat.completions.create(
     model=settings.AI_MODEL,
-    messages=Evaluate,
+    messages=image,
     temperature=1,
     max_tokens=500,
 )

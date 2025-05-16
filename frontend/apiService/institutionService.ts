@@ -18,6 +18,7 @@ interface IGeneratePayment {
     email: string
     plan_id: string
     credits: number
+    redirection_url?: string
 }
 
 export const getMembers = async (pageParam: number, pageSize: number): Promise<GetMembersResponse> => {
@@ -44,4 +45,3 @@ export const generatePaymentLink = async (data: IGeneratePayment): Promise<strin
     const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/institution/payment/`, data);
     return res.data.url;
 };
-

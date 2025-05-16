@@ -1,6 +1,7 @@
 # Django
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.utils import timezone
 
 # DRF
 from rest_framework import serializers
@@ -14,10 +15,8 @@ from .models import Payment
 
 User = get_user_model()
 
-# TODO: implement payment integration and fix this serializer
 
-
-class InstitutionPaymentSerializer(serializers.ModelSerializer):
+class InstitutionGeneratePaymentSerializer(serializers.ModelSerializer):
     name = serializers.CharField(max_length=255)
     email = serializers.EmailField()
 
@@ -32,12 +31,55 @@ class InstitutionPaymentSerializer(serializers.ModelSerializer):
     }
 
 
+class InstitutionBuyCreditsSerializer(serializers.ModelSerializer):
+    hmac = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = Payment
+        fields = ['hmac']
+        extra_kwargs = {
+            "hmac": {"required": True},
+        }
+
+    def create(self, validated_data):
+        data = cache.get(validated_data['hmac'])
+        print("HMAC: ", validated_data['hmac'])
+        print("Data: ", data)
+
+        # Get the last payment for this institution
+        last_payment = Payment.objects.filter(
+            institution=self.context['request'].user,
+            is_current=True
+        ).first()
+
+        # If there's a last payment, update its valid_to date and is_current status
+        if last_payment:
+            last_payment.valid_to = timezone.now()
+            last_payment.is_current = False
+            last_payment.save()
+
+        # Create the new payment
+        payment = Payment(
+            institution=self.context['request'].user,
+            plan_id=data['plan_id'],
+            payment_status=data['success'],
+            transaction_id=data['transaction_id'],
+            order_id=data['order_id'],
+            credits_amount=data['credits_amount'],
+            is_current=True
+        )
+        payment.save()
+        return payment
+
+
 class InstitutionRegisterSeralizer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     confirm_password = serializers.CharField(write_only=True, min_length=8)
-    access_token = serializers.CharField(read_only=True)
-    refresh_token = serializers.CharField(read_only=True)
+    access = serializers.CharField(read_only=True)
+    refresh = serializers.CharField(read_only=True)
     hmac = serializers.CharField(write_only=True)
+    logo = serializers.FileField(
+        required=False, allow_null=True, allow_empty_file=True)
 
     class Meta:
         model = User
@@ -47,20 +89,21 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
             "password",
             "confirm_password",
             "credits",
+            "logo",
             "hmac",
-            "access_token",
-            "refresh_token",
+            "access",
+            "refresh",
         )
 
     def validate(self, data):
-        print("invalid password")
         if data['password'] != data['confirm_password']:
+            print("Passwords do not match")
             raise serializers.ValidationError("Passwords do not match.")
 
         # Get payment data from cache
         payment_data = cache.get(data['hmac'])
         if not payment_data:
-            print("NO payment")
+            print("Payment Data Not Found")
             raise serializers.ValidationError(
                 "Invalid or expired payment session.")
 
@@ -68,16 +111,31 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
         data['payment_data'] = payment_data
         return data
 
+    def validate_logo(self, value):
+        if value:
+            # Check file size (5MB limit)
+            if value.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError(
+                    "File size must be no more than 5MB")
+
+            # Check file type
+            allowed_types = ['image/jpeg', 'image/png', 'image/gif']
+            if value.content_type not in allowed_types:
+                raise serializers.ValidationError(
+                    "File type not supported. Please upload a JPEG, PNG, or GIF image.")
+        return value
+
     def create(self, validated_data):
         payment_data = validated_data.pop('payment_data')
         hmac = validated_data.pop('hmac')
+        print("CREDTIS FROM PAYMENT: ", validated_data['credits'])
 
         # Creating Institution
         user = User(
             email=validated_data['email'],
             name=validated_data['name'],
-            credits=validated_data['credits'],
             role="Institution",
+            logo=validated_data['logo'],
             is_email_verified=True,
             is_active=True,
         )
@@ -90,7 +148,7 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
             payment_status=payment_data['success'],
             transaction_id=payment_data['transaction_id'],
             order_id=payment_data['order_id'],
-            credits_amount=user.credits,
+            credits_amount=validated_data['credits'],
         )
 
         user.save()
@@ -104,8 +162,8 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         [accessToken, refreshToken] = generateTokens(instance)
-        data['access_token'] = accessToken
-        data['refresh_token'] = refreshToken
+        data['access'] = accessToken
+        data['refresh'] = refreshToken
         return data
 
 

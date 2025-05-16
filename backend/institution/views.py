@@ -26,6 +26,12 @@ User = get_user_model()
 class InstitutionRegisterView(generics.CreateAPIView):
     model = User
     serializer_class = InstitutionRegisterSeralizer
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, *args, **kwargs):
+        print("Incoming data:", request.data)
+        print("Incoming files:", request.FILES)
+        return super().post(request, *args, **kwargs)
 
 
 class BulkUserImportView(generics.CreateAPIView):

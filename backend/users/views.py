@@ -11,6 +11,7 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenRefreshView
 
 # Schema
 from drf_spectacular.utils import extend_schema, OpenApiResponse
@@ -27,7 +28,8 @@ from users.serializers import (ErrorResponseSerializer,
                                FirstLoginSerializer,
                                UserAddCredentialsSerializer,
                                UserLoginSeralizer,
-                               LoginResponseSerializer)
+                               LoginResponseSerializer,
+                               CustomTokenRefreshSerializer)
 
 # Authentication
 from users.authentication import FirstLoginAuthentication
@@ -71,7 +73,7 @@ class UserLoginView(APIView):
                 user = serializer.validated_data['user']
 
                 # Generate tokens
-                [refresh, access] = generateTokens(user)
+                [access, refresh] = generateTokens(user)
 
                 return Response({
                     'refresh': refresh,
@@ -169,3 +171,8 @@ class GoogleAuthView(APIView):
             })
         except ValueError:
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CustomTokenRefreshView(TokenRefreshView):
+    permission_classes = [AllowAny]
+    serializer_class = CustomTokenRefreshSerializer

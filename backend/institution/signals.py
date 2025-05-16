@@ -8,7 +8,7 @@ def update_institution_credits(sender, instance, created, **kwargs):
     """
     Signal to update institution credits when a new payment is created
     """
-    if created and instance.payment_status == 'success':
+    if created and instance.payment_status:
         institution = instance.institution
         # Add the new credits to the existing credits
         current_credits = institution.credits or 0
