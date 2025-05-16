@@ -10,11 +10,17 @@ class McqQuestionSerializer(serializers.ModelSerializer):
         write_only=True
     )
     question_grade = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=Decimal('0.00'))
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
 
     class Meta:
         model = McqQuestion
-        fields = ('id', 'assessment', 'question', 'answer', 'answer_key', 'created_by', 'options', 'question_grade')
-        read_only_fields = ('answer',)
+        fields = (
+            'id', 'assessment', 'question', 
+            'answer', 'answer_key', 'created_by', 'options', 'question_grade',
+            'created_at', 'updated_at'
+        )
+        read_only_fields = ('answer', 'created_at', 'updated_at')
         extra_kwargs = {
             'answer_key': {'write_only': True}  # Hide answer key from students
         }
