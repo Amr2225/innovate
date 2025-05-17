@@ -7,15 +7,38 @@ from django.conf import settings
 import os
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, FileExtensionValidator
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+import logging
 
 def get_handwritten_answer_path(instance, filename):
-    # Get the assessment ID from the question
-    assessment_id = instance.question.assessment.id
-    # Create path: AssessmentUploads/assessment_id/filename
-    return os.path.join(settings.ASSESSMENT_UPLOADS_DIR, str(assessment_id), filename)
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Get the assessment ID from the question
+        assessment_id = instance.question.assessment.id
+        logger.info(f"Processing image upload for assessment: {assessment_id}")
+        logger.info(f"Original filename: {filename}")
+        
+        # Ensure filename has correct extension
+        ext = filename.split('.')[-1].lower()
+        if ext not in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
+            logger.error(f"Invalid file extension: {ext}")
+            raise ValidationError(f"Invalid file extension: {ext}. Allowed extensions: jpg, jpeg, png, gif, bmp")
+        
+        # Create a unique filename
+        unique_filename = f"{uuid.uuid4()}.{ext}"
+        logger.info(f"Generated unique filename: {unique_filename}")
+        
+        # Create path: AssessmentUploads/assessment_id/filename
+        path = os.path.join(settings.ASSESSMENT_UPLOADS_DIR, str(assessment_id), unique_filename)
+        logger.info(f"Final upload path: {path}")
+        
+        return path
+    except Exception as e:
+        logger.error(f"Error in get_handwritten_answer_path: {str(e)}")
+        raise ValidationError(f"Error processing image upload: {str(e)}")
 
 class HandwrittenQuestion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -55,8 +78,20 @@ class HandwrittenQuestionScore(models.Model):
         default=0
     )
     feedback = models.TextField(blank=True, null=True)
-    answer_image = models.ImageField(upload_to='handwritten_answers/')
-    extracted_text = models.TextField(blank=True, null=True)
+    answer_image = models.ImageField(
+        upload_to=get_handwritten_answer_path,
+        null=True,
+        blank=True,
+        help_text="Upload a JPEG, PNG, GIF, or BMP image file (max 5MB)",
+        validators=[
+            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'bmp'])
+        ]
+    )
+    extracted_text = models.TextField(
+        blank=True, 
+        null=True,
+        help_text="Text extracted from the handwritten answer image"
+    )
     submitted_at = models.DateTimeField(auto_now_add=True)
     evaluated_at = models.DateTimeField(auto_now=True)
 
@@ -74,6 +109,19 @@ class HandwrittenQuestionScore(models.Model):
     def save(self, *args, **kwargs):
         # Ensure score is not negative
         self.score = max(0, self.score)
+        
+        # Clean and validate
+        self.clean()
+        
+        # Create the upload directory if it doesn't exist
+        if self.answer_image:
+            upload_path = os.path.join(
+                settings.MEDIA_ROOT,
+                settings.ASSESSMENT_UPLOADS_DIR,
+                str(self.question.assessment.id)
+            )
+            os.makedirs(upload_path, exist_ok=True)
+        
         super().save(*args, **kwargs)
 
         # Update assessment score
@@ -96,6 +144,17 @@ class HandwrittenQuestionScore(models.Model):
         
         assessment_score.total_score = mcq_total + handwritten_total
         assessment_score.save()
+
+    def clean(self):
+        if self.answer_image:
+            # Validate image file
+            try:
+                from PIL import Image
+                image = Image.open(self.answer_image)
+                if image.format not in ['JPEG', 'PNG', 'GIF', 'BMP']:
+                    raise ValidationError("Unsupported image format. Please upload a JPEG, PNG, GIF, or BMP file")
+            except Exception as e:
+                raise ValidationError(f"Invalid image file: {str(e)}")
 
 @receiver(post_delete, sender=HandwrittenQuestionScore)
 def update_assessment_score_on_delete(sender, instance, **kwargs):

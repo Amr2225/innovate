@@ -189,6 +189,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
 ASSESSMENT_UPLOADS_DIR = 'AssessmentUploads'
 ASSESSMENT_UPLOADS_PATH = os.path.join(MEDIA_ROOT, ASSESSMENT_UPLOADS_DIR)
 
+# Create upload directories if they don't exist
+os.makedirs(MEDIA_ROOT, exist_ok=True)
+os.makedirs(ASSESSMENT_UPLOADS_PATH, exist_ok=True)
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 

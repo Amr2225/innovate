@@ -3,6 +3,9 @@ from .models import HandwrittenQuestion, HandwrittenQuestionScore
 from assessment.serializers import AssessmentSerializer
 from enrollments.serializers import EnrollmentsSerializer
 from decimal import Decimal
+import logging
+import uuid
+import io
 
 class HandwrittenQuestionSerializer(serializers.ModelSerializer):
     created_by = serializers.ReadOnlyField(source='created_by.email')
@@ -41,6 +44,15 @@ class HandwrittenQuestionScoreSerializer(serializers.ModelSerializer):
     assessment_title = serializers.ReadOnlyField(source='question.assessment.title')
     course_details = serializers.SerializerMethodField()
     answer_image_url = serializers.SerializerMethodField()
+    answer_image = serializers.ImageField(
+        required=True,
+        allow_null=False,
+        error_messages={
+            'required': 'Please upload an image file',
+            'invalid_image': 'The uploaded file is not a valid image. Please upload a JPEG, PNG, GIF, or BMP file.',
+            'invalid': 'Invalid image file. Please ensure the file is not corrupted.'
+        }
+    )
 
     class Meta:
         model = HandwrittenQuestionScore
@@ -53,29 +65,73 @@ class HandwrittenQuestionScoreSerializer(serializers.ModelSerializer):
         read_only_fields = (
             'score', 'feedback', 'extracted_text', 'submitted_at', 'evaluated_at',
             'student_email', 'student_name', 'question_text',
-            'assessment_title', 'course_details', 'enrollment'
+            'assessment_title', 'course_details'
         )
-        extra_kwargs = {
-            'enrollment': {'required': False}  # Will be set from request
-        }
 
     def get_student_name(self, obj):
-        if hasattr(obj, 'enrollment') and hasattr(obj.enrollment, 'user'):
-            return f"{obj.enrollment.user.first_name} {obj.enrollment.user.last_name}"
-        return None
+        return f"{obj.enrollment.user.first_name} {obj.enrollment.user.last_name}"
 
     def get_course_details(self, obj):
-        if hasattr(obj, 'question') and hasattr(obj.question, 'assessment'):
-            return {
-                'id': str(obj.question.assessment.course.id),
-                'name': obj.question.assessment.course.name
-            }
-        return None
+        course = obj.question.assessment.course
+        return {
+            'id': str(course.id),
+            'title': course.title,
+            'code': course.code
+        }
 
     def get_answer_image_url(self, obj):
         if obj.answer_image:
             return self.context['request'].build_absolute_uri(obj.answer_image.url)
         return None
+
+    def validate_answer_image(self, value):
+        """
+        Process and validate the uploaded image
+        """
+        from PIL import Image
+        import io
+
+        try:
+            # Check file extension
+            ext = value.name.split('.')[-1].lower()
+            if ext not in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
+                raise serializers.ValidationError(
+                    f"Invalid file extension: {ext}. Allowed extensions: jpg, jpeg, png, gif, bmp"
+                )
+            
+            # Check file size (5MB max)
+            if value.size > 5 * 1024 * 1024:  # 5MB in bytes
+                raise serializers.ValidationError(
+                    f"File too large. Maximum size is 5MB. Your file is {value.size / (1024 * 1024):.2f}MB"
+                )
+            
+            # Open and validate image
+            image = Image.open(value)
+            
+            # Convert to RGB if needed
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            # Create a new file-like object
+            output = io.BytesIO()
+            
+            # Save as JPEG with good quality
+            image.save(output, format='JPEG', quality=95)
+            output.seek(0)
+            
+            # Create a new file with the processed image
+            from django.core.files.base import ContentFile
+            value = ContentFile(output.getvalue(), name=f"{uuid.uuid4()}.jpg")
+            
+            # Reset file pointer
+            value.seek(0)
+            
+            return value
+            
+        except (IOError, OSError) as e:
+            raise serializers.ValidationError("Invalid or corrupted image file. Please upload a valid image file")
+        except Exception as e:
+            raise serializers.ValidationError(f"Error processing image: {str(e)}")
 
     def validate(self, data):
         request = self.context.get('request')
