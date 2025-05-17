@@ -397,90 +397,6 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Log image file details
-            logger.info(f"Image file name: {image_file.name}")
-            logger.info(f"Image file content type: {image_file.content_type}")
-            logger.info(f"Image file size: {image_file.size} bytes")
-
-            # Validate image file
-            if not image_file.content_type:
-                logger.error("Image file has no content type")
-                return Response(
-                    {'error': 'Invalid image file. The file has no content type.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            if not image_file.content_type.startswith('image/'):
-                logger.error(f"Invalid content type: {image_file.content_type}")
-                return Response(
-                    {
-                        'error': 'Invalid file type',
-                        'details': {
-                            'received_type': image_file.content_type,
-                            'expected_type': 'image/jpeg, image/png, image/gif, or image/bmp'
-                        }
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Check file size (max 5MB)
-            if image_file.size > 5 * 1024 * 1024:  # 5MB in bytes
-                logger.error(f"File too large: {image_file.size} bytes")
-                return Response(
-                    {
-                        'error': 'File too large',
-                        'details': {
-                            'received_size': f"{image_file.size / (1024 * 1024):.2f}MB",
-                            'max_size': '5MB'
-                        }
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Check file extension
-            ext = image_file.name.split('.')[-1].lower()
-            logger.info(f"File extension: {ext}")
-            
-            if ext not in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
-                logger.error(f"Unsupported file extension: {ext}")
-                return Response(
-                    {
-                        'error': 'Unsupported file format',
-                        'details': {
-                            'received_extension': ext,
-                            'supported_extensions': ['jpg', 'jpeg', 'png', 'gif', 'bmp']
-                        }
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Try to validate image using PIL
-            try:
-                from PIL import Image
-                image = Image.open(image_file)
-                logger.info(f"Successfully opened image. Format: {image.format}, Mode: {image.mode}, Size: {image.size}")
-                
-                # Convert to RGB if needed
-                if image.mode != 'RGB':
-                    image = image.convert('RGB')
-                    logger.info("Converted image to RGB mode")
-                
-                # Reset file pointer
-                image_file.seek(0)
-                
-            except Exception as e:
-                logger.error(f"Failed to validate image with PIL: {str(e)}")
-                return Response(
-                    {
-                        'error': 'Invalid image file',
-                        'details': {
-                            'error': str(e),
-                            'suggestion': 'Please ensure the file is a valid image and not corrupted'
-                        }
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
             # Get required parameters
             question_id = request.data.get('question_id')
             enrollment_id = request.data.get('enrollment_id')
@@ -548,6 +464,7 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
                     student_answer_image=image_file,
                     max_grade=float(question.max_grade)
                 )
+                logger.info(f"AI evaluation completed - Score: {score}, Extracted text length: {len(extracted_text)}")
             except Exception as e:
                 logger.error(f"AI evaluation error: {str(e)}")
                 return Response(
@@ -569,15 +486,31 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
             serializer = HandwrittenQuestionScoreSerializer(data=score_data, context={'request': request})
             if serializer.is_valid():
                 score_instance = serializer.save()
-                return Response({
-                    'extracted_text': extracted_text,
-                    'evaluation': {
-                        'score': score,
-                        'feedback': feedback,
-                        'max_grade': question.max_grade
-                    },
-                    'score_record': serializer.data
-                }, status=status.HTTP_201_CREATED)
+                logger.info(f"Score record created - ID: {score_instance.id}, Score: {score_instance.score}")
+                
+                # Return response based on user role
+                if request.user.role == 'Student':
+                    return Response({
+                        'message': 'Answer submitted successfully',
+                        'submitted_at': score_instance.submitted_at
+                    }, status=status.HTTP_201_CREATED)
+                else:
+                    # For teachers and institutions
+                    return Response({
+                        'extracted_text': extracted_text,
+                        'evaluation': {
+                            'score': score,
+                            'feedback': feedback,
+                            'max_grade': question.max_grade
+                        },
+                        'score_record': {
+                            'id': str(score_instance.id),
+                            'score': score_instance.score,
+                            'feedback': score_instance.feedback,
+                            'extracted_text': score_instance.extracted_text,
+                            'submitted_at': score_instance.submitted_at
+                        }
+                    }, status=status.HTTP_201_CREATED)
             
             # Log validation errors for debugging
             logger.error(f"Serializer validation errors: {serializer.errors}")

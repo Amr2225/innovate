@@ -6,6 +6,7 @@ from decimal import Decimal
 import logging
 import uuid
 import io
+from django.core.validators import MinValueValidator
 
 class HandwrittenQuestionSerializer(serializers.ModelSerializer):
     created_by = serializers.ReadOnlyField(source='created_by.email')
@@ -53,6 +54,13 @@ class HandwrittenQuestionScoreSerializer(serializers.ModelSerializer):
             'invalid': 'Invalid image file. Please ensure the file is not corrupted.'
         }
     )
+    score = serializers.FloatField(
+        required=False,
+        validators=[MinValueValidator(0)],
+        default=0
+    )
+    feedback = serializers.CharField(required=False, allow_null=True)
+    extracted_text = serializers.CharField(required=False, allow_null=True)
 
     class Meta:
         model = HandwrittenQuestionScore
@@ -63,7 +71,7 @@ class HandwrittenQuestionScoreSerializer(serializers.ModelSerializer):
             'question_text', 'assessment_title', 'course_details'
         )
         read_only_fields = (
-            'score', 'feedback', 'extracted_text', 'submitted_at', 'evaluated_at',
+            'submitted_at', 'evaluated_at',
             'student_email', 'student_name', 'question_text',
             'assessment_title', 'course_details'
         )
@@ -148,7 +156,8 @@ class HandwrittenQuestionScoreSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and request.user.role == 'Student':
             return {
-                'message': 'Answer submitted successfully'
+                'message': 'Answer submitted successfully',
+                'submitted_at': instance.submitted_at
             }
         
         # For teachers and institutions
