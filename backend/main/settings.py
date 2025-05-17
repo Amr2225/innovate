@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 
     # Third-Party Apps
     "django_extensions",
+    "django_filters",
     "nanoid_field",
     "drf_spectacular",
     'channels',
@@ -192,8 +193,9 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated"
     ),
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'DEFAULT_PAGINATION_CLASS': 'institution.pagination.Pagination',
+    # 'PAGE_SIZE': 10,
+    # 'PAGE_SIZE_QUERY_PARAM': 'page_size',
     # TODO: Enable this in production
     # 'DEFAULT_RENDERER_CLASSES': [
     #     'rest_framework.renderers.JSONRenderer',
@@ -203,8 +205,8 @@ REST_FRAMEWORK = {
 
 # Simple JWT
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
-    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=60*3),
     "SIGNING_KEY": os.environ.get('JWT_MAIN', SECRET_KEY),
     "ISSUER": None,
     "USER_ID_FIELD": "id",  # The id field in the model

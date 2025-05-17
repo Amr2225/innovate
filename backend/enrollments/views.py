@@ -8,6 +8,7 @@ from enrollments.models import Enrollments
 from courses.serializers import CourseSerializer
 from enrollments.serializers import EnrollMultipleCoursesSerializer
 from enrollments.serializers import EnrollmentsSerializer
+from enrollments.serializers import EligibleCourseSerializer
 from lecture.models import Lecture, LectureProgress
 
 
@@ -28,7 +29,7 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return EnrollMultipleCoursesSerializer
-        return CourseSerializer
+        return EligibleCourseSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -82,7 +83,7 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
                 continue
 
             if course.id in enrolled_course_ids:
-                skipped_courses[course_id] = "Already enrolled."
+                skipped_courses[course.name] = "Already enrolled."
                 continue
 
             prereq = course.prerequisite_course

@@ -167,12 +167,6 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
         return data
 
 
-class InstitutionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("name")
-
-
 class InstitutionUserSeralizer(serializers.ModelSerializer):
     # TODO: implement rules for the age attribute (calculated, or entered)
     Role = (
@@ -184,6 +178,11 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
     institution = serializers.CharField(
         read_only=True, source="institution.name")
 
+    full_name = serializers.SerializerMethodField()
+
+    def get_full_name(self, obj):
+        return obj.full_name
+
     class Meta:
         model = User
         fields = (
@@ -191,6 +190,7 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
             "first_name",
             "middle_name",
             "last_name",
+            "full_name",
             "role",
             "national_id",
             "birth_date",

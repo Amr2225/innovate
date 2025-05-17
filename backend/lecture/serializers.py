@@ -80,14 +80,21 @@
 #         return LectureProgress.objects.create(user=request.user, **validated_data)
 
 
-
-
 from rest_framework import serializers
 from chapter.models import Chapter
 from lecture.models import Lecture, LectureProgress
 from users.models import User
 
+
+class ChapterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Chapter
+        fields = ('title', 'course')
+
+
 class LectureSerializer(serializers.ModelSerializer):
+
+    chapter_detials = ChapterSerializer(read_only=True)
 
     chapter = serializers.PrimaryKeyRelatedField(
         queryset=Chapter.objects.all(), write_only=True
@@ -95,14 +102,16 @@ class LectureSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lecture
-        fields = ('id', 'title', 'video', 'attachment', 'chapter')
-    
+        fields = ('id', 'title', 'video', 'attachment',
+                  'chapter', 'chapter_detials')
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         request = self.context.get('request')
         if request and request.user.role == "Institution":
-            self.fields['chapter'].queryset = Chapter.objects.filter(course__institution=request.user)
-    
+            self.fields['chapter'].queryset = Chapter.objects.filter(
+                course__institution=request.user)
+
     def create(self, validated_data):
         lecture = Lecture.objects.create(**validated_data)
 
@@ -126,7 +135,8 @@ class LectureSerializer(serializers.ModelSerializer):
 
 
 class LectureProgressSerializer(serializers.ModelSerializer):
-    lecture = serializers.PrimaryKeyRelatedField(queryset=Lecture.objects.all(), write_only=True)
+    lecture = serializers.PrimaryKeyRelatedField(
+        queryset=Lecture.objects.all(), write_only=True)
     lecture_data = LectureSerializer(source='lecture', read_only=True)
 
     class Meta:
