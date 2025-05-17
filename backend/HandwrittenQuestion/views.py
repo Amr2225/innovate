@@ -383,67 +383,154 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
 
     def post(self, request, *args, **kwargs):
         try:
-            if 'image' not in request.FILES:
+            # Log request details
+            logger.info("Received request for image evaluation")
+            logger.info(f"Request content type: {request.content_type}")
+            logger.info(f"Request FILES keys: {list(request.FILES.keys())}")
+            
+            # Check for image in both possible field names
+            image_file = request.FILES.get('image') or request.FILES.get('answer_image')
+            if not image_file:
+                logger.error("No image file found in request")
                 return Response(
-                    {'error': 'No image file provided'},
+                    {'error': 'No image file provided. Please upload an image file.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            image_file = request.FILES['image']
-            
+            # Log image file details
+            logger.info(f"Image file name: {image_file.name}")
+            logger.info(f"Image file content type: {image_file.content_type}")
+            logger.info(f"Image file size: {image_file.size} bytes")
+
             # Validate image file
-            if not image_file.content_type.startswith('image/'):
+            if not image_file.content_type:
+                logger.error("Image file has no content type")
                 return Response(
-                    {'error': 'The uploaded file is not an image. Please upload a valid image file (JPEG, PNG, etc.)'},
+                    {'error': 'Invalid image file. The file has no content type.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not image_file.content_type.startswith('image/'):
+                logger.error(f"Invalid content type: {image_file.content_type}")
+                return Response(
+                    {
+                        'error': 'Invalid file type',
+                        'details': {
+                            'received_type': image_file.content_type,
+                            'expected_type': 'image/jpeg, image/png, image/gif, or image/bmp'
+                        }
+                    },
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
             # Check file size (max 5MB)
             if image_file.size > 5 * 1024 * 1024:  # 5MB in bytes
+                logger.error(f"File too large: {image_file.size} bytes")
                 return Response(
-                    {'error': 'Image file is too large. Maximum size is 5MB'},
+                    {
+                        'error': 'File too large',
+                        'details': {
+                            'received_size': f"{image_file.size / (1024 * 1024):.2f}MB",
+                            'max_size': '5MB'
+                        }
+                    },
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            # Check file extension
+            ext = image_file.name.split('.')[-1].lower()
+            logger.info(f"File extension: {ext}")
+            
+            if ext not in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
+                logger.error(f"Unsupported file extension: {ext}")
+                return Response(
+                    {
+                        'error': 'Unsupported file format',
+                        'details': {
+                            'received_extension': ext,
+                            'supported_extensions': ['jpg', 'jpeg', 'png', 'gif', 'bmp']
+                        }
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Try to validate image using PIL
+            try:
+                from PIL import Image
+                image = Image.open(image_file)
+                logger.info(f"Successfully opened image. Format: {image.format}, Mode: {image.mode}, Size: {image.size}")
+                
+                # Convert to RGB if needed
+                if image.mode != 'RGB':
+                    image = image.convert('RGB')
+                    logger.info("Converted image to RGB mode")
+                
+                # Reset file pointer
+                image_file.seek(0)
+                
+            except Exception as e:
+                logger.error(f"Failed to validate image with PIL: {str(e)}")
+                return Response(
+                    {
+                        'error': 'Invalid image file',
+                        'details': {
+                            'error': str(e),
+                            'suggestion': 'Please ensure the file is a valid image and not corrupted'
+                        }
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Get required parameters
             question_id = request.data.get('question_id')
+            enrollment_id = request.data.get('enrollment_id')
+
             if not question_id:
                 return Response(
                     {'error': 'question_id is required'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
+            if not enrollment_id:
+                return Response(
+                    {'error': 'enrollment_id is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             try:
                 question = HandwrittenQuestion.objects.get(id=question_id)
+                logger.info(f"Found question: {question.id} for course: {question.assessment.course.id}")
             except HandwrittenQuestion.DoesNotExist:
                 return Response(
                     {'error': 'Question not found'},
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # Get the enrollment with more detailed error handling
             try:
-                # First check if any enrollment exists
-                enrollment_exists = Enrollments.objects.filter(
-                    user=request.user,
-                    course=question.assessment.course
-                ).exists()
-                
-                if not enrollment_exists:
-                    return Response(
-                        {'error': 'You are not enrolled in this course. Please enroll first.'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-                
-                # Then check for active enrollment
                 enrollment = Enrollments.objects.get(
+                    id=enrollment_id,
                     user=request.user,
-                    course=question.assessment.course,
                     is_completed=False
                 )
+                logger.info(f"Found enrollment: {enrollment.id} for course: {enrollment.course.id}")
             except Enrollments.DoesNotExist:
                 return Response(
-                    {'error': 'You are not enrolled in this course'},
+                    {'error': 'Enrollment not found or you do not have permission to submit for this enrollment'},
                     status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Verify enrollment is for the correct course
+            if enrollment.course != question.assessment.course:
+                logger.error(f"Course mismatch - Question course: {question.assessment.course.id}, Enrollment course: {enrollment.course.id}")
+                return Response(
+                    {
+                        'error': 'This enrollment is not for the course containing this question',
+                        'details': {
+                            'question_course_id': str(question.assessment.course.id),
+                            'enrollment_course_id': str(enrollment.course.id)
+                        }
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
             # Check if student has already submitted
@@ -474,13 +561,14 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
                 'enrollment': enrollment.id,
                 'score': score,
                 'feedback': feedback,
-                'answer_image': image_file,
-                'extracted_text': extracted_text
+                'extracted_text': extracted_text,
+                'answer_image': image_file
             }
 
-            serializer = HandwrittenQuestionScoreSerializer(data=score_data)
+            # Create the score record
+            serializer = HandwrittenQuestionScoreSerializer(data=score_data, context={'request': request})
             if serializer.is_valid():
-                serializer.save()
+                score_instance = serializer.save()
                 return Response({
                     'extracted_text': extracted_text,
                     'evaluation': {
@@ -490,6 +578,9 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
                     },
                     'score_record': serializer.data
                 }, status=status.HTTP_201_CREATED)
+            
+            # Log validation errors for debugging
+            logger.error(f"Serializer validation errors: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             
         except Exception as e:

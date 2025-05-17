@@ -168,24 +168,48 @@ def evaluate_handwritten_answer(question, answer_key, student_answer_image, max_
         tuple: (score, feedback, extracted_text)
     """
     try:
-        # Convert image to base64
-        if hasattr(student_answer_image, 'read'):
-            image = Image.open(student_answer_image)
-        else:
-            image = Image.open(student_answer_image.path)
+        # Validate image file
+        if not student_answer_image:
+            raise ValueError("No image file provided")
+
+        # Process image
+        try:
+            # Open image
+            if hasattr(student_answer_image, 'read'):
+                # If it's a file object, read it directly
+                image = Image.open(student_answer_image)
+                # Reset file pointer to beginning
+                student_answer_image.seek(0)
+            else:
+                # If it's a path, open it
+                image = Image.open(student_answer_image.path)
+                
+            # Validate image format
+            if image.format not in ['JPEG', 'PNG', 'GIF', 'BMP']:
+                raise ValueError("Unsupported image format. Please upload a JPEG, PNG, GIF, or BMP file")
+                
+            # Convert to RGB if needed
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+                
+            # Resize if too large (optional)
+            max_size = (1200, 1200)
+            image.thumbnail(max_size, Image.Resampling.LANCZOS)
             
-        # Convert to RGB if needed
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
+            # Convert to base64
+            buffered = io.BytesIO()
+            image.save(buffered, format="JPEG", quality=95)
+            buffered.seek(0)
+            img_str = base64.b64encode(buffered.getvalue()).decode()
             
-        # Resize if too large (optional)
-        max_size = (1200, 1200)
-        image.thumbnail(max_size, Image.Resampling.LANCZOS)
-        
-        # Convert to base64
-        buffered = io.BytesIO()
-        image.save(buffered, format="JPEG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
+            # Reset file pointer
+            if hasattr(student_answer_image, 'seek'):
+                student_answer_image.seek(0)
+            
+        except (IOError, OSError) as e:
+            raise ValueError("Invalid or corrupted image file. Please upload a valid image file")
+        except Exception as e:
+            raise ValueError(f"Failed to process image: {str(e)}")
 
         # Prepare the combined prompt for solution generation, OCR, and evaluation
         combined_prompt = [
