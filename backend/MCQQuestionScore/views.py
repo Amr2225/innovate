@@ -43,7 +43,7 @@ class MCQQuestionScoreListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         base_queryset = MCQQuestionScore.objects.select_related(
             'question__assessment__course',
-            'student'
+            'enrollment'
         )
 
         # Filter by assessment if provided
@@ -56,7 +56,7 @@ class MCQQuestionScoreListCreateView(generics.ListCreateAPIView):
                 return MCQQuestionScore.objects.none()
 
         if user.role == "Student":
-            return base_queryset.filter(student=user)
+            return base_queryset.filter(enrollment__user=user)
         elif user.role == "Teacher":
             return base_queryset.filter(
                 question__assessment__course__instructors=user
@@ -83,6 +83,9 @@ class MCQQuestionScoreListCreateView(generics.ListCreateAPIView):
         if not question.assessment.course.enrollments.filter(user=user).exists():
             raise PermissionDenied("You are not enrolled in this course")
 
+        # Get the enrollment object
+        enrollment = question.assessment.course.enrollments.get(user=user)
+
         # Check if assessment is active and accepting submissions
         assessment = question.assessment
         if not assessment.is_active:
@@ -104,7 +107,7 @@ class MCQQuestionScoreListCreateView(generics.ListCreateAPIView):
             with transaction.atomic():
                 # Update or create the score
                 score, created = MCQQuestionScore.objects.update_or_create(
-                    student=user,
+                    enrollment=enrollment,
                     question=question,
                     defaults={
                         'selected_answer': selected_answer,
@@ -115,7 +118,7 @@ class MCQQuestionScoreListCreateView(generics.ListCreateAPIView):
 
                 # Update or create AssessmentScore
                 assessment_score, created = AssessmentScore.objects.update_or_create(
-                    student=user,
+                    enrollment=enrollment,
                     assessment=assessment,
                     defaults={'total_score': assessment.get_student_score(user)}
                 )
@@ -153,11 +156,11 @@ class MCQQuestionScoreDetailView(generics.RetrieveAPIView):
         user = self.request.user
         base_queryset = MCQQuestionScore.objects.select_related(
             'question__assessment__course',
-            'student'
+            'enrollment'
         )
 
         if user.role == "Student":
-            return base_queryset.filter(student=user)
+            return base_queryset.filter(enrollment__user=user)
         elif user.role == "Teacher":
             return base_queryset.filter(
                 question__assessment__course__instructors=user
@@ -176,8 +179,8 @@ class MCQQuestionScoreDetailView(generics.RetrieveAPIView):
         # Add additional context for teachers/institutions
         if request.user.role in ["Teacher", "Institution"]:
             data.update({
-                'student_name': f"{instance.student.first_name} {instance.student.last_name}",
-                'student_email': instance.student.email,
+                'student_name': f"{instance.enrollment.user.first_name} {instance.enrollment.user.last_name}",
+                'student_email': instance.enrollment.user.email,
                 'assessment_title': instance.question.assessment.title,
                 'course_name': instance.question.assessment.course.name
             })
@@ -208,6 +211,9 @@ class MCQQuestionScoreBulkView(generics.CreateAPIView):
         # Validate course enrollment
         if not assessment.course.enrollments.filter(user=request.user).exists():
             raise PermissionDenied("You are not enrolled in this course")
+
+        # Get the enrollment object
+        enrollment = assessment.course.enrollments.get(user=request.user)
 
         # Validate assessment status
         if not assessment.is_active:
@@ -241,7 +247,7 @@ class MCQQuestionScoreBulkView(generics.CreateAPIView):
                 # Create or update score
                 score, created = MCQQuestionScore.objects.update_or_create(
                     question=question,
-                    student=request.user,
+                    enrollment=enrollment,
                     defaults={
                         'selected_answer': selected_answer,
                         'is_correct': selected_answer == question.answer_key,
@@ -257,7 +263,7 @@ class MCQQuestionScoreBulkView(generics.CreateAPIView):
 
             # Update assessment score
             AssessmentScore.objects.update_or_create(
-                student=request.user,
+                enrollment=enrollment,
                 assessment=assessment,
                 defaults={'total_score': assessment.get_student_score(request.user)}
             )

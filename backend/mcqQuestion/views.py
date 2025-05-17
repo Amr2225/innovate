@@ -15,7 +15,8 @@ from decimal import Decimal
 from assessment.models import AssessmentScore, Assessment
 from django.db import transaction
 from users.permissions import isInstitution, isTeacher, isStudent
-
+from enrollments.models import Enrollments
+from MCQQuestionScore.models import MCQQuestionScore
 
 class McqQuestionPermission(permissions.BasePermission):
     """Custom permission class for MCQ questions"""
@@ -450,11 +451,14 @@ class McqQuestionViewSet(viewsets.ModelViewSet):
                     )
                 except McqQuestion.DoesNotExist:
                     raise ValidationError(f"Question {question_id} not found or not accessible")
-                    
+                
+                # Get the enrollment for this user and course
+                enrollment = Enrollments.objects.get(user=user, course=question.assessment.course)
+                
                 # Create or update score
                 score, created = MCQQuestionScore.objects.update_or_create(
                     question=question,
-                    student=user,
+                    enrollment=enrollment,
                     defaults={
                         'selected_answer': selected_answer,
                         'is_correct': selected_answer == question.answer_key,
@@ -496,20 +500,21 @@ class McqQuestionViewSet(viewsets.ModelViewSet):
             
         scores = MCQQuestionScore.objects.filter(
             question__assessment=assessment
-        ).select_related('student', 'question')
+        ).select_related('enrollment', 'question')
         
         results = {}
         for score in scores:
-            if score.student.id not in results:
-                results[score.student.id] = {
+            student = score.enrollment.user
+            if student.id not in results:
+                results[student.id] = {
                     'student': {
-                        'id': str(score.student.id),
-                        'email': score.student.email,
-                        'name': f"{score.student.first_name} {score.student.last_name}"
+                        'id': str(student.id),
+                        'email': student.email,
+                        'name': f"{student.first_name} {student.last_name}"
                     },
                     'answers': []
                 }
-            results[score.student.id]['answers'].append({
+            results[student.id]['answers'].append({
                 'question_id': str(score.question.id),
                 'selected_answer': score.selected_answer,
                 'is_correct': score.is_correct,

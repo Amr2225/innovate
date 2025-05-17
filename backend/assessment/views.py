@@ -132,10 +132,10 @@ class AssessmentScoreListCreateAPIView(generics.ListCreateAPIView):
         if assessment_id:
             queryset = queryset.filter(assessment_id=assessment_id)
 
-        # Filter by student_id if provided
-        student_id = self.request.query_params.get('student_id')
-        if student_id:
-            queryset = queryset.filter(student_id=student_id)
+        # Filter by enrollment_id if provided
+        enrollment_id = self.request.query_params.get('enrollment_id')
+        if enrollment_id:
+            queryset = queryset.filter(enrollment_id=enrollment_id)
 
         if user.role == "Institution":
             return queryset.filter(assessment__course__institution=user)
@@ -148,9 +148,10 @@ class AssessmentScoreListCreateAPIView(generics.ListCreateAPIView):
                 user=user,
                 is_completed=is_completed
             ).values_list('course', flat=True)
+            enrollments = Enrollments.objects.filter(user=user, course__id__in=enrolled_courses)
             return queryset.filter(
                 assessment__course__id__in=enrolled_courses,
-                student=user
+                enrollment__in=enrollments
             )
         return AssessmentScore.objects.none()
 
@@ -174,11 +175,12 @@ class AssessmentScoreListCreateAPIView(generics.ListCreateAPIView):
         ).exists():
             raise PermissionDenied("You are not enrolled in this course")
         
+        enrollment = Enrollments.objects.get(user=user, course=assessment.course)
         # Check if student has already submitted
-        if AssessmentScore.objects.filter(assessment=assessment, student=user).exists():
+        if AssessmentScore.objects.filter(assessment=assessment, enrollment=enrollment).exists():
             raise PermissionDenied("You have already submitted this assessment")
         
-        serializer.save(student=user)
+        serializer.save(enrollment=enrollment)
 
 class AssessmentScoreRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AssessmentScoreSerializer
@@ -193,10 +195,10 @@ class AssessmentScoreRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroy
         if assessment_id:
             queryset = queryset.filter(assessment_id=assessment_id)
 
-        # Filter by student_id if provided
-        student_id = self.request.query_params.get('student_id')
-        if student_id:
-            queryset = queryset.filter(student_id=student_id)
+        # Filter by enrollment_id if provided
+        enrollment_id = self.request.query_params.get('enrollment_id')
+        if enrollment_id:
+            queryset = queryset.filter(enrollment_id=enrollment_id)
 
         if user.role == "Institution":
             return queryset.filter(assessment__course__institution=user)
@@ -209,9 +211,10 @@ class AssessmentScoreRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroy
                 user=user,
                 is_completed=is_completed
             ).values_list('course', flat=True)
+            enrollments = Enrollments.objects.filter(user=user, course__id__in=enrolled_courses)
             return queryset.filter(
                 assessment__course__id__in=enrolled_courses,
-                student=user
+                enrollment__in=enrollments
             )
         return AssessmentScore.objects.none()
 

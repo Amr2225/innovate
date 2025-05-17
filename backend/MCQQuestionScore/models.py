@@ -39,13 +39,17 @@ class MCQQuestionScore(models.Model):
         # Save the MCQQuestionScore first
         super().save(*args, **kwargs)
 
-        # Update or create AssessmentScore
-        assessment = self.question.assessment
-        assessment_score, created = AssessmentScore.objects.get_or_create(
-            student=self.enrollment.user,
-            assessment=assessment,
-            defaults={'total_score': 0}
-        )
-        
-        # The AssessmentScore's save method will automatically calculate the total score
-        assessment_score.save()
+        try:
+            # Update or create AssessmentScore
+            assessment = self.question.assessment
+            assessment_score, created = AssessmentScore.objects.get_or_create(
+                enrollment=self.enrollment,
+                assessment=assessment,
+                defaults={'total_score': 0}
+            )
+            
+            # The AssessmentScore's save method will automatically calculate the total score
+            assessment_score.save()
+        except Exception as e:
+            # Log the error but don't prevent the MCQQuestionScore from being saved
+            print(f"Error saving score: {str(e)}")
