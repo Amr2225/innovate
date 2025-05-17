@@ -19,6 +19,7 @@ export interface InstitutionMembersType {
     first_name: string;
     middle_name: string;
     last_name: string;
+    full_name: string;
     email: string;
     role: string;
     institution: string;
