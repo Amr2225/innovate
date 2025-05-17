@@ -121,7 +121,7 @@ class AssessmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 class AssessmentScoreListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = AssessmentScoreSerializer
     permission_classes = [permissions.IsAuthenticated]
-    filterset_fields = ['assessment', 'student']
+    filterset_fields = ['assessment']
 
     def get_queryset(self):
         user = self.request.user

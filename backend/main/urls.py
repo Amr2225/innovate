@@ -14,6 +14,7 @@ urlpatterns = [
     path('mcqQuestion/', include('mcqQuestion.urls')), 
     path('chat/', include('chat.urls')), 
     path('mcqQuestionScore/', include('MCQQuestionScore.urls')), 
+    path('handwrittenQuestion/', include('HandwrittenQuestion.urls')),
 
     # Auth API
     path("auth/", include("users.urls")),

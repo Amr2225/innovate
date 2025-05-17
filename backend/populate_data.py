@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 import random
 from decimal import Decimal
+from django.db import models
 
 # Set up Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'main.settings')
@@ -16,6 +17,8 @@ from lecture.models import Lecture, LectureProgress
 from assessment.models import Assessment, AssessmentScore
 from mcqQuestion.models import McqQuestion
 from MCQQuestionScore.models import MCQQuestionScore
+from HandwrittenQuestion.models import HandwrittenQuestion, HandwrittenQuestionScore
+from enrollments.models import Enrollments
 
 def create_users():
     # Create Institution
@@ -90,6 +93,19 @@ def create_courses(institution, teachers):
 
     return courses
 
+def create_enrollments(courses, students):
+    enrollments = []
+    for student in students:
+        # Enroll student in random courses
+        for course in random.sample(courses, random.randint(1, len(courses))):
+            enrollment = Enrollments.objects.create(
+                user=student,
+                course=course,
+                is_completed=random.choice([True, False])
+            )
+            enrollments.append(enrollment)
+    return enrollments
+
 def create_chapters(courses):
     chapters = []
     for course in courses:
@@ -156,15 +172,66 @@ def create_mcq_questions(assessments, teachers):
             questions.append(question)
     return questions
 
-def create_mcq_scores(questions, students):
-    for student in students:
-        for question in questions:
+def create_handwritten_questions(assessments, teachers):
+    questions = []
+    for assessment in assessments:
+        for i in range(3):  # 3 handwritten questions per assessment
+            question = HandwrittenQuestion.objects.create(
+                assessment=assessment,
+                question_text=f'Handwritten Question {i+1} for {assessment.title}',
+                answer_key=f'Key points for handwritten question {i+1}',
+                max_grade=random.randint(1, 5),
+                created_by=random.choice(teachers)
+            )
+            questions.append(question)
+    return questions
+
+def create_mcq_scores(questions, enrollments):
+    for enrollment in enrollments:
+        # Only create scores for questions in the student's enrolled courses
+        course_questions = [q for q in questions if q.assessment.course == enrollment.course]
+        for question in course_questions:
             if random.random() < 0.8:  # 80% chance of answering
                 MCQQuestionScore.objects.create(
                     question=question,
-                    student=student,
-                    selected_answer=random.choice(question.answer),
-                    course=question.assessment.course
+                    enrollment=enrollment,
+                    selected_answer=random.choice(question.answer)
+                )
+
+def create_handwritten_scores(questions, enrollments):
+    for enrollment in enrollments:
+        # Only create scores for questions in the student's enrolled courses
+        course_questions = [q for q in questions if q.assessment.course == enrollment.course]
+        for question in course_questions:
+            if random.random() < 0.7:  # 70% chance of answering
+                score = random.uniform(0, question.max_grade)
+                HandwrittenQuestionScore.objects.create(
+                    question=question,
+                    enrollment=enrollment,
+                    score=score,
+                    feedback=f'Feedback for student {enrollment.user.email}',
+                    extracted_text=f'Extracted text from student answer {enrollment.user.email}'
+                )
+
+def create_assessment_scores(assessments, enrollments):
+    for enrollment in enrollments:
+        for assessment in assessments:
+            if assessment.course == enrollment.course:
+                # Calculate total score from MCQ and Handwritten scores
+                mcq_total = assessment.mcqquestion_set.filter(
+                    scores__enrollment=enrollment
+                ).aggregate(total=models.Sum('scores__score'))['total'] or 0
+                
+                handwritten_total = assessment.handwritten_questions.filter(
+                    scores__enrollment=enrollment
+                ).aggregate(total=models.Sum('scores__score'))['total'] or 0
+                
+                total_score = mcq_total + handwritten_total
+                
+                AssessmentScore.objects.create(
+                    enrollment=enrollment,
+                    assessment=assessment,
+                    total_score=total_score
                 )
 
 def main():
@@ -173,6 +240,9 @@ def main():
     
     print("Creating courses...")
     courses = create_courses(institution, teachers)
+    
+    print("Creating enrollments...")
+    enrollments = create_enrollments(courses, students)
     
     print("Creating chapters...")
     chapters = create_chapters(courses)
@@ -187,10 +257,19 @@ def main():
     assessments = create_assessments(courses)
     
     print("Creating MCQ questions...")
-    questions = create_mcq_questions(assessments, teachers)
+    mcq_questions = create_mcq_questions(assessments, teachers)
+    
+    print("Creating Handwritten questions...")
+    handwritten_questions = create_handwritten_questions(assessments, teachers)
     
     print("Creating MCQ scores...")
-    create_mcq_scores(questions, students)
+    create_mcq_scores(mcq_questions, enrollments)
+    
+    print("Creating Handwritten scores...")
+    create_handwritten_scores(handwritten_questions, enrollments)
+    
+    print("Creating Assessment scores...")
+    create_assessment_scores(assessments, enrollments)
     
     print("Data population completed!")
 

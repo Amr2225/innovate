@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'mcqQuestion',
     'chat',
     'MCQQuestionScore',
+    'HandwrittenQuestion',
 ]
 
 ASGI_APPLICATION = 'main.asgi.application'
@@ -184,6 +185,9 @@ MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
 MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
+# Assessment Uploads Configuration
+ASSESSMENT_UPLOADS_DIR = 'AssessmentUploads'
+ASSESSMENT_UPLOADS_PATH = os.path.join(MEDIA_ROOT, ASSESSMENT_UPLOADS_DIR)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
