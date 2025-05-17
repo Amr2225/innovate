@@ -31,12 +31,11 @@ class CustomManager(UserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    Role = [
-        ("Institution", "Institution"),
-        ("Student", "Student"),
-        ("Teacher", "Teacher"),
-        ("Admin", "Admin"),
-    ]
+    class Role(models.Choices):
+        INSTITUTION = "Institution"
+        STUDENT = "Student"
+        TEACHER = "Teacher"
+        ADMIN = "Admin"
 
     # Common Fields
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -61,7 +60,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     age = models.PositiveIntegerField(blank=True, null=True)
     national_id = models.CharField(
         max_length=14, blank=True, null=True, unique=True, validators=[nationalId_length_validation])
-    semester = models.PositiveSmallIntegerField(null=True, blank=True)
+    semester = models.PositiveSmallIntegerField(default=1)
 
     # Institution Fields
     SCHOOL = 'school'
@@ -102,57 +101,20 @@ class User(AbstractBaseUser, PermissionsMixin):
             return (self.semester + 1) // 2
         return None
 
-    def clean(self):
-        super().clean()
-        if self.role == "Institution" and not self.institution_type:
-            raise ValidationError(
-                "Institution type is required for institutions")
+    # def clean(self):
+    #     super().clean()
+    #     if self.role == "Institution" and not self.institution_type:
+    #         raise ValidationError(
+    #             "Institution type is required for institutions")
 
     def __str__(self):
         if self.role == "Institution":
             return f"{self.name} - {self.credits}"
         return f"{self.full_name} ({self.role})"
-    
+
     def clean(self):
         super().clean()
         if self.role == self.Role.INSTITUTION and not self.institution_type:
             raise ValidationError({
-                'institution_type': 'This field is required when the role is Institution.'
+                'institution_type': 'This field is required'
             })
-
-
-# class UserInstitutions(models.Model):
-#     user = models.ForeignKey(
-#         User, on_delete=models.CASCADE, limit_choices_to={"role__in": ["Student", "Teacher"]})
-#     institution = models.ForeignKey(
-#         User, on_delete=models.CASCADE, limit_choices_to={"role": "Institution"})
-#     is_active = models.BooleanField(default=True)
-
-#     class Meta:
-#         constraints = [
-#             models.UniqueConstraint(
-#                 fields=['user', 'is_active'],
-#                 condition=models.Q(is_active=True),
-#                 name='unique_active_institution_per_user'
-#             )
-#         ]
-
-#     def clean(self):
-#         if self.is_active and self.user.role == "Student":
-#             # Check if user already has an active institution
-#             active_institutions = UserInstitutions.objects.filter(
-#                 user=self.user,
-#                 is_active=True
-#             ).exclude(pk=self.pk if self.pk else None)
-
-#             if active_institutions.exists():
-#                 raise ValidationError(
-#                     "A student can only be associated with one active institution at a time."
-#                 )
-
-#     def save(self, *args, **kwargs):
-#         self.full_clean()
-#         super().save(*args, **kwargs)
-
-#     def __str__(self):
-#         return f"{self.user.full_name} - {self.institution.name if self.institution.name else None}"

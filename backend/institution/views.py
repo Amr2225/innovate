@@ -130,8 +130,9 @@ class InstitutionUserView(generics.ListCreateAPIView):
     serializer_class = InstitutionUserSeralizer
     permission_classes = [isInstitution]
     pagination_class = Pagination
+    filterset_fields = ['id', 'first_name', 'middle_name', 'last_name', 'email',
+                        'role', 'institution', 'national_id']
 
     def get_queryset(self):
-        print(secrets.token_urlsafe(48))
         user = self.request.user
         return User.objects.filter(institution=user)
