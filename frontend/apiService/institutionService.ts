@@ -21,8 +21,8 @@ interface IGeneratePayment {
     redirection_url?: string
 }
 
-export const getMembers = async (pageParam: number, pageSize: number): Promise<GetMembersResponse> => {
-    const res = await api.get("/institution/users/", { params: { page: pageParam, page_size: pageSize } })
+export const getMembers = async (pageParam: number, pageSize: number, role?: string): Promise<GetMembersResponse> => {
+    const res = await api.get("/institution/users/", { params: { page: pageParam, page_size: pageSize, role } })
 
     if (res.status === 200) return res.data
     throw new Error(res.data.message || "Failed to get users")

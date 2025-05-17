@@ -136,6 +136,12 @@ body {
   scroll-behavior: smooth;
 }
 
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  -ms-overflow-style: none;
+  scrollbar-width: none;  
+}
+
 ::-webkit-scrollbar-thumb {
   border-radius: 8px;
   background: #485366 ;

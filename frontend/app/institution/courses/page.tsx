@@ -3,23 +3,25 @@ import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import BasInfo from "./_components/basic-info";
+import Curriculum from "./_components/curriculum";
 
-type CreateCourseTabs = "basic-info" | "advanced-info" | "curriculum" | "publish";
+type CreateCourseTabs = "info" | "advanced-info" | "curriculum" | "publish";
 
 export default function InstitutionCourses() {
-  const [activeTab, setActiveTab] = useState<CreateCourseTabs>("basic-info");
+  const [activeTab, setActiveTab] = useState<CreateCourseTabs>("info");
+
   return (
     <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as CreateCourseTabs)}>
-      <TabsList className='grid w-full grid-cols-4' defaultValue={"basic-info"}>
-        <TabsTrigger value='basic-info'>Basic Informaiton</TabsTrigger>
-        <TabsTrigger value='advanced-info'>Advanced Information</TabsTrigger>
-        <TabsTrigger value='Curriculum'>Curriculum</TabsTrigger>
+      <TabsList className='grid w-full grid-cols-3' defaultValue={"info"}>
+        <TabsTrigger value='info'>Course Information</TabsTrigger>
+        {/* <TabsTrigger value='advanced-info'>Advanced Information</TabsTrigger> */}
+        <TabsTrigger value='curriculum'>Curriculum</TabsTrigger>
         <TabsTrigger value='publish'>Publish Course</TabsTrigger>
       </TabsList>
-      <TabsContent value='basic-info'>
+      <TabsContent value='info'>
         <div className='p-5'>
           <div className='flex justify-between items-center'>
-            <h1 className='text-3xl font-bold'>Basic Information</h1>
+            <h1 className='text-3xl font-bold'>Course Information</h1>
             <div>
               <Button variant='secondary'>Save</Button>
               <Button variant='link'>Save & Preview</Button>
@@ -28,6 +30,25 @@ export default function InstitutionCourses() {
 
           <BasInfo />
           <div className='flex justify-between items-center mt-10'>
+            <Button type='button' variant={"secondary"} onClick={() => setActiveTab("curriculum")}>
+              Next
+            </Button>
+          </div>
+        </div>
+      </TabsContent>
+
+      <TabsContent value='curriculum'>
+        <div className='p-5'>
+          <div className='flex justify-between items-center'>
+            <h1 className='text-3xl font-bold'>Course Curriculum</h1>
+            <div>
+              <Button variant='secondary'>Save</Button>
+              <Button variant='link'>Save & Preview</Button>
+            </div>
+          </div>
+
+          <Curriculum />
+          {/* <div className='flex justify-between items-center mt-10'>
             <Button
               type='button'
               variant={"secondary"}
@@ -35,15 +56,7 @@ export default function InstitutionCourses() {
             >
               Next
             </Button>
-          </div>
-        </div>
-      </TabsContent>
-
-      <TabsContent value='advanced-info'>
-        <div>
-          <div>
-            <h1>Advanced Information</h1>
-          </div>
+          </div> */}
         </div>
       </TabsContent>
     </Tabs>

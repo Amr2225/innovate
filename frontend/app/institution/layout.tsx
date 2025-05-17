@@ -38,7 +38,9 @@ export default async function InstitutionDashboardLayout({
           />
         </header>
         <div className='bg-primary-background h-full'>
-          <div className='container bg-white mx-auto h-[85%] mt-12 py-2 px-4'>{children}</div>
+          <div className='container bg-white mx-auto h-[85%] hide-scrollbar overflow-scroll mt-12 py-2 px-4'>
+            {children}
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>
