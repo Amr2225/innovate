@@ -12,6 +12,8 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 import logging
 
+logger = logging.getLogger(__name__)
+
 def get_handwritten_answer_path(instance, filename):
     logger = logging.getLogger(__name__)
     
@@ -73,7 +75,9 @@ class HandwrittenQuestionScore(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     question = models.ForeignKey(HandwrittenQuestion, on_delete=models.CASCADE, related_name='scores')
     enrollment = models.ForeignKey(Enrollments, on_delete=models.CASCADE, related_name='handwritten_scores')
-    score = models.FloatField(
+    score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
         validators=[MinValueValidator(0)],
         default=0
     )
@@ -134,16 +138,33 @@ class HandwrittenQuestionScore(models.Model):
         )
         
         # Calculate total score including both MCQ and Handwritten scores
-        mcq_total = assessment.mcq_questions.filter(
+        mcq_total = float(assessment.mcq_questions.filter(
             scores__enrollment=self.enrollment
-        ).aggregate(total=models.Sum('scores__score'))['total'] or 0
+        ).aggregate(total=models.Sum('scores__score'))['total'] or 0)
         
-        handwritten_total = assessment.handwritten_questions.filter(
+        handwritten_total = float(assessment.handwritten_questions.filter(
             scores__enrollment=self.enrollment
-        ).aggregate(total=models.Sum('scores__score'))['total'] or 0
+        ).aggregate(total=models.Sum('scores__score'))['total'] or 0)
         
+        # Calculate total possible score
+        mcq_max = float(assessment.mcq_questions.aggregate(total=models.Sum('question_grade'))['total'] or 0)
+        handwritten_max = float(assessment.handwritten_questions.aggregate(total=models.Sum('max_grade'))['total'] or 0)
+        total_max = mcq_max + handwritten_max
+        
+        # Calculate percentage score
+        if total_max > 0:
+            percentage_score = ((mcq_total + handwritten_total) / total_max) * 100
+        else:
+            percentage_score = 0
+            
+        # Update assessment score
         assessment_score.total_score = mcq_total + handwritten_total
+        assessment_score.percentage_score = percentage_score
         assessment_score.save()
+        
+        logger.info(f"Updated assessment score for enrollment {self.enrollment.id} and assessment {assessment.id}")
+        logger.info(f"MCQ total: {mcq_total}, Handwritten total: {handwritten_total}")
+        logger.info(f"Total score: {assessment_score.total_score}, Percentage: {percentage_score}%")
 
     def clean(self):
         if self.answer_image:

@@ -54,7 +54,9 @@ class HandwrittenQuestionScoreSerializer(serializers.ModelSerializer):
             'invalid': 'Invalid image file. Please ensure the file is not corrupted.'
         }
     )
-    score = serializers.FloatField(
+    score = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
         required=False,
         validators=[MinValueValidator(0)],
         default=0

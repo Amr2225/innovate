@@ -4,6 +4,8 @@ from users.models import User
 from courses.models import Course
 from django.utils import timezone
 from django.db.models import Sum
+from enrollments.models import Enrollments
+from decimal import Decimal
 
 class Assessment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -31,9 +33,13 @@ class Assessment(models.Model):
         Calculate total score for a student based on their MCQQuestionScores
         """
         from MCQQuestionScore.models import MCQQuestionScore
+        
+        # Get the enrollment for this student and course
+        enrollment = Enrollments.objects.get(user=student, course=self.course)
+        
         return MCQQuestionScore.objects.filter(
             question__assessment=self,
-            student=student
+            enrollment=enrollment
         ).aggregate(total=Sum('score'))['total'] or 0
     
 class AssessmentScore(models.Model):
@@ -56,14 +62,14 @@ class AssessmentScore(models.Model):
         mcq_total = MCQQuestionScore.objects.filter(
             question__assessment=self.assessment,
             enrollment=self.enrollment
-        ).aggregate(total=Sum('score'))['total'] or 0
+        ).aggregate(total=Sum('score'))['total'] or Decimal('0')
         
         # Calculate total score from HandwrittenQuestionScores
         from HandwrittenQuestion.models import HandwrittenQuestionScore
         handwritten_total = HandwrittenQuestionScore.objects.filter(
             question__assessment=self.assessment,
             enrollment=self.enrollment
-        ).aggregate(total=Sum('score'))['total'] or 0
+        ).aggregate(total=Sum('score'))['total'] or Decimal('0')
         
         # Set total score
         self.total_score = mcq_total + handwritten_total
