@@ -10,7 +10,7 @@ from .models import McqQuestion
 from .serializers import McqQuestionSerializer
 from rest_framework.parsers import MultiPartParser, JSONParser
 from django.core.exceptions import ValidationError as DjangoValidationError
-from .AI import generate_mcqs_from_text, extract_text_from_pdf
+from main.AI import generate_mcqs_from_text, extract_text_from_pdf
 from decimal import Decimal
 from assessment.models import AssessmentScore, Assessment
 from django.db import transaction

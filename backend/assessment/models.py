@@ -52,6 +52,20 @@ class AssessmentScore(models.Model):
 
     def save(self, *args, **kwargs):
         # Calculate total score from MCQQuestionScores
-        self.total_score = self.assessment.get_student_score(self.enrollment.user)
+        from MCQQuestionScore.models import MCQQuestionScore
+        mcq_total = MCQQuestionScore.objects.filter(
+            question__assessment=self.assessment,
+            enrollment=self.enrollment
+        ).aggregate(total=Sum('score'))['total'] or 0
+        
+        # Calculate total score from HandwrittenQuestionScores
+        from HandwrittenQuestion.models import HandwrittenQuestionScore
+        handwritten_total = HandwrittenQuestionScore.objects.filter(
+            question__assessment=self.assessment,
+            enrollment=self.enrollment
+        ).aggregate(total=Sum('score'))['total'] or 0
+        
+        # Set total score
+        self.total_score = mcq_total + handwritten_total
         super().save(*args, **kwargs)
 
