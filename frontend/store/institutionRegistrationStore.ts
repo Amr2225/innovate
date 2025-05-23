@@ -1,14 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { EncryptedStorage } from './encryptedStorage'
+import { FileData } from '@/types/file.type'
 
-type FileData = {
-    name: string;
-    type: string;
-    size: number;
-    lastModified: number;
-    arrayBuffer: string;
-}
 
 type InstitutionStore = {
     name: string
@@ -46,16 +40,6 @@ const initialState: Pick<InstitutionStore, 'name' | 'email' | 'password' | 'conf
     credits: 0,
     logoData: null,
     hmac: null,
-    // setHmac: () => { },
-    // reset: () => { },
-    // setStatus: () => { },
-    // setCredits: () => { },
-    // addCreds: () => { },
-    // setCurrentStep: () => { },
-    // goBack: () => { },
-    // verficationFailedCallback: () => { },
-    // setFile: () => { },
-    // getFile: () => Promise.resolve(null)
 }
 
 
@@ -112,19 +96,6 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
                 set({ credits });
             },
             reset: () => {
-                // set({
-                //     name: initialState.name,
-                //     email: initialState.email,
-                //     password: initialState.password,
-                //     confirm_password: initialState.confirm_password,
-                //     isEmailVerified: initialState.isEmailVerified,
-                //     isPaymentSuccess: initialState.isPaymentSuccess,
-                //     isRegistrationSuccess: initialState.isRegistrationSuccess,
-                //     current_step: initialState.current_step,
-                //     credits: initialState.credits,
-                //     logoData: initialState.logoData,
-                //     hmac: initialState.hmac
-                // });
                 set({ ...initialState });
                 get().setCurrentStep();
             },
