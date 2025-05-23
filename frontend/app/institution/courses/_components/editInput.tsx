@@ -13,13 +13,7 @@ type EditInputProps = {
   textStyle?: string;
 };
 
-export default function EditInput({
-  isEditing,
-  closeEditing,
-  value,
-  setValue,
-  textStyle,
-}: EditInputProps) {
+function EditInput({ isEditing, closeEditing, value, setValue, textStyle }: EditInputProps) {
   return (
     <span className='font-bold '>
       {isEditing ? (
@@ -41,3 +35,5 @@ export default function EditInput({
     </span>
   );
 }
+
+export default React.memo(EditInput);

@@ -1,3 +1,5 @@
+// import { FileData } from "./file.type"
+
 export interface Course {
     id: string
     name: string
@@ -10,10 +12,17 @@ export interface Course {
 }
 
 export interface Lecture {
-    id: string
+    readonly id: string
     title: string
     description: string
-    video: File | null
+    video: {
+        name: string
+        type: string
+        size: number
+        lastModified: number
+        storageKey: string
+    } | null
+    videoPreview: string | null
     attachments: File[] | null
     chapter: string
 }
