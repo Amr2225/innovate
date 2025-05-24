@@ -6,8 +6,7 @@ class McqQuestionSerializer(serializers.ModelSerializer):
     created_by = serializers.ReadOnlyField(source='created_by.email')
     options = serializers.ListField(
         child=serializers.CharField(max_length=1000),
-        required=False,
-        write_only=True
+        required=True
     )
     question_grade = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=Decimal('0.00'))
     created_at = serializers.DateTimeField(read_only=True)
@@ -17,10 +16,10 @@ class McqQuestionSerializer(serializers.ModelSerializer):
         model = McqQuestion
         fields = (
             'id', 'assessment', 'question', 
-            'answer', 'answer_key', 'created_by', 'options', 'question_grade',
+            'options', 'answer_key', 'created_by', 'question_grade',
             'created_at', 'updated_at'
         )
-        read_only_fields = ('answer', 'created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at')
         extra_kwargs = {
             'answer_key': {'write_only': True}  # Hide answer key from students
         }
@@ -29,13 +28,10 @@ class McqQuestionSerializer(serializers.ModelSerializer):
         if 'options' in data:
             if len(data['options']) < 2:
                 raise serializers.ValidationError("At least 2 options are required")
-            data['answer'] = data['options']
         return data
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        # Add options from answer field
-        data['options'] = instance.answer
         
         # Remove answer key for students
         request = self.context.get('request')

@@ -6,44 +6,44 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 class AssessmentSerializer(serializers.ModelSerializer):
-    course_title = serializers.CharField(source='course.title', read_only=True)
+    course_name = serializers.CharField(source='course.name', read_only=True)
     accepting_submissions = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Assessment
-        fields = ('id', 'course', 'course_title', 'title', 'type', 'due_date', 'grade', 
+        fields = ('id', 'course', 'course_name', 'title', 'type', 'due_date', 'grade', 
                  'start_date', 'accepting_submissions')
-        read_only_fields = ('id', 'course_title', 'accepting_submissions')
+        read_only_fields = ('id', 'course_name', 'accepting_submissions')
 
 
 class AssessmentScoreSerializer(serializers.ModelSerializer):
     student_email = serializers.ReadOnlyField(source='enrollment.user.email')
     assessment_title = serializers.ReadOnlyField(source='assessment.title')
-    course_title = serializers.ReadOnlyField(source='assessment.course.title')
+    course_name = serializers.ReadOnlyField(source='assessment.course.name')
 
     class Meta:
         model = AssessmentScore
         fields = ('id', 'enrollment', 'student_email', 'assessment', 'assessment_title', 
-                 'course_title', 'total_score', 'submitted_at')
-        read_only_fields = ('student_email', 'assessment_title', 'course_title', 
+                 'course_name', 'total_score', 'submitted_at')
+        read_only_fields = ('student_email', 'assessment_title', 'course_name', 
                           'submitted_at', 'total_score')
 
 
 class AssessmentSubmissionSerializer(serializers.ModelSerializer):
     student_email = serializers.ReadOnlyField(source='enrollment.user.email')
     assessment_title = serializers.ReadOnlyField(source='assessment.title')
-    course_title = serializers.ReadOnlyField(source='assessment.course.title')
+    course_name = serializers.ReadOnlyField(source='assessment.course.name')
 
     class Meta:
         model = AssessmentSubmission
         fields = (
             'id', 'assessment', 'enrollment', 'student_email', 
-            'assessment_title', 'course_title', 'mcq_answers', 
+            'assessment_title', 'course_name', 'mcq_answers', 
             'handwritten_answers', 'submitted_at', 'is_submitted'
         )
         read_only_fields = (
             'id', 'student_email', 'assessment_title', 
-            'course_title', 'submitted_at'
+            'course_name', 'submitted_at'
         )
 
     def validate(self, data):
@@ -63,7 +63,7 @@ class AssessmentSubmissionSerializer(serializers.ModelSerializer):
         for question_id, answer in data.get('mcq_answers', {}).items():
             try:
                 question = data['assessment'].mcq_questions.get(id=question_id)
-                if answer not in question.answer:
+                if answer not in question.options:
                     raise ValidationError(f"Invalid answer for MCQ question {question_id}")
             except Exception as e:
                 raise ValidationError(f"Invalid MCQ question ID: {question_id}")

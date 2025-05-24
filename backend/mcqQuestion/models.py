@@ -7,7 +7,7 @@ class McqQuestion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='mcq_questions')
     question = models.CharField(max_length=1000)
-    answer = models.JSONField()
+    options = models.JSONField(help_text="List of possible answers")
     answer_key = models.CharField(max_length=255)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='mcq_questions_created')
     question_grade = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
