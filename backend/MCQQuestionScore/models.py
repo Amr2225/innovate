@@ -5,6 +5,9 @@ from courses.models import Course
 from assessment.models import AssessmentScore
 from enrollments.models import Enrollments
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 class MCQQuestionScore(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -48,8 +51,34 @@ class MCQQuestionScore(models.Model):
                 defaults={'total_score': 0}
             )
             
-            # The AssessmentScore's save method will automatically calculate the total score
+            # Calculate total score including both MCQ and Handwritten scores
+            mcq_total = float(assessment.mcq_questions.filter(
+                scores__enrollment=self.enrollment
+            ).aggregate(total=models.Sum('scores__score'))['total'] or 0)
+            
+            handwritten_total = float(assessment.handwritten_questions.filter(
+                scores__enrollment=self.enrollment
+            ).aggregate(total=models.Sum('scores__score'))['total'] or 0)
+            
+            # Calculate total possible score
+            mcq_max = float(assessment.mcq_questions.aggregate(total=models.Sum('question_grade'))['total'] or 0)
+            handwritten_max = float(assessment.handwritten_questions.aggregate(total=models.Sum('max_grade'))['total'] or 0)
+            total_max = mcq_max + handwritten_max
+            
+            # Calculate percentage score
+            if total_max > 0:
+                percentage_score = ((mcq_total + handwritten_total) / total_max) * 100
+            else:
+                percentage_score = 0
+                
+            # Update assessment score
+            assessment_score.total_score = mcq_total + handwritten_total
+            assessment_score.percentage_score = percentage_score
             assessment_score.save()
+            
+            logger.info(f"Updated assessment score for enrollment {self.enrollment.id} and assessment {assessment.id}")
+            logger.info(f"MCQ total: {mcq_total}, Handwritten total: {handwritten_total}")
+            logger.info(f"Total score: {assessment_score.total_score}, Percentage: {percentage_score}%")
         except Exception as e:
             # Log the error but don't prevent the MCQQuestionScore from being saved
-            print(f"Error saving score: {str(e)}")
+            logger.error(f"Error saving score: {str(e)}")
