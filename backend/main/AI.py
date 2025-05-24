@@ -8,6 +8,7 @@ import PyPDF2
 import io
 import base64
 from PIL import Image
+from django.core.exceptions import ValidationError
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -368,3 +369,115 @@ def extract_text_from_image(image_file):
     except Exception as e:
         logger.error(f"Image text extraction error: {str(e)}")
         raise ValueError(f"Failed to extract text from image: {str(e)}")
+
+def generate_mcq_questions(context, num_questions, difficulty='3'):
+    """
+    Generate MCQ questions from the given context using AI
+    
+    Args:
+        context (str): The text context to generate questions from
+        num_questions (int): Number of questions to generate
+        difficulty (str): Difficulty level ('1'=Very Easy, '2'=Easy, '3'=Medium, '4'=Hard, '5'=Very Hard)
+    
+    Returns:
+        list: List of dictionaries containing questions, options, and correct answers
+    """
+    try:
+        # Map difficulty level to description
+        difficulty_map = {
+            '1': 'Very Easy',
+            '2': 'Easy',
+            '3': 'Medium',
+            '4': 'Hard',
+            '5': 'Very Hard'
+        }
+        difficulty_desc = difficulty_map.get(difficulty, 'Medium')
+        
+        # Prepare the prompt for the AI
+        messages = [
+            {
+                "role": "system",
+                "content": """You are an expert at generating multiple-choice questions. Your task is to create clear, relevant, and well-structured questions based on the given context.
+                You must respond with a valid JSON array containing the questions. Do not include any other text or explanation."""
+            },
+            {
+                "role": "user",
+                "content": f"""
+                Generate {num_questions} multiple-choice questions from the following context.
+                Difficulty level: {difficulty_desc}
+                
+                Context:
+                {context}
+                
+                For each question, provide:
+                1. A clear and concise question
+                2. Four options (A, B, C, D)
+                3. The correct answer
+                
+                Your response must be a valid JSON array with this exact structure:
+                [
+                    {{
+                        "question": "Question text",
+                        "options": ["Option A", "Option B", "Option C", "Option D"],
+                        "correct_answer": "Option A"
+                    }}
+                ]
+                
+                Make sure the questions:
+                - Are relevant to the context
+                - Have one and only one correct answer
+                - Have plausible distractors
+                - Match the specified difficulty level ({difficulty_desc})
+                
+                Return ONLY the JSON array, nothing else.
+                """
+            }
+        ]
+
+        # Call the AI model
+        completion = client.chat.completions.create(
+            model=settings.AI_MODEL,
+            messages=messages,
+            temperature=0.7,
+            max_tokens=1000,
+        )
+        
+        # Get the response and clean it
+        response_text = completion.choices[0].message.content.strip()
+        
+        # Try to extract JSON from the response
+        try:
+            # First try direct JSON parsing
+            questions = json.loads(response_text)
+        except json.JSONDecodeError:
+            # If that fails, try to extract JSON using regex
+            json_match = re.search(r'(\[.*\])', response_text, re.DOTALL)
+            if not json_match:
+                raise ValueError("Could not find valid JSON in the response")
+            questions = json.loads(json_match.group(1))
+        
+        # Validate the response
+        if not isinstance(questions, list):
+            raise ValueError("Response is not a list")
+            
+        if len(questions) != num_questions:
+            raise ValueError(f"Expected {num_questions} questions, got {len(questions)}")
+        
+        for q in questions:
+            if not isinstance(q, dict):
+                raise ValueError("Question is not a dictionary")
+                
+            if not all(k in q for k in ['question', 'options', 'correct_answer']):
+                raise ValueError("Question missing required fields")
+                
+            if not isinstance(q['options'], list) or len(q['options']) != 4:
+                raise ValueError("Question must have exactly 4 options")
+                
+            if q['correct_answer'] not in q['options']:
+                raise ValueError("Correct answer must be one of the options")
+        
+        return questions
+
+    except Exception as e:
+        logger.error(f"Error generating MCQ questions: {str(e)}")
+        raise ValidationError(f"Error generating questions: {str(e)}")

@@ -228,7 +228,7 @@ class GenerateMCQsFromTextView(generics.GenericAPIView):
             try:
                 question = McqQuestion.objects.create(
                     question=mcq['question'],
-                    answer=mcq['options'],
+                    options=mcq['options'],
                     answer_key=mcq['correct_answer'],
                     created_by=self.request.user,
                     assessment_id=self.kwargs['assessment_id'],
@@ -237,7 +237,7 @@ class GenerateMCQsFromTextView(generics.GenericAPIView):
                 saved_questions.append({
                     'id': str(question.id),
                     'question': question.question,
-                    'options': question.answer,
+                    'options': question.options,
                     'answer': question.answer_key,
                     'question_grade': str(question.question_grade)
                 })
@@ -325,7 +325,7 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
             try:
                 question = McqQuestion.objects.create(
                     question=mcq['question'],
-                    answer=mcq['options'],
+                    options=mcq['options'],
                     answer_key=mcq['correct_answer'],
                     created_by=self.request.user,
                     assessment_id=self.kwargs['assessment_id'],
@@ -334,7 +334,7 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
                 saved_questions.append({
                     'id': str(question.id),
                     'question': question.question,
-                    'options': question.answer,
+                    'options': question.options,
                     'answer': question.answer_key,
                     'question_grade': str(question.question_grade)
                 })

@@ -100,7 +100,7 @@ class MCQQuestionScoreListCreateView(generics.ListCreateAPIView):
         if not selected_answer:
             raise ValidationError({"selected_answer": "This field is required"})
 
-        if selected_answer not in question.answer:
+        if selected_answer not in question.options:
             raise ValidationError({"selected_answer": "Selected answer must be one of the provided options"})
 
         try:
@@ -241,7 +241,7 @@ class MCQQuestionScoreBulkView(generics.CreateAPIView):
                     raise ValidationError(f"Question {question_id} not found or not part of this assessment")
 
                 # Validate selected answer
-                if selected_answer not in question.answer:
+                if selected_answer not in question.options:
                     raise ValidationError(f"Invalid answer for question {question_id}")
 
                 # Create or update score

@@ -51,7 +51,7 @@ class MCQQuestionScoreSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # Ensure selected_answer is one of the question options
         if 'selected_answer' in data and 'question' in data:
-            if data['selected_answer'] not in data['question'].answer:
+            if data['selected_answer'] not in data['question'].options:
                 raise serializers.ValidationError(
                     "Selected answer must be one of the provided options"
                 )
@@ -79,7 +79,7 @@ class MCQQuestionScoreSerializer(serializers.ModelSerializer):
                     'due_date': instance.question.assessment.due_date
                 },
                 'question_details': {
-                    'options': instance.question.answer,
+                    'options': instance.question.options,
                     'correct_answer': instance.question.answer_key
                 }
             })
