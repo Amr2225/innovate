@@ -46,6 +46,7 @@ class HandwrittenQuestion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='handwritten_questions')
     question_text = models.TextField()
+    section_number = models.PositiveSmallIntegerField(null=False, blank=False, help_text="Section number within the assessment")
     answer_key = models.TextField(help_text="The correct answer or key points for evaluation", blank=True, null=True)
     max_grade = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(100)],
