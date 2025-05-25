@@ -71,6 +71,9 @@ INSTALLED_APPS = [
     'chat',
     'MCQQuestionScore',
     'HandwrittenQuestion',
+    'CodingQuestion',
+    'DynamicMCQ',
+    'AssessmentSubmission',
 ]
 
 ASGI_APPLICATION = 'main.asgi.application'

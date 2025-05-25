@@ -3,11 +3,11 @@ from .views import (
     AssessmentListCreateAPIView,
     AssessmentDetailAPIView,
     AssessmentScoreListCreateAPIView,
-    AssessmentScoreRetrieveUpdateDestroyAPIView,
+    AssessmentScoreDetailAPIView,
     AssessmentQuestionsAPIView,
     StudentGradesAPIView,
     AssessmentAllQuestionsAPIView,
-    AssessmentSubmissionAPIView
+    AssessmentStudentQuestionsAPIView,
 )
 
 urlpatterns = [
@@ -16,13 +16,12 @@ urlpatterns = [
     path('<uuid:pk>/', AssessmentDetailAPIView.as_view(), name='assessment-detail'),
     path('<uuid:pk>/questions/', AssessmentQuestionsAPIView.as_view(), name='assessment-questions'),
     path('<uuid:pk>/all-questions/', AssessmentAllQuestionsAPIView.as_view(), name='assessment-all-questions'),
+    path('<uuid:pk>/student-questions/', AssessmentStudentQuestionsAPIView.as_view(), name='assessment-student-questions'),
 
     # AssessmentScore endpoints
-    path('assessment-scores/', AssessmentScoreListCreateAPIView.as_view(), name='assessment-score-list-create'),
-    path('assessment-scores/<uuid:pk>/', AssessmentScoreRetrieveUpdateDestroyAPIView.as_view(), name='assessment-score-detail'),
+    path('scores/', AssessmentScoreListCreateAPIView.as_view(), name='assessment-score-list-create'),
+    path('scores/<uuid:pk>/', AssessmentScoreDetailAPIView.as_view(), name='assessment-score-detail'),
     
     # Student grades endpoint
     path('student-grades/', StudentGradesAPIView.as_view(), name='student-grades'),
-
-    path('<uuid:pk>/submit/', AssessmentSubmissionAPIView.as_view(), name='assessment-submit'),
 ]
