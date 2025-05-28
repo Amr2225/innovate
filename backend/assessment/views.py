@@ -2,7 +2,7 @@ from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q
 from .models import Assessment, AssessmentScore
-from .serializers import AssessmentSerializer, AssessmentScoreSerializer
+from .serializers import AssessmentSerializer, AssessmentScoreSerializer, AssessmentListSerializer
 from courses.models import Course
 from enrollments.models import Enrollments
 from mcqQuestion.models import McqQuestion
@@ -60,31 +60,48 @@ class AssessmentPermission(permissions.BasePermission):
         return False
 
 class AssessmentListCreateAPIView(generics.ListCreateAPIView):
-    serializer_class = AssessmentSerializer
+    serializer_class = AssessmentListSerializer
     permission_classes = [permissions.IsAuthenticated, AssessmentPermission]
 
     def get_queryset(self):
         user = self.request.user
+        course_id = self.kwargs.get('course_id')
+        
+        base_queryset = Assessment.objects.all()
+        
+        # Filter by course if course_id is provided in URL
+        if course_id:
+            base_queryset = base_queryset.filter(course_id=course_id)
         
         if user.role == "Student":
             # Students can only see assessments for courses they are enrolled in
-            return Assessment.objects.filter(
+            return base_queryset.filter(
                 course__enrollments__user=user
             ).distinct()
         
         elif user.role == "Teacher":
             # Teachers can see assessments for courses they teach
-            return Assessment.objects.filter(
+            return base_queryset.filter(
                 course__teacher=user.teacher
             )
         
         elif user.role == "Institution":
             # Institutions can see assessments for their courses
-            return Assessment.objects.filter(
+            return base_queryset.filter(
                 course__institution=user.institution
             )
         
         return Assessment.objects.none()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return AssessmentSerializer
+        return AssessmentListSerializer
 
     def perform_create(self, serializer):
         user = self.request.user
