@@ -31,7 +31,7 @@ class CustomManager(UserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     Role = [
-        ("Institution", "Institution"),
+        ("INSTITUTION", "Institution"),
         ("Student", "Student"),
         ("Teacher", "Teacher"),
         ("Admin", "Admin"),
@@ -104,6 +104,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         if self.role == "Institution":
             return f"{self.name} - {self.credits}"
         return f"{self.full_name} ({self.role})"
+    
+    def clean(self):
+        super().clean()
+        if self.role == self.Role.INSTITUTION and not self.institution_type:
+            raise ValidationError({
+                'institution_type': 'This field is required when the role is Institution.'
+            })
 
 
 # class UserInstitutions(models.Model):

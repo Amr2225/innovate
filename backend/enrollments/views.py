@@ -2,12 +2,17 @@ from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import PermissionDenied
 
 from courses.models import Course
 from enrollments.models import Enrollments
 from courses.serializers import CourseSerializer
-from enrollments.serializers import EnrollMultipleCoursesSerializer
-from enrollments.serializers import EnrollmentsSerializer
+from enrollments.serializers import (
+    EnrollMultipleCoursesSerializer,
+    EnrollmentsSerializer,
+    AssessmentScoreSerializer
+)
 from lecture.models import Lecture, LectureProgress
 
 class EnrolledCoursesAPIView(generics.ListAPIView):
@@ -98,6 +103,47 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
                 print(f"Error creating progress entries: {e}")
 
         return Response({
-            "enrolled": EnrollmentsSerializer(enrolled_courses, many=True).data,
+            "enrolled": EnrollmentsSerializer(enrolled_courses, many=True, context={'request': request}).data,
             "skipped": skipped_courses
         }, status=status.HTTP_201_CREATED)
+
+class EnrollmentAssessmentScoresView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = AssessmentScoreSerializer
+
+    def get_queryset(self):
+        enrollment_id = self.kwargs.get('enrollment_id')
+        enrollment = get_object_or_404(Enrollments, id=enrollment_id)
+        
+        # Check permissions
+        user = self.request.user
+        if user.role == 'Student' and enrollment.user != user:
+            return AssessmentScore.objects.none()
+        elif user.role == 'Teacher' and not enrollment.course.instructors.filter(id=user.id).exists():
+            return AssessmentScore.objects.none()
+        elif user.role == 'Institution' and enrollment.course.institution != user:
+            return AssessmentScore.objects.none()
+            
+        return AssessmentScore.objects.filter(enrollment=enrollment).select_related('assessment').order_by('-submitted_at')
+
+class EnrollmentScoreView(generics.RetrieveAPIView):
+    """
+    API view to get the total score for a specific enrollment
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = EnrollmentsSerializer
+
+    def get_object(self):
+        enrollment_id = self.kwargs.get('enrollment_id')
+        enrollment = get_object_or_404(Enrollments, id=enrollment_id)
+        
+        # Check permissions
+        user = self.request.user
+        if user.role == 'Student' and enrollment.user != user:
+            raise PermissionDenied("You can only view your own enrollment scores")
+        elif user.role == 'Teacher' and not enrollment.course.instructors.filter(id=user.id).exists():
+            raise PermissionDenied("You can only view scores for courses you teach")
+        elif user.role == 'Institution' and enrollment.course.institution != user:
+            raise PermissionDenied("You can only view scores for your institution's courses")
+            
+        return enrollment

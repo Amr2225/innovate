@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'writtenquestion',
 
     # Rest Framework
     'rest_framework',
@@ -58,6 +57,8 @@ INSTALLED_APPS = [
     "django_extensions",
     "nanoid_field",
     "drf_spectacular",
+    'channels',
+    'corsheaders',
 
     # Apps
     'users',
@@ -67,8 +68,20 @@ INSTALLED_APPS = [
     'chapter',
     'lecture',
     'assessment',
-    'mcqQuestion'
+    'mcqQuestion',
+    'chat',
+    'MCQQuestionScore',
+    'HandwrittenQuestion',
 ]
+
+ASGI_APPLICATION = 'main.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -161,7 +174,15 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
+MEDIA_URL = '/uploads/'
+MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
+# Assessment Uploads Configuration
+ASSESSMENT_UPLOADS_DIR = 'AssessmentUploads'
+ASSESSMENT_UPLOADS_PATH = os.path.join(MEDIA_ROOT, ASSESSMENT_UPLOADS_DIR)
 
+# Create upload directories if they don't exist
+os.makedirs(MEDIA_ROOT, exist_ok=True)
+os.makedirs(ASSESSMENT_UPLOADS_PATH, exist_ok=True)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -227,9 +248,6 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-PAYMOB_PK = os.environ.get('PAYMOB_PK')
-PAYMOB_SK = os.environ.get('PAYMOB_SK')
-CLIENT_URL = os.environ.get('CLIENT_URL')
 
 AI_API_KEY = os.environ.get('AI_API_KEY')
 AI_PROVIDER = os.environ.get('AI_PROVIDER')

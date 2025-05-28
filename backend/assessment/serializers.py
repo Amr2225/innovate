@@ -1,81 +1,80 @@
 from rest_framework import serializers
-from .models import Assessment, AssessmentScore, Question, QuestionResponse
+from .models import Assessment, AssessmentScore, AssessmentSubmission
 from courses.models import Course
 from users.models import User
 from django.utils import timezone
-from django.db import models
-
-class QuestionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Question
-        fields = ['id', 'text', 'max_score', 'order']
-
-class QuestionResponseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = QuestionResponse
-        fields = ['id', 'question', 'answer', 'score', 'feedback', 'submitted_at']
-        read_only_fields = ['score', 'feedback']
+from django.core.exceptions import ValidationError
 
 class AssessmentSerializer(serializers.ModelSerializer):
-    questions = QuestionSerializer(many=True, read_only=True)
-    
+    course_name = serializers.CharField(source='course.name', read_only=True)
+    accepting_submissions = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = Assessment
-        fields = (
-            'id',
-            'title',
-            'type',
-            'due_date',
-            'grade',
-            'course',
-            'institution',
-            'questions'
-        )
-        read_only_fields = ('institution',)
+        fields = ('id', 'course', 'course_name', 'title', 'type', 'due_date', 'grade', 
+                 'start_date', 'accepting_submissions')
+        read_only_fields = ('id', 'course_name', 'accepting_submissions')
 
-    def create(self, validated_data):
-        request = self.context.get('request')
-        validated_data['institution'] = request.user
-        return super().create(validated_data)
 
-class StudentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ["id", "first_name", "middle_name", "last_name", "email"]
-
-class DetailedQuestionResponseSerializer(serializers.ModelSerializer):
-    question = QuestionSerializer()
-    
-    class Meta:
-        model = QuestionResponse
-        fields = ['question', 'answer', 'score', 'feedback', 'submitted_at']
 
 class AssessmentScoreSerializer(serializers.ModelSerializer):
-    submit_date = serializers.DateTimeField(default=timezone.now)
-    student = StudentSerializer(read_only=True)
-    score = serializers.IntegerField(read_only=True)
-    question_responses = serializers.SerializerMethodField()
-    total_possible = serializers.SerializerMethodField()
-    percentage = serializers.SerializerMethodField()
+    student_email = serializers.ReadOnlyField(source='enrollment.user.email')
+    assessment_title = serializers.ReadOnlyField(source='assessment.title')
+    course_name = serializers.ReadOnlyField(source='assessment.course.name')
 
     class Meta:
         model = AssessmentScore
-        fields = ['id', 'submit_date', 'score', 'assessment', 'student', 'question_responses', 'total_possible', 'percentage']
-        read_only_fields = ['id', 'submit_date', 'score']
+        fields = ('id', 'enrollment', 'student_email', 'assessment', 'assessment_title', 
+                 'course_name', 'total_score', 'submitted_at')
+        read_only_fields = ('student_email', 'assessment_title', 'course_name', 
+                          'submitted_at', 'total_score')
 
-    def get_question_responses(self, obj):
-        responses = QuestionResponse.objects.filter(
-            student=obj.student,
-            question__assessment=obj.assessment
-        ).select_related('question')
-        return DetailedQuestionResponseSerializer(responses, many=True).data
 
-    def get_total_possible(self, obj):
-        return obj.assessment.questions.aggregate(total=models.Sum('max_score'))['total'] or 0
+class AssessmentSubmissionSerializer(serializers.ModelSerializer):
+    student_email = serializers.ReadOnlyField(source='enrollment.user.email')
+    assessment_title = serializers.ReadOnlyField(source='assessment.title')
+    course_name = serializers.ReadOnlyField(source='assessment.course.name')
 
-    def get_percentage(self, obj):
-        total_possible = self.get_total_possible(obj)
-        if total_possible == 0:
-            return 0
-        return round((obj.score / total_possible) * 100, 2)
-        
+    class Meta:
+        model = AssessmentSubmission
+        fields = (
+            'id', 'assessment', 'enrollment', 'student_email', 
+            'assessment_title', 'course_name', 'mcq_answers', 
+            'handwritten_answers', 'submitted_at', 'is_submitted'
+        )
+        read_only_fields = (
+            'id', 'student_email', 'assessment_title', 
+            'course_name', 'submitted_at'
+        )
+
+    def validate(self, data):
+        # Ensure user is a student
+        if self.context['request'].user.role != "Student":
+            raise ValidationError("Only students can submit answers")
+
+        # Check if assessment is still accepting submissions
+        if not data['assessment'].accepting_submissions:
+            raise ValidationError("This assessment is no longer accepting submissions")
+
+        # Check if student is enrolled in the course
+        if not data['enrollment'].user == self.context['request'].user:
+            raise ValidationError("You can only submit for your own enrollment")
+
+        # Validate MCQ answers
+        for question_id, answer in data.get('mcq_answers', {}).items():
+            try:
+                question = data['assessment'].mcq_questions.get(id=question_id)
+                if answer not in question.options:
+                    raise ValidationError(f"Invalid answer for MCQ question {question_id}")
+            except Exception as e:
+                raise ValidationError(f"Invalid MCQ question ID: {question_id}")
+
+        # Validate Handwritten answers
+        for question_id, image_path in data.get('handwritten_answers', {}).items():
+            try:
+                question = data['assessment'].handwritten_questions.get(id=question_id)
+                # Additional validation for image path can be added here
+            except Exception as e:
+                raise ValidationError(f"Invalid Handwritten question ID: {question_id}")
+
+        return data
