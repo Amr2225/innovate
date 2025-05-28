@@ -24,3 +24,11 @@ class McqQuestion(models.Model):
 
     def __str__(self):
         return f"{self.assessment.title} - {self.question}"
+
+    def save(self, *args, **kwargs):
+        # Validate that question grade doesn't exceed assessment grade
+        self.assessment.validate_question_grade(
+            new_question_grade=self.question_grade,
+            existing_question_id=self.id if self.pk else None
+        )
+        super().save(*args, **kwargs)

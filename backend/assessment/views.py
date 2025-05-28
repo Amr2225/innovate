@@ -18,6 +18,7 @@ from django.http import Http404
 from django.shortcuts import render
 from HandwrittenQuestion.models import HandwrittenQuestion, HandwrittenQuestionScore
 from django.utils import timezone
+from AssessmentSubmission.models import AssessmentSubmission
 
 # ----------------------
 # Assessment Views
@@ -319,12 +320,47 @@ class StudentGradesAPIView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            enrollment_id = request.data.get('enrollment_id')
-            assessment_id = request.data.get('assessment_id')
+            assessment_id = kwargs.get('pk')
 
-            if not enrollment_id or not assessment_id:
+            if not assessment_id:
                 return Response({
-                    'detail': 'Both enrollment_id and assessment_id are required in request body'
+                    'detail': 'assessment_id is required in URL'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get the assessment
+            try:
+                assessment = Assessment.objects.get(id=assessment_id)
+            except Assessment.DoesNotExist:
+                return Response({
+                    'detail': 'Assessment not found'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            # Get student's enrollment
+            try:
+                is_completed = request.query_params.get('is_completed', 'false').lower() == 'true'
+                enrollment = Enrollments.objects.get(
+                    user=request.user,
+                    course=assessment.course,
+                    is_completed=is_completed
+                )
+            except Enrollments.DoesNotExist:
+                return Response({
+                    'detail': 'You are not enrolled in this course'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            # Check if assessment has been submitted
+            try:
+                submission = AssessmentSubmission.objects.get(
+                    assessment=assessment,
+                    enrollment=enrollment
+                )
+                if not submission.is_submitted:
+                    return Response({
+                        'detail': 'You haven\'t submitted this assessment yet'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            except AssessmentSubmission.DoesNotExist:
+                return Response({
+                    'detail': 'You haven\'t submitted this assessment yet'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
             # Get the assessment score
@@ -333,28 +369,13 @@ class StudentGradesAPIView(generics.GenericAPIView):
                     'assessment__course',
                     'enrollment__user'
                 ).get(
-                    enrollment_id=enrollment_id,
-                    assessment_id=assessment_id
+                    enrollment=enrollment,
+                    assessment=assessment
                 )
             except AssessmentScore.DoesNotExist:
                 return Response({
-                    'detail': 'No assessment score found for this Student and assessment'
+                    'detail': 'No assessment score found for this assessment'
                 }, status=status.HTTP_404_NOT_FOUND)
-
-            # Check permissions
-            user = request.user
-            if user.role == "Student" and str(assessment_score.enrollment.user.id) != str(user.id):
-                return Response({
-                    'detail': 'You can only view your own grades'
-                }, status=status.HTTP_403_FORBIDDEN)
-            elif user.role == "Teacher" and not assessment_score.assessment.course.instructors.filter(id=user.id).exists():
-                return Response({
-                    'detail': 'You can only view grades for your courses'
-                }, status=status.HTTP_403_FORBIDDEN)
-            elif user.role == "Institution" and assessment_score.assessment.course.institution != user:
-                return Response({
-                    'detail': 'You can only view grades for your institution'
-                }, status=status.HTTP_403_FORBIDDEN)
 
             # Get all MCQ questions and scores for this assessment and student
             mcq_scores = MCQQuestionScore.objects.filter(
@@ -362,11 +383,21 @@ class StudentGradesAPIView(generics.GenericAPIView):
                 enrollment=assessment_score.enrollment
             ).select_related('question')
 
+            # Get all handwritten questions and scores
+            handwritten_scores = HandwrittenQuestionScore.objects.filter(
+                question__assessment=assessment_score.assessment,
+                enrollment=assessment_score.enrollment
+            ).select_related('question')
+
             # Calculate total score of answered questions
-            total_answered_score = mcq_scores.aggregate(total=Sum('score'))['total'] or 0
+            mcq_total = mcq_scores.aggregate(total=Sum('score'))['total'] or 0
+            handwritten_total = handwritten_scores.aggregate(total=Sum('score'))['total'] or 0
+            total_answered_score = mcq_total + handwritten_total
 
             # Build questions data with student scores
             questions_data = []
+            
+            # Add MCQ questions
             for mcq_score in mcq_scores:
                 question_data = {
                     'question_id': str(mcq_score.question.id),
@@ -374,10 +405,11 @@ class StudentGradesAPIView(generics.GenericAPIView):
                     'student_answer': mcq_score.selected_answer,
                     'is_correct': mcq_score.is_correct,
                     'score': str(mcq_score.score),
-                    'max_score': str(mcq_score.question.question_grade)
+                    'max_score': str(mcq_score.question.question_grade),
+                    'type': 'mcq'
                 }
                 
-                if user.role in ['Teacher', 'Institution','Student']:
+                if request.user.role in ['Teacher', 'Institution', 'Student']:
                     question_data.update({
                         'options': mcq_score.question.options,
                         'correct_answer': mcq_score.question.answer_key
@@ -385,14 +417,32 @@ class StudentGradesAPIView(generics.GenericAPIView):
                 
                 questions_data.append(question_data)
 
+            # Add Handwritten questions
+            for handwritten_score in handwritten_scores:
+                question_data = {
+                    'question_id': str(handwritten_score.question.id),
+                    'question_text': handwritten_score.question.question_text,
+                    'type': 'handwritten',
+                    'score': str(handwritten_score.score),
+                    'max_score': str(handwritten_score.question.max_grade),
+                    'extracted_text': handwritten_score.extracted_text,
+                    'feedback': handwritten_score.feedback,
+                    'answer_image': request.build_absolute_uri(handwritten_score.answer_image.url) if handwritten_score.answer_image else None
+                }
+                
+                if request.user.role in ['Teacher', 'Institution']:
+                    question_data.update({
+                        'correct_answer': handwritten_score.question.answer_key
+                    })
+                
+                questions_data.append(question_data)
+
             response_data = {
                 'assessment_id': str(assessment_score.assessment.id),
                 'assessment_title': assessment_score.assessment.title,
-                'enrollment_id': str(assessment_score.enrollment.id),
-                'student_name': f"{assessment_score.enrollment.user.first_name} {assessment_score.enrollment.user.last_name}",
                 'questions': questions_data,
-                'total_score': int(total_answered_score),
-                'total_max_score': int(assessment_score.assessment.grade)
+                'total_score': float(total_answered_score),
+                'total_max_score': float(assessment_score.assessment.grade)
             }
 
             return Response(response_data)
