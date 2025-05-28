@@ -235,11 +235,11 @@ class AssessmentScore(models.Model):
 
     def save(self, *args, **kwargs):
         # Calculate total score from MCQ and Handwritten scores
-        mcq_total = self.enrollment.mcq_question_scores.filter(
+        mcq_total = self.enrollment.mcq_scores.filter(
             question__assessment=self.assessment
         ).aggregate(total=Sum('score'))['total'] or 0
 
-        handwritten_total = self.enrollment.handwritten_question_scores.filter(
+        handwritten_total = self.enrollment.handwritten_scores.filter(
             question__assessment=self.assessment
         ).aggregate(total=Sum('score'))['total'] or 0
 
