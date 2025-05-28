@@ -12,6 +12,8 @@ from assessment.models import Assessment
 from enrollments.models import Enrollments
 from mcqQuestion.models import McqQuestion
 from HandwrittenQuestion.models import HandwrittenQuestion, HandwrittenQuestionScore
+from django.conf import settings
+import os
 
 class AssessmentSubmissionPermission(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -230,7 +232,12 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                 )
 
             # Get all questions for the assessment that were generated for this student
-            all_questions = McqQuestion.objects.filter(
+            mcq_questions = McqQuestion.objects.filter(
+                assessment=assessment,
+                created_by=enrollment.user
+            )
+            
+            handwritten_questions = HandwrittenQuestion.objects.filter(
                 assessment=assessment,
                 created_by=enrollment.user
             )
@@ -242,7 +249,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     'options': q.options,
                     'answer_key': q.answer_key,
                     'question_grade': str(q.question_grade)
-                } for q in all_questions
+                } for q in mcq_questions
             }
             question_ids = list(question_details.keys())
 
@@ -271,19 +278,19 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Check if all questions are answered
+            # Check if all MCQ questions are answered
             missing_questions = set(question_ids) - set(mcq_data.keys())
             if missing_questions:
                 return Response(
                     {
-                        "detail": "Missing answers for some questions",
+                        "detail": "Missing answers for some MCQ questions",
                         "missing_questions": list(missing_questions),
                         "question_details": {qid: question_details[qid] for qid in missing_questions}
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Validate answers
+            # Validate MCQ answers
             for question_id, answer in mcq_data.items():
                 if question_id not in question_details:
                     return Response(
@@ -315,20 +322,117 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     try:
                         question = HandwrittenQuestion.objects.get(
                             id=question_id,
-                            assessment=assessment,
-                            created_by=enrollment.user
+                            assessment=assessment
                         )
                     except HandwrittenQuestion.DoesNotExist:
-                        continue
+                        return Response(
+                            {"detail": f"Invalid handwritten question ID: {question_id}"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
-                    # Save the image and get its path
-                    score = HandwrittenQuestionScore(
-                        question=question,
-                        enrollment=enrollment,
-                        answer_image=image
-                    )
-                    score.save()
-                    handwritten_answers[str(question_id)] = score.answer_image.path
+                    try:
+                        # Now evaluate the answer using AI
+                        from main.AI import evaluate_handwritten_answer
+                        from django.core.files.base import ContentFile
+                        import io
+                        from PIL import Image as PILImage
+                        import tempfile
+                        import os
+
+                        # Ensure we have a proper file object
+                        if not hasattr(image, 'read'):
+                            # If it's not a file object, create one
+                            image_content = image.read()
+                            image = ContentFile(image_content, name=image.name)
+                        
+                        # Reset file pointer to beginning
+                        image.seek(0)
+                        
+                        # Open and process the image
+                        pil_image = PILImage.open(image)
+                        if pil_image.mode != 'RGB':
+                            pil_image = pil_image.convert('RGB')
+                        
+                        # Create a temporary file
+                        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+                            # Save the image to the temporary file
+                            pil_image.save(temp_file, format='JPEG', quality=95)
+                            temp_file_path = temp_file.name
+                        
+                        try:
+                            # Create a file-like object with both read and path attributes
+                            class FileWithPath:
+                                def __init__(self, path):
+                                    self.path = path
+                                    self._file = open(path, 'rb')
+                                
+                                def read(self, size=-1):
+                                    return self._file.read(size)
+                                
+                                def seek(self, pos):
+                                    self._file.seek(pos)
+                                
+                                def close(self):
+                                    if hasattr(self._file, 'close'):
+                                        self._file.close()
+                            
+                            # Create the file object
+                            file_obj = FileWithPath(temp_file_path)
+                            
+                            try:
+                                # Evaluate the answer using the file object
+                                score, feedback, extracted_text = evaluate_handwritten_answer(
+                                    question=question.question_text,
+                                    answer_key=question.answer_key,
+                                    student_answer_image=file_obj,
+                                    max_grade=float(question.max_grade)
+                                )
+                            finally:
+                                # Ensure the file is closed
+                                file_obj.close()
+                        finally:
+                            # Clean up the temporary file
+                            try:
+                                if os.path.exists(temp_file_path):
+                                    os.unlink(temp_file_path)
+                            except Exception as e:
+                                # Log the error but don't fail the request
+                                print(f"Warning: Failed to delete temporary file {temp_file_path}: {str(e)}")
+                        
+                        # Reset file pointer again for saving
+                        image.seek(0)
+
+                        # Create or update the score record
+                        score_obj, created = HandwrittenQuestionScore.objects.update_or_create(
+                            question=question,
+                            enrollment=enrollment,
+                            defaults={
+                                'answer_image': image,
+                                'score': score,
+                                'feedback': feedback,
+                                'extracted_text': extracted_text
+                            }
+                        )
+
+                        # Store only the relative path in handwritten_answers
+                        relative_path = os.path.relpath(score_obj.answer_image.path, settings.MEDIA_ROOT)
+                        handwritten_answers[str(question_id)] = relative_path
+                    except Exception as e:
+                        return Response(
+                            {"detail": f"Error evaluating handwritten answer: {str(e)}"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+            # Check if all handwritten questions are answered
+            missing_handwritten = set(str(q.id) for q in handwritten_questions) - set(handwritten_answers.keys())
+            if missing_handwritten:
+                return Response(
+                    {
+                        "detail": "Missing answers for some handwritten questions",
+                        "missing_questions": list(missing_handwritten)
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             # Update submission
             with transaction.atomic():
@@ -337,29 +441,11 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                 submission.is_submitted = True
                 submission.save()
 
-            # Prepare detailed response with questions and answers
-            response_data = {
-                "message": "Assessment submitted successfully",
-                "submission_id": str(submission.id),
-                "questions": []
-            }
-
-            # Add question details with answers
-            for question_id, answer in mcq_answers.items():
-                question = all_questions.get(id=question_id)
-                if question:
-                    question_data = {
-                        "id": str(question.id),
-                        "question": question.question,
-                        "options": question.options,
-                        "answer_key": question.answer_key,
-                        "question_grade": str(question.question_grade),
-                        "selected_answer": answer,
-                        "is_correct": answer == question.answer_key
-                    }
-                    response_data["questions"].append(question_data)
-
-            return Response(response_data, status=status.HTTP_201_CREATED)
+            # Return simple success message
+            return Response(
+                {"message": "Assessment submitted successfully"},
+                status=status.HTTP_201_CREATED
+            )
 
         except Exception as e:
             return Response(

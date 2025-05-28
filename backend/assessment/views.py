@@ -535,6 +535,7 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
             # Add dynamic MCQ questions
             formatted_questions.extend([
                 {
+                    
                     'type': 'dynamic_mcq',
                     'id': str(q['id']),
                     'question': q['question'],
