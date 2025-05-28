@@ -23,5 +23,5 @@ urlpatterns = [
     path('scores/<uuid:pk>/', AssessmentScoreDetailAPIView.as_view(), name='assessment-score-detail'),
     
     # Student grades endpoint
-    path('student-grades/', StudentGradesAPIView.as_view(), name='student-grades'),
+    path('student-grades/<uuid:pk>/', StudentGradesAPIView.as_view(), name='student-grades'),
 ]

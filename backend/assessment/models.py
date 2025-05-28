@@ -217,7 +217,56 @@ class Assessment(models.Model):
 
         except Exception as e:
             raise ValidationError(f"Error generating dynamic questions: {str(e)}")
-    
+
+    def validate_question_grade(self, new_question_grade, existing_question_id=None):
+        """
+        Validate that adding a new question grade won't exceed the assessment's total grade.
+        
+        Args:
+            new_question_grade: The grade of the new question being added
+            existing_question_id: The ID of an existing question being updated (if any)
+        
+        Returns:
+            bool: True if validation passes
+        
+        Raises:
+            ValidationError: If the total grade would exceed the assessment grade
+        """
+        # Get total grade of all MCQ questions
+        mcq_total = self.mcq_questions.aggregate(
+            total=models.Sum('question_grade')
+        )['total'] or 0
+
+        # Get total grade of all handwritten questions
+        handwritten_total = self.handwritten_questions.aggregate(
+            total=models.Sum('max_grade')
+        )['total'] or 0
+
+        # If updating an existing question, subtract its current grade
+        if existing_question_id:
+            try:
+                # Check MCQ questions
+                mcq_question = self.mcq_questions.get(id=existing_question_id)
+                mcq_total -= mcq_question.question_grade
+            except McqQuestion.DoesNotExist:
+                try:
+                    # Check handwritten questions
+                    handwritten_question = self.handwritten_questions.get(id=existing_question_id)
+                    handwritten_total -= handwritten_question.max_grade
+                except HandwrittenQuestion.DoesNotExist:
+                    pass
+
+        # Calculate new total
+        new_total = mcq_total + handwritten_total + new_question_grade
+
+        # Check if new total exceeds assessment grade
+        if new_total > self.grade:
+            raise ValidationError(
+                f"Total question grades ({new_total}) would exceed assessment grade ({self.grade})"
+            )
+
+        return True
+
 class AssessmentScore(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='scores')
