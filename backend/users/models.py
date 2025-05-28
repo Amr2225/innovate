@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserM
 from nanoid_field import NanoidField
 from .validation import nationalId_length_validation
 import uuid
+from django.core.exceptions import ValidationError
 
 # Create your models here.
 
@@ -31,7 +32,7 @@ class CustomManager(UserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     Role = [
-        ("INSTITUTION", "Institution"),
+        ("Institution", "Institution"),
         ("Student", "Student"),
         ("Teacher", "Teacher"),
         ("Admin", "Admin"),
@@ -107,7 +108,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     
     def clean(self):
         super().clean()
-        if self.role == self.Role.INSTITUTION and not self.institution_type:
+        if self.role == "Institution" and not self.institution_type:
             raise ValidationError({
                 'institution_type': 'This field is required when the role is Institution.'
             })

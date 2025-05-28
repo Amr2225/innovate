@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from users.models import User
 from courses.models import Course
 from django.db.models import Sum, Count
+from decimal import Decimal
 
 
 class Enrollments(models.Model):
@@ -26,14 +27,24 @@ class Enrollments(models.Model):
         Returns the average score across all assessments.
         """
         from assessment.models import AssessmentScore
-        result = AssessmentScore.objects.filter(
-            enrollment=self
-        ).aggregate(
+        
+        # Get all assessment scores for this enrollment
+        scores = AssessmentScore.objects.filter(enrollment=self)
+        
+        # If no scores exist, return 0
+        if not scores.exists():
+            return Decimal('0.00')
+        
+        # Calculate total and count
+        result = scores.aggregate(
             total=Sum('total_score'),
             count=Count('id')
         )
         
-        if result['count'] == 0:
-            return 0
-            
-        return round(result['total'] / result['count'], 2)
+        # Ensure we have valid numbers
+        total = result['total'] or Decimal('0.00')
+        count = result['count'] or 1
+        
+        # Calculate average and round to 2 decimal places
+        average = (total / count).quantize(Decimal('0.01'))
+        return average
