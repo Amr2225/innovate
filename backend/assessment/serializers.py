@@ -27,7 +27,7 @@ class AssessmentScoreSerializer(serializers.ModelSerializer):
         fields = ('id', 'enrollment', 'student_email', 'assessment', 'assessment_title', 
                  'course_name', 'total_score', 'submitted_at')
         read_only_fields = ('student_email', 'assessment_title', 'course_name', 
-                          'submitted_at', 'total_score')
+                          'submitted_at')
 
 
 class AssessmentSubmissionSerializer(serializers.ModelSerializer):

@@ -180,7 +180,12 @@ class AssessmentScore(models.Model):
         
         # Set total score
         self.total_score = mcq_total + handwritten_total
+        
+        # Save the assessment score
         super().save(*args, **kwargs)
+        
+        # Update the enrollment's total score
+        self.enrollment.update_total_score()
 
 class AssessmentSubmission(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

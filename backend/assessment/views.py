@@ -221,6 +221,27 @@ class AssessmentScoreRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroy
             )
         return AssessmentScore.objects.none()
 
+    def update(self, request, *args, **kwargs):
+        # Only teachers and institutions can update scores
+        if request.user.role not in ["Teacher", "Institution"]:
+            raise PermissionDenied("Only teachers and institutions can update scores")
+        
+        # Get the assessment score
+        instance = self.get_object()
+        
+        # Check if the user has permission to update this score
+        if request.user.role == "Teacher" and not instance.assessment.course.instructors.filter(id=request.user.id).exists():
+            raise PermissionDenied("You can only update scores for your courses")
+        elif request.user.role == "Institution" and instance.assessment.course.institution != request.user:
+            raise PermissionDenied("You can only update scores for your institution")
+        
+        # Update the score
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        
+        return Response(serializer.data)
+
 class AssessmentQuestionsAPIView(generics.ListAPIView):
     """View to get all questions for a specific assessment"""
     serializer_class = McqQuestionSerializer

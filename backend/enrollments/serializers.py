@@ -13,7 +13,7 @@ class StudentSerializer(serializers.ModelSerializer):
 class EnrollmentsSerializer(serializers.ModelSerializer):
     user_data = StudentSerializer(source='user', read_only=True)
     course_data = serializers.SerializerMethodField()
-    total_score = serializers.DecimalField(max_digits=5, decimal_places=2, read_only=True)
+    total_score = serializers.DecimalField(max_digits=5, decimal_places=2)
 
     class Meta:
         model = Enrollments

@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
+from decimal import Decimal
 
 from courses.models import Course
 from enrollments.models import Enrollments
@@ -147,3 +148,51 @@ class EnrollmentScoreView(generics.RetrieveAPIView):
             raise PermissionDenied("You can only view scores for your institution's courses")
             
         return enrollment
+
+class EnrollmentUpdateScoreView(generics.UpdateAPIView):
+    """
+    API view to update the total score for a specific enrollment
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = EnrollmentsSerializer
+    queryset = Enrollments.objects.all()
+
+    def update(self, request, *args, **kwargs):
+        enrollment = self.get_object()
+        user = request.user
+
+        # Check permissions
+        if user.role == 'Student':
+            raise PermissionDenied("Students cannot update scores")
+        elif user.role == 'Teacher' and not enrollment.course.instructors.filter(id=user.id).exists():
+            raise PermissionDenied("You can only update scores for courses you teach")
+        elif user.role == 'Institution' and enrollment.course.institution != user:
+            raise PermissionDenied("You can only update scores for your institution's courses")
+
+        # Get the new score from request data
+        new_score = request.data.get('total_score')
+        if new_score is None:
+            return Response({"error": "total_score is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Convert to Decimal and validate
+            score = Decimal(str(new_score))
+            if score < 0 or score > 100:
+                return Response(
+                    {"error": "Score must be between 0 and 100"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Update the score
+            enrollment.total_score = score
+            enrollment.save()
+            
+            return Response(
+                self.get_serializer(enrollment).data,
+                status=status.HTTP_200_OK
+            )
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Invalid score value"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )

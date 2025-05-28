@@ -13,6 +13,7 @@ class Enrollments(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
     enrolled_at = models.DateTimeField(auto_now_add=True)
     is_completed = models.BooleanField(default=False)
+    total_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     class Meta:
         unique_together = ('user', 'course')
@@ -20,20 +21,21 @@ class Enrollments(models.Model):
     def __str__(self):
         return f"{self.user.email} - {self.course.name}"
 
-    @property
-    def total_score(self):
+    def update_total_score(self):
         """
-        Calculates the total score from all assessment scores for this enrollment.
-        Returns the average score across all assessments.
+        Updates the total score from all assessment scores for this enrollment.
+        Calculates the average score across all assessments and saves it to the database.
         """
         from assessment.models import AssessmentScore
         
         # Get all assessment scores for this enrollment
         scores = AssessmentScore.objects.filter(enrollment=self)
         
-        # If no scores exist, return 0
+        # If no scores exist, set total_score to 0
         if not scores.exists():
-            return Decimal('0.00')
+            self.total_score = Decimal('0.00')
+            self.save()
+            return
         
         # Calculate total and count
         result = scores.aggregate(
@@ -46,5 +48,5 @@ class Enrollments(models.Model):
         count = result['count'] or 1
         
         # Calculate average and round to 2 decimal places
-        average = (total / count).quantize(Decimal('0.01'))
-        return average
+        self.total_score = (total / count).quantize(Decimal('0.01'))
+        self.save()

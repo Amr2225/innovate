@@ -35,7 +35,6 @@ class ChatRoom(models.Model):
         
         return False
 
-
 class Message(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     room = models.ForeignKey(ChatRoom, on_delete=models.CASCADE, related_name='messages')
@@ -51,4 +50,5 @@ class Message(models.Model):
     class Meta:
         ordering = ['-timestamp']
 # models.py
+
 
