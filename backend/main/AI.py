@@ -481,3 +481,119 @@ def generate_mcq_questions(context, num_questions, difficulty='3'):
     except Exception as e:
         logger.error(f"Error generating MCQ questions: {str(e)}")
         raise ValidationError(f"Error generating questions: {str(e)}")
+
+def generate_mcqs_from_multiple_pdfs(pdf_files, num_questions_per_pdf=10):
+    """
+    Generate MCQs from multiple PDF files
+    Args:
+        pdf_files: List of PDF files (InMemoryUploadedFile objects)
+        num_questions_per_pdf (int): Number of questions to generate per PDF
+    Returns:
+        list: List of MCQ dictionaries
+    """
+    try:
+        all_mcqs = []
+        for pdf_file in pdf_files:
+            # Extract text from PDF
+            text = extract_text_from_pdf(pdf_file)
+            if not text:
+                logger.warning(f"No text extracted from PDF: {pdf_file.name}")
+                continue
+
+            # Update the prompt with the text
+            dmcq[1]['content'] = f"""
+            context: {text}
+
+            Based on the provided context, generate {num_questions_per_pdf} multiple-choice questions. Your response must be strictly in the following JSON format:
+
+            [{{"question": "<question text>",
+              "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"],
+              "correct_answer": "<exact text of the correct option>"}}]
+
+            CRITICAL REQUIREMENTS:
+            1. Each question MUST have EXACTLY 4 options - no more, no less
+            2. The correct_answer MUST match EXACTLY one of the options
+            3. Return ONLY the JSON array, no additional text
+            4. Each option MUST be a string
+            5. The options array MUST contain EXACTLY 4 strings
+            6. Do not include any explanations or additional text
+            7. Ensure the JSON is valid and properly formatted
+
+            Example of valid response:
+            [
+                {{
+                    "question": "What is the capital of France?",
+                    "options": ["London", "Berlin", "Paris", "Madrid"],
+                    "correct_answer": "Paris"
+                }}
+            ]
+            """
+
+            # Make API call to generate MCQs
+            completion = client.chat.completions.create(
+                model=settings.AI_MODEL,
+                messages=dmcq,
+                temperature=0.7,  # Lower temperature for more consistent output
+                max_tokens=2000,  # Increased max tokens for multiple questions
+            )
+
+            # Extract and validate JSON from response
+            try:
+                response_content = completion.choices[0].message.content
+                logger.debug(f"Raw AI response: {response_content}")
+
+                # First try to find JSON array in the response
+                json_match = re.search(r'\[.*\]', response_content, re.DOTALL)
+                if json_match:
+                    json_str = json_match.group(0)
+                    mcq_data = json.loads(json_str)
+                else:
+                    # If no JSON array found, try to parse the entire response
+                    mcq_data = json.loads(response_content)
+
+                # Validate the structure
+                if not isinstance(mcq_data, list):
+                    logger.error(f"Response is not a list: {mcq_data}")
+                    raise ValueError("Response is not a list")
+
+                # Validate each question
+                for q in mcq_data:
+                    if not isinstance(q, dict):
+                        logger.error(f"Invalid question format: {q}")
+                        raise ValueError("Invalid question format")
+                    
+                    if not all(key in q for key in ['question', 'options', 'correct_answer']):
+                        logger.error(f"Missing required fields in question: {q}")
+                        raise ValueError("Missing required fields")
+                    
+                    if not isinstance(q['options'], list):
+                        logger.error(f"Options is not a list: {q['options']}")
+                        raise ValueError("Options must be a list")
+                    
+                    if len(q['options']) != 4:
+                        logger.error(f"Invalid number of options: {len(q['options'])}")
+                        raise ValueError(f"Must have exactly 4 options, got {len(q['options'])}")
+                    
+                    if not all(isinstance(opt, str) for opt in q['options']):
+                        logger.error(f"Non-string option found: {q['options']}")
+                        raise ValueError("All options must be strings")
+                    
+                    if q['correct_answer'] not in q['options']:
+                        logger.error(f"Correct answer not in options: {q['correct_answer']} not in {q['options']}")
+                        raise ValueError("Correct answer must match one of the options")
+
+                all_mcqs.extend(mcq_data[:num_questions_per_pdf])
+
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parsing error: {str(e)}")
+                logger.debug(f"Raw response: {response_content}")
+                raise ValueError(f"Failed to parse AI response: {str(e)}")
+
+        if not all_mcqs:
+            raise ValueError("No valid MCQs were generated from any of the PDFs")
+
+        return all_mcqs
+
+    except Exception as e:
+        logger.error(f"Failed to generate MCQs from multiple PDFs: {str(e)}")
+        raise ValueError(f"Failed to generate MCQs: {str(e)}")
