@@ -5,7 +5,8 @@ from .views import (
     McqQuestionListCreateAPIView,
     McqQuestionRetrieveUpdateDestroyAPIView,
     GenerateMCQsFromTextView,
-    GenerateMCQsFromPDFView
+    GenerateMCQsFromPDFView,
+    GenerateMCQsFromMultiplePDFsView
 )
 
 router = DefaultRouter()
@@ -32,5 +33,10 @@ urlpatterns = [
         'assessments/<str:assessment_id>/generate-from-pdf/',
         GenerateMCQsFromPDFView.as_view(),
         name='mcq-generate-from-pdf'
+    ),
+    path(
+        'assessments/<str:assessment_id>/generate-from-multiple-pdfs/',
+        GenerateMCQsFromMultiplePDFsView.as_view(),
+        name='mcq-generate-from-multiple-pdfs'
     ),
 ]

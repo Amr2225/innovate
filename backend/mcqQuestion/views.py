@@ -6,17 +6,21 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.conf import settings
 from django.db.models import Q, Sum, Count
-from .models import McqQuestion
+from django.apps import apps
 from .serializers import McqQuestionSerializer
 from rest_framework.parsers import MultiPartParser, JSONParser
 from django.core.exceptions import ValidationError as DjangoValidationError
-from main.AI import generate_mcqs_from_text, extract_text_from_pdf
+from main.AI import generate_mcqs_from_text, extract_text_from_pdf, generate_mcqs_from_multiple_pdfs
 from decimal import Decimal
 from assessment.models import AssessmentScore, Assessment
 from django.db import transaction
 from users.permissions import isInstitution, isTeacher, isStudent
 from enrollments.models import Enrollments
 from MCQQuestionScore.models import MCQQuestionScore
+import logging
+from .models import McqQuestion
+
+logger = logging.getLogger(__name__)
 
 class McqQuestionPermission(permissions.BasePermission):
     """Custom permission class for MCQ questions"""
@@ -226,24 +230,49 @@ class GenerateMCQsFromTextView(generics.GenericAPIView):
         saved_questions = []
         for mcq in mcq_data:
             try:
-                question = McqQuestion.objects.create(
-                    question=mcq['question'],
-                    options=mcq['options'],
-                    answer_key=mcq['correct_answer'],
-                    created_by=self.request.user,
-                    assessment_id=self.kwargs['assessment_id'],
-                    question_grade=question_grade
-                )
+                logger.info(f"Processing MCQ: {mcq}")
+                # Create question using serializer
+                serializer = self.get_serializer(data={
+                    'question': mcq['question'],
+                    'options': mcq['options'],
+                    'answer_key': mcq['correct_answer'],
+                    'assessment': self.kwargs['assessment_id'],
+                    'question_grade': question_grade,
+                    'section_number': 1  # Default section number
+                })
+                
+                # Log validation data
+                logger.info(f"Serializer data: {serializer.initial_data}")
+                
+                # Validate the data
+                if not serializer.is_valid():
+                    logger.error(f"Validation errors: {serializer.errors}")
+                    raise ValidationError(serializer.errors)
+                
+                # Save the question
+                question = serializer.save(created_by=self.request.user)
+                logger.info(f"Successfully saved question with ID: {question.id}")
+                
+                # Add to saved questions list
                 saved_questions.append({
                     'id': str(question.id),
                     'question': question.question,
                     'options': question.options,
                     'answer': question.answer_key,
-                    'question_grade': str(question.question_grade)
+                    'question_grade': str(question.question_grade),
+                    'section_number': question.section_number
                 })
             except Exception as e:
+                logger.error(f"Error saving question: {str(e)}")
+                logger.error(f"Error type: {type(e)}")
                 # If any question fails, delete all previously saved questions
-                McqQuestion.objects.filter(id__in=[q['id'] for q in saved_questions]).delete()
+                if saved_questions:
+                    for saved_q in saved_questions:
+                        try:
+                            instance = McqQuestion.objects.get(id=saved_q['id'])
+                            instance.delete()
+                        except Exception as delete_error:
+                            logger.error(f"Error deleting question {saved_q['id']}: {str(delete_error)}")
                 raise ValidationError(f"Error saving question: {str(e)}")
         return saved_questions
 
@@ -372,6 +401,151 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
                 'message': f'Successfully generated and saved {len(saved_questions)} MCQ questions',
                 'mcqs': saved_questions,
                 'num_questions': len(saved_questions)
+            }, status=status.HTTP_201_CREATED)
+
+        except ValidationError as e:
+            return Response({
+                'error': e.detail if hasattr(e, 'detail') else str(e),
+                'error_type': 'validation_error'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'error': str(e),
+                'error_type': 'processing_error'
+            }, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+
+class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
+    """
+    View for generating MCQ questions from multiple PDF files.
+    POST /mcqQuestion/assessments/{assessment_id}/generate-from-multiple-pdfs/
+    
+    Request body (multipart/form-data):
+    - pdf_files: Multiple PDF files to generate questions from (required)
+    - num_questions_per_pdf: number of questions per PDF (optional, default=10)
+    - question_grade: grade per question (optional, default=0.00)
+    """
+    parser_classes = (MultiPartParser,)
+    serializer_class = McqQuestionSerializer
+    permission_classes = [McqQuestionPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        base_queryset = McqQuestion.objects.select_related('assessment', 'created_by')
+
+        if user.role == "Student":
+            return base_queryset.filter(
+                assessment__course__enrollments__user=user
+            )
+        elif user.role in ["Teacher", "Institution"]:
+            return base_queryset.filter(
+                Q(created_by=user) |
+                Q(assessment__course__instructors=user) |
+                Q(assessment__course__institution=user)
+            )
+        return McqQuestion.objects.none()
+
+    def validate_num_questions(self, num_questions, default=10):
+        try:
+            num = int(num_questions) if num_questions is not None else default
+            if num < 1:
+                raise ValidationError("Number of questions must be positive")
+            if num > 50:
+                raise ValidationError("Maximum 50 questions allowed per PDF")
+            return num
+        except (TypeError, ValueError):
+            raise ValidationError("Number of questions must be a valid integer")
+
+    def validate_question_grade(self, question_grade):
+        try:
+            grade = Decimal(str(question_grade)) if question_grade is not None else Decimal('0.00')
+            if grade < Decimal('0.00'):
+                raise ValidationError("Question grade cannot be negative")
+            if grade > Decimal('100.00'):
+                raise ValidationError("Question grade cannot exceed 100")
+            return grade
+        except (TypeError, ValueError):
+            raise ValidationError("Question grade must be a valid decimal number")
+
+    def save_mcq_questions(self, mcq_data, question_grade):
+        saved_questions = []
+        for mcq in mcq_data:
+            try:
+                logger.info(f"Processing MCQ: {mcq}")
+                # Create question using serializer
+                serializer = self.get_serializer(data={
+                    'question': mcq['question'],
+                    'options': mcq['options'],
+                    'answer_key': mcq['correct_answer'],
+                    'assessment': self.kwargs['assessment_id'],
+                    'question_grade': question_grade,
+                    'section_number': 1  # Default section number
+                })
+                
+                # Log validation data
+                logger.info(f"Serializer data: {serializer.initial_data}")
+                
+                # Validate the data
+                if not serializer.is_valid():
+                    logger.error(f"Validation errors: {serializer.errors}")
+                    raise ValidationError(serializer.errors)
+                
+                # Save the question
+                question = serializer.save(created_by=self.request.user)
+                logger.info(f"Successfully saved question with ID: {question.id}")
+                
+                # Add to saved questions list
+                saved_questions.append({
+                    'id': str(question.id),
+                    'question': question.question,
+                    'options': question.options,
+                    'answer': question.answer_key,
+                    'question_grade': str(question.question_grade),
+                    'section_number': question.section_number
+                })
+            except Exception as e:
+                logger.error(f"Error saving question: {str(e)}")
+                logger.error(f"Error type: {type(e)}")
+                # If any question fails, delete all previously saved questions
+                if saved_questions:
+                    for saved_q in saved_questions:
+                        try:
+                            instance = McqQuestion.objects.get(id=saved_q['id'])
+                            instance.delete()
+                        except Exception as delete_error:
+                            logger.error(f"Error deleting question {saved_q['id']}: {str(delete_error)}")
+                raise ValidationError(f"Error saving question: {str(e)}")
+        return saved_questions
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Validate input
+            if 'pdf_files' not in request.FILES:
+                raise ValidationError({"pdf_files": "PDF files are required"})
+            
+            pdf_files = request.FILES.getlist('pdf_files')
+            if not pdf_files:
+                raise ValidationError({"pdf_files": "At least one PDF file is required"})
+            
+            # Validate all files are PDFs
+            for pdf_file in pdf_files:
+                if not pdf_file.name.endswith('.pdf'):
+                    raise ValidationError({"pdf_files": f"File {pdf_file.name} is not a PDF"})
+            
+            num_questions_per_pdf = self.validate_num_questions(request.data.get('num_questions_per_pdf'))
+            question_grade = self.validate_question_grade(request.data.get('question_grade'))
+            
+            # Generate MCQs from all PDFs
+            mcq_data = generate_mcqs_from_multiple_pdfs(pdf_files, num_questions_per_pdf)
+            
+            # Save to database
+            saved_questions = self.save_mcq_questions(mcq_data, question_grade)
+            
+            return Response({
+                'message': f'Successfully generated and saved {len(saved_questions)} MCQ questions from {len(pdf_files)} PDF files',
+                'mcqs': saved_questions,
+                'num_questions': len(saved_questions),
+                'num_pdfs': len(pdf_files)
             }, status=status.HTTP_201_CREATED)
 
         except ValidationError as e:
