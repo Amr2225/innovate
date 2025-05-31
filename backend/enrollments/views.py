@@ -57,11 +57,13 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         user = request.user
-        print(request.data)
         course_ids = request.data.get("courses", [])
 
         if not isinstance(course_ids, list) or not course_ids:
             return Response({"error": "Please provide a list of course IDs."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get user institutions for validation
+        user_institutions = user.institution.all()
 
         completed_course_ids = set(Enrollments.objects.filter(
             user=user,
@@ -73,23 +75,36 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
         ).values_list('course_id', flat=True))
 
         enrolled_courses = []
-        skipped_courses = {}
 
         for course_id in course_ids:
             try:
                 course = Course.objects.get(id=course_id)
             except Course.DoesNotExist:
-                skipped_courses[course_id] = "Course not found."
-                continue
+                return Response(
+                    {"error": f"Course not found."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check if course belongs to one of the user's institutions
+            if course.institution not in user_institutions:
+                return Response(
+                    {"error": f"Course not from your institution."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             if course.id in enrolled_course_ids:
-                skipped_courses[course.name] = "Already enrolled."
-                continue
+                return Response(
+                    {"error": f"Already enrolled."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
+            # Check prerequisites - return 400 error if not completed
             prereq = course.prerequisite_course
             if prereq and prereq.id not in completed_course_ids:
-                skipped_courses[course_id] = "Prerequisite not completed."
-                continue
+                return Response(
+                    {"error": f"Prerequisite is not completed."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
             enrollment = Enrollments.objects.create(user=user, course=course)
             enrolled_courses.append(enrollment)
@@ -104,5 +119,4 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
 
         return Response({
             "enrolled": EnrollmentsSerializer(enrolled_courses, many=True, context={'request': request}).data,
-            "skipped": skipped_courses
         }, status=status.HTTP_201_CREATED)

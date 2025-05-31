@@ -1,14 +1,29 @@
+// TODO: Make a general storage init file for all the storage files
 export const initVideoDB = () => {
     return new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('innovateTemp-video-db', 1);
+        const request = indexedDB.open('innovateTemp-course-db', 1);
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => resolve(request.result);
 
         request.onupgradeneeded = (event) => {
             const db = (event.target as IDBOpenDBRequest).result;
+
+            // Create store for videos
             if (!db.objectStoreNames.contains('videos')) {
                 db.createObjectStore('videos');
+            }
+
+            // Create store for attachment files (ensure compatibility with attachmentStorage.ts)
+            if (!db.objectStoreNames.contains('attachments')) {
+                db.createObjectStore('attachments');
+            }
+
+            // Create store for attachment metadata (ensure compatibility with attachmentStorage.ts)
+            if (!db.objectStoreNames.contains('attachmentList')) {
+                const store = db.createObjectStore('attachmentList', { keyPath: 'id' });
+                // Create an index to quickly find attachments by lecture ID
+                store.createIndex('byLectureId', 'lectureId', { unique: false });
             }
         };
     });
