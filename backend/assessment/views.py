@@ -19,6 +19,7 @@ from django.shortcuts import render
 from HandwrittenQuestion.models import HandwrittenQuestion, HandwrittenQuestionScore
 from django.utils import timezone
 from AssessmentSubmission.models import AssessmentSubmission
+from django.apps import apps
 
 # ----------------------
 # Assessment Views
@@ -484,37 +485,27 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
         try:
             assessment = self.get_object()
             
-            # Get student's enrollment
-            enrollment = None
-            if request.user.role == 'Student':
-                try:
-                    is_completed = request.query_params.get('is_completed', 'false').lower() == 'true'
-                    enrollment = Enrollments.objects.get(
-                        user=request.user,
-                        course=assessment.course,
-                        is_completed=is_completed
-                    )
-                except Enrollments.DoesNotExist:
-                    return Response(
-                        {"detail": "You are not enrolled in this course"},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-            
             # Get all questions based on user role
             if request.user.role == "Student":
                 # For students, only get their own questions
                 mcq_questions = assessment.mcq_questions.filter(
                     assessment=assessment,
-                    created_by=enrollment.user
+                    created_by=request.user
                 )
                 handwritten_questions = assessment.handwritten_questions.filter(
                     assessment=assessment,
-                    created_by=enrollment.user
+                    created_by=request.user
                 )
             else:
                 # For teachers and institutions, get all questions
-                mcq_questions = assessment.mcq_questions.filter(assessment=assessment)
-                handwritten_questions = assessment.handwritten_questions.filter(assessment=assessment)
+                mcq_questions = assessment.mcq_questions.all()
+                handwritten_questions = assessment.handwritten_questions.all()
+
+            # Get dynamic MCQs
+            DynamicMCQ = apps.get_model('DynamicMCQ', 'DynamicMCQ')
+            DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
+            dynamic_mcqs = DynamicMCQ.objects.filter(assessment=assessment)
+            dynamic_questions = DynamicMCQQuestions.objects.filter(dynamic_mcq__in=dynamic_mcqs)
 
             # Prepare response data
             response_data = {
@@ -522,6 +513,19 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
                 'assessment_title': assessment.title,
                 'questions': []
             }
+
+            # Add Dynamic MCQ questions
+            for question in dynamic_questions:
+                question_data = {
+                    'id': str(question.id),
+                    'type': 'dynamic_mcq',
+                    'question': question.question_text,
+                    'options': question.options,
+                    'answer_key': question.correct_answer,
+                    'difficulty': question.difficulty,
+                    'created_by': str(question.created_by.id) if question.created_by else None
+                }
+                response_data['questions'].append(question_data)
 
             # Add MCQ questions
             for question in mcq_questions:
@@ -531,7 +535,8 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
                     'question': question.question,
                     'options': question.options,
                     'answer_key': question.answer_key,
-                    'question_grade': str(question.question_grade)
+                    'question_grade': str(question.question_grade),
+                    'created_by': str(question.created_by.id) if question.created_by else None
                 }
                 response_data['questions'].append(question_data)
 
@@ -542,15 +547,16 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
                     'type': 'handwritten',
                     'question': question.question_text,
                     'answer_key': question.answer_key,
-                    'max_grade': str(question.max_grade)
+                    'max_grade': str(question.max_grade),
+                    'created_by': str(question.created_by.id) if question.created_by else None
                 }
                 response_data['questions'].append(question_data)
 
-            return Response(response_data)
+            return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response(
-                {"detail": f"An error occurred: {str(e)}"},
+                {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -602,12 +608,10 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
             # Add dynamic MCQ questions
             formatted_questions.extend([
                 {
-                    
                     'type': 'dynamic_mcq',
                     'id': str(q['id']),
                     'question': q['question'],
                     'options': q['options'],
-                    'difficulty': q['difficulty'],
                     'grade': q.get('grade', 0),
                     'section_number': q.get('section_number', 1)
                 } for q in questions.get('dynamic_mcq', [])

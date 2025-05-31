@@ -22,22 +22,27 @@ except Exception as e:
     logger.error(f"Failed to initialize AI client: {str(e)}")
     raise
 
-dmcq = [
-    {
-        "role": "system",
-        "content": "You are an assistant who generates multiple-choice questions (MCQs) based on a given context. Focus on creating questions that test key details and understanding of the topic. Each question should have one correct answer and three incorrect options that are plausible but distinct. Ensure clarity and relevance in both the questions and answer choices. the correct answer the numebr of correct question, don't repeat the correct answer number 2 times in a row"
-    },
-    {
-        "role": "user",
-        "content": ""  # This will be populated with the actual context
-    }
-]
-def generate_mcqs_from_pdf(pdf_file, num_questions=10):
+def get_mcq_prompt():
+    """Get a fresh copy of the MCQ prompt template"""
+    return [
+        {
+            "role": "system",
+            "content": "You are an assistant who generates multiple-choice questions (MCQs) based on a given context. Focus on creating questions that test key details and understanding of the topic. Each question should have one correct answer and three incorrect options that are plausible but distinct. Ensure clarity and relevance in both the questions and answer choices. the correct answer the numebr of correct question, don't repeat the correct answer number 2 times in a row"
+        },
+        {
+            "role": "user",
+            "content": ""  # This will be populated with the actual context
+        }
+    ]
+
+def generate_mcqs_from_pdf(pdf_file, num_questions=10, seed=None, difficulty='3'):
     """
     Extract text from PDF and generate MCQs using AI
     Args:
         pdf_file: InMemoryUploadedFile or path to PDF file
         num_questions (int): Number of questions to generate
+        seed (int): Optional seed for randomization
+        difficulty (str): Difficulty level ('1'=Very Easy, '2'=Easy, '3'=Medium, '4'=Hard, '5'=Very Hard)
     Returns:
         list: List of MCQ dictionaries
     """
@@ -46,7 +51,7 @@ def generate_mcqs_from_pdf(pdf_file, num_questions=10):
         text = extract_text_from_pdf(pdf_file)
         
         # Then generate MCQs from the extracted text
-        return generate_mcqs_from_text(text, num_questions)
+        return generate_mcqs_from_text(text, num_questions, seed, difficulty)
         
     except Exception as e:
         logger.error(f"Failed to generate MCQs from PDF: {str(e)}")
@@ -85,23 +90,47 @@ def extract_text_from_pdf(pdf_file):
         logger.error(f"PDF extraction error: {str(e)}")
         raise ValueError(f"Failed to extract text from PDF: {str(e)}")
 
-def generate_mcqs_from_text(text, num_questions=10):
+def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3'):
     """
     Generate MCQs from text using AI
     Args:
         text (str): Input text to generate questions from
         num_questions (int): Number of questions to generate
+        seed (int): Optional seed for randomization to ensure different questions per student
+        difficulty (str): Difficulty level ('1'=Very Easy, '2'=Easy, '3'=Medium, '4'=Hard, '5'=Very Hard)
     Returns:
         list: List of MCQ dictionaries
     """
     try:
-        logger.info(f"Generating {num_questions} MCQs from text")
+        logger.info(f"Generating {num_questions} MCQs from text with difficulty level {difficulty}")
         
-        # Update the prompt with the text
-        dmcq[1]['content'] = f"""
+        # Map difficulty level to description
+        difficulty_map = {
+            '1': 'Very Easy',
+            '2': 'Easy',
+            '3': 'Medium',
+            '4': 'Hard',
+            '5': 'Very Hard'
+        }
+        difficulty_desc = difficulty_map.get(difficulty, 'Medium')
+        
+        # Prepare difficulty requirements based on level
+        difficulty_requirements = {
+            'Very Easy': '- Focus on basic facts and definitions\n- Use simple, direct language\n- Make correct answer obvious\n- Avoid complex concepts',
+            'Easy': '- Include some basic application questions\n- Use clear, straightforward language\n- Make correct answer fairly obvious\n- Include some simple concept questions',
+            'Medium': '- Mix factual recall with understanding\n- Include some application questions\n- Use moderately complex language\n- Make distractors plausible',
+            'Hard': '- Focus on deeper understanding\n- Include analysis and application\n- Use more complex language\n- Make distractors very plausible',
+            'Very Hard': '- Focus on complex analysis and synthesis\n- Include higher-order thinking\n- Use sophisticated language\n- Make all options very plausible'
+        }
+        
+        # Get a fresh copy of the prompt template
+        prompt = get_mcq_prompt()
+        
+        # Update the prompt with the text and add variability instructions
+        prompt[1]['content'] = f"""
         context: {text}
 
-        Based on the provided context, generate {num_questions} multiple-choice questions. Your response must be strictly in the following JSON format:
+        Based on the provided context, generate {num_questions} multiple-choice questions at {difficulty_desc} difficulty level. Your response must be strictly in the following JSON format:
 
         [{{"question": "<question text>",
           "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"],
@@ -119,6 +148,19 @@ def generate_mcqs_from_text(text, num_questions=10):
         9. Do not include any trailing commas
         10. Do not include any comments or markdown formatting
 
+        DIFFICULTY REQUIREMENTS:
+        For {difficulty_desc} level questions:
+        {difficulty_requirements[difficulty_desc]}
+
+        VARIABILITY REQUIREMENTS:
+        1. Generate questions that test different aspects of the content
+        2. Use various question types (definition, application, analysis, etc.)
+        3. Vary the complexity and depth of questions
+        4. Ensure distractors are plausible but clearly incorrect
+        5. Avoid similar question structures or patterns
+        6. Mix both direct and indirect questions
+        7. Include questions that test both factual recall and understanding
+
         Example of valid response:
         [
             {{
@@ -129,13 +171,24 @@ def generate_mcqs_from_text(text, num_questions=10):
         ]
         """
 
-        # Make API call to generate MCQs
-        logger.debug("Making API call to generate MCQs")
+        # Adjust temperature based on difficulty
+        temperature_map = {
+            '1': 0.7,  # Lower temperature for more consistent, easier questions
+            '2': 0.75,
+            '3': 0.8,
+            '4': 0.85,
+            '5': 0.9   # Higher temperature for more creative, harder questions
+        }
+        temperature = temperature_map.get(difficulty, 0.8)
+
+        # Make API call to generate MCQs with difficulty-adjusted parameters
+        logger.debug(f"Making API call to generate MCQs with difficulty {difficulty_desc}")
         completion = client.chat.completions.create(
             model=settings.AI_MODEL,
-            messages=dmcq,
-            temperature=0.7,  # Reduced temperature for more consistent output
-            max_tokens=2000,  # Increased max tokens to ensure complete response
+            messages=prompt,
+            temperature=temperature,
+            max_tokens=1000,
+            seed=seed if seed is not None else None,
         )
 
         # Extract and validate JSON from response
@@ -162,7 +215,7 @@ def generate_mcqs_from_text(text, num_questions=10):
                 logger.error(f"Correct answer not found in options for question at index {i}")
                 raise ValueError("Correct answer must match one of the options")
 
-        logger.info(f"Successfully generated {len(mcq_data)} MCQs")
+        logger.info(f"Successfully generated {len(mcq_data)} MCQs at {difficulty_desc} difficulty")
         return mcq_data[:num_questions]
 
     except Exception as e:
@@ -582,13 +635,14 @@ def generate_mcq_questions(context, num_questions, difficulty='3'):
         logger.error(f"Error generating MCQ questions: {str(e)}")
         raise ValidationError(f"Error generating questions: {str(e)}")
 
-def generate_mcqs_from_multiple_pdfs(pdf_files, num_questions_per_pdf=10):
+def generate_mcqs_from_multiple_pdfs(pdf_files, num_questions_per_pdf=10, difficulty='3'):
     """
     Generate MCQs from multiple PDF files.
     
     Args:
         pdf_files: List of PDF files (can be File objects or file paths)
         num_questions_per_pdf: Number of questions to generate per PDF
+        difficulty (str): Difficulty level ('1'=Very Easy, '2'=Easy, '3'=Medium, '4'=Hard, '5'=Very Hard)
         
     Returns:
         List of dictionaries containing MCQ data
@@ -603,8 +657,8 @@ def generate_mcqs_from_multiple_pdfs(pdf_files, num_questions_per_pdf=10):
                 logger.warning(f"No text extracted from PDF: {pdf_file.name if hasattr(pdf_file, 'name') else pdf_file}")
                 continue
                 
-            # Generate MCQs from text
-            mcqs = generate_mcqs_from_text(text, num_questions_per_pdf)
+            # Generate MCQs from text with specified difficulty
+            mcqs = generate_mcqs_from_text(text, num_questions_per_pdf, difficulty=difficulty)
             if mcqs:
                 all_mcqs.extend(mcqs)
                 

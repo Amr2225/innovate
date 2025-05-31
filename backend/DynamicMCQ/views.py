@@ -46,41 +46,45 @@ class DynamicMCQListCreateAPIView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        assessment_id = self.kwargs.get('assessment_id')
         
         if user.role == "Student":
             # Students can only see MCQs for courses they're enrolled in
             return DynamicMCQ.objects.filter(
+                assessment_id=assessment_id,
                 assessment__course__enrollments__user=user
             ).distinct()
         elif user.role == "Teacher":
             # Teachers can see MCQs for their courses
             return DynamicMCQ.objects.filter(
+                assessment_id=assessment_id,
                 assessment__course__instructors=user
             )
         elif user.role == "Institution":
             # Institutions can see MCQs for their courses
             return DynamicMCQ.objects.filter(
+                assessment_id=assessment_id,
                 assessment__course__institution=user
             )
         
         return DynamicMCQ.objects.none()
 
     def perform_create(self, serializer):
-        assessment_id = self.request.data.get('assessment')
+        assessment_id = self.kwargs.get('assessment_id')
         try:
             assessment = Assessment.objects.get(id=assessment_id)
             
             # Check if user has permission to create MCQ for this assessment
-            if self.request.user.role == 'teacher':
-                if assessment.course.teacher != self.request.user.teacher:
+            if self.request.user.role == "Teacher":
+                if not assessment.course.instructors.filter(id=self.request.user.id).exists():
                     raise PermissionDenied("You don't have permission to create MCQs for this assessment")
-            elif self.request.user.role == 'institution':
-                if assessment.course.institution != self.request.user.institution:
+            elif self.request.user.role == "Institution":
+                if assessment.course.institution != self.request.user:
                     raise PermissionDenied("You don't have permission to create MCQs for this assessment")
             else:
                 raise PermissionDenied("Only teachers and institutions can create MCQs")
             
-            serializer.save()
+            serializer.save(assessment=assessment)
         except Assessment.DoesNotExist:
             raise PermissionDenied("Assessment not found")
 

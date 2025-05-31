@@ -9,11 +9,10 @@ class DynamicMCQSerializer(serializers.ModelSerializer):
         model = DynamicMCQ
         fields = [
             'id',
-            'assessment',
             'assessment_details',
             'section_number',
             'context',
-            'attachments',
+            'lecture_ids',
             'difficulty',
             'total_grade',
             'number_of_questions'
@@ -21,9 +20,9 @@ class DynamicMCQSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'assessment_details']
 
     def validate(self, data):
-        # Validate that either context or attachments is provided
-        if not data.get('context') and not data.get('attachments'):
-            raise serializers.ValidationError("Either context or attachments must be provided")
+        # Validate that either context or lecture_ids is provided
+        if not data.get('context') and not data.get('lecture_ids'):
+            raise serializers.ValidationError("Either context or lecture_ids must be provided")
         return data
 
 class DynamicMCQQuestionsSerializer(serializers.ModelSerializer):
