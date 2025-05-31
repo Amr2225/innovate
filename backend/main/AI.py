@@ -95,6 +95,8 @@ def generate_mcqs_from_text(text, num_questions=10):
         list: List of MCQ dictionaries
     """
     try:
+        logger.info(f"Generating {num_questions} MCQs from text")
+        
         # Update the prompt with the text
         dmcq[1]['content'] = f"""
         context: {text}
@@ -104,31 +106,63 @@ def generate_mcqs_from_text(text, num_questions=10):
         [{{"question": "<question text>",
           "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"],
           "correct_answer": "<exact text of the correct option>"}}]
+
+        CRITICAL REQUIREMENTS:
+        1. Return ONLY the JSON array, no other text
+        2. Each question MUST have EXACTLY 4 options - no more, no less
+        3. The correct_answer MUST match EXACTLY one of the options
+        4. Each option MUST be a string
+        5. The options array MUST contain EXACTLY 4 strings
+        6. Do not include any explanations or additional text
+        7. Ensure the JSON is valid and properly formatted
+        8. Use double quotes for all strings
+        9. Do not include any trailing commas
+        10. Do not include any comments or markdown formatting
+
+        Example of valid response:
+        [
+            {{
+                "question": "What is the capital of France?",
+                "options": ["London", "Berlin", "Paris", "Madrid"],
+                "correct_answer": "Paris"
+            }}
+        ]
         """
 
         # Make API call to generate MCQs
+        logger.debug("Making API call to generate MCQs")
         completion = client.chat.completions.create(
             model=settings.AI_MODEL,
             messages=dmcq,
-            temperature=0.9,
-            max_tokens=1000,
+            temperature=0.7,  # Reduced temperature for more consistent output
+            max_tokens=2000,  # Increased max tokens to ensure complete response
         )
 
         # Extract and validate JSON from response
+        logger.debug("Extracting JSON from AI response")
         mcq_data = extract_json(completion.choices[0].message.content)
         
         if not isinstance(mcq_data, list):
+            logger.error("Invalid response format: not a list")
             raise ValueError("Invalid response format from AI")
             
         # Validate each question
-        for q in mcq_data:
+        logger.debug("Validating MCQ data")
+        for i, q in enumerate(mcq_data):
             if not isinstance(q, dict):
+                logger.error(f"Invalid question format at index {i}")
                 raise ValueError("Invalid question format in AI response")
             if not all(key in q for key in ['question', 'options', 'correct_answer']):
+                logger.error(f"Missing required fields in question at index {i}")
                 raise ValueError("Missing required fields in AI response")
             if not isinstance(q['options'], list) or len(q['options']) != 4:
+                logger.error(f"Invalid options format in question at index {i}")
                 raise ValueError("Invalid options format in AI response")
+            if q['correct_answer'] not in q['options']:
+                logger.error(f"Correct answer not found in options for question at index {i}")
+                raise ValueError("Correct answer must match one of the options")
 
+        logger.info(f"Successfully generated {len(mcq_data)} MCQs")
         return mcq_data[:num_questions]
 
     except Exception as e:
@@ -138,23 +172,89 @@ def generate_mcqs_from_text(text, num_questions=10):
 def extract_json(llm_output):
     """Extract and validate JSON from LLM output"""
     try:
-        # Match first JSON object/array in string
-        json_match = re.search(r'(\[.*\]|\{.*\})', llm_output, re.DOTALL)
+        logger.info("Starting JSON extraction from AI response")
+        logger.debug(f"Raw AI output: {llm_output}")
+        
+        # Clean the output string
+        cleaned_output = llm_output.strip()
+        
+        # Remove any markdown code block markers
+        cleaned_output = re.sub(r'```json\s*|\s*```', '', cleaned_output)
+        
+        # Find the JSON array or object
+        json_match = re.search(r'(\[.*\]|\{.*\})', cleaned_output, re.DOTALL)
         if not json_match:
+            logger.error("No JSON structure found in the output")
             raise ValueError("No JSON structure found in the output")
             
         json_str = json_match.group(1)
         
+        # Clean the JSON string
+        json_str = re.sub(r',\s*]', ']', json_str)  # Remove trailing commas
+        json_str = re.sub(r',\s*}', '}', json_str)  # Remove trailing commas in objects
+        json_str = re.sub(r'}\s*{', '},{', json_str)  # Fix missing commas between objects
+        json_str = re.sub(r']\s*\[', '],[', json_str)  # Fix missing commas between arrays
+        
         # Try standard JSON first
         try:
+            logger.debug("Attempting standard JSON parsing")
             return json.loads(json_str)
-        except json.JSONDecodeError:
-            # If standard JSON fails, try json5 which is more lenient
-            return json5.loads(json_str)
+        except json.JSONDecodeError as e:
+            logger.warning(f"Standard JSON parsing failed: {str(e)}")
+            logger.debug("Attempting json5 parsing")
+            
+            # Try json5 which is more lenient
+            try:
+                return json5.loads(json_str)
+            except Exception as json5_error:
+                logger.error(f"JSON5 parsing failed: {str(json5_error)}")
+                
+                # Last resort: try to fix common JSON issues
+                try:
+                    # Fix missing quotes around keys
+                    json_str = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', json_str)
+                    # Fix missing quotes around string values
+                    json_str = re.sub(r':\s*([a-zA-Z_][a-zA-Z0-9_]*)([,}])', r':"\1"\2', json_str)
+                    # Fix missing commas between array elements
+                    json_str = re.sub(r'"\s*"', '","', json_str)
+                    # Fix missing commas between object properties
+                    json_str = re.sub(r'"\s*"', '","', json_str)
+                    # Fix missing commas between objects in array
+                    json_str = re.sub(r'}\s*{', '},{', json_str)
+                    # Fix missing commas between arrays
+                    json_str = re.sub(r']\s*\[', '],[', json_str)
+                    # Fix trailing commas
+                    json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+                    
+                    # Try parsing again
+                    try:
+                        return json.loads(json_str)
+                    except json.JSONDecodeError:
+                        # If still fails, try to extract just the array part
+                        array_match = re.search(r'\[(.*)\]', json_str, re.DOTALL)
+                        if array_match:
+                            array_content = array_match.group(1)
+                            # Split by object boundaries and parse each object
+                            objects = re.findall(r'\{[^{}]*\}', array_content)
+                            parsed_objects = []
+                            for obj in objects:
+                                try:
+                                    parsed_obj = json.loads(obj)
+                                    if all(key in parsed_obj for key in ['question', 'options', 'correct_answer']):
+                                        parsed_objects.append(parsed_obj)
+                                except json.JSONDecodeError:
+                                    continue
+                            if parsed_objects:
+                                return parsed_objects
+                    
+                    raise ValueError(f"Failed to parse JSON after fixing: {str(e)}")
+                except Exception as fix_error:
+                    logger.error(f"JSON fixing failed: {str(fix_error)}")
+                    raise ValueError(f"Failed to parse AI response: {str(e)}")
             
     except Exception as e:
-        logger.error(f"Failed to extract JSON from LLM output: {str(e)}")
-        logger.debug(f"Raw LLM output: {llm_output}")
+        logger.error(f"Failed to extract JSON from AI output: {str(e)}")
+        logger.debug(f"Raw AI output: {llm_output}")
         raise ValueError(f"Failed to parse AI response: {str(e)}")
 
 def evaluate_handwritten_answer(question, answer_key, student_answer_image, max_grade):
@@ -484,116 +584,62 @@ def generate_mcq_questions(context, num_questions, difficulty='3'):
 
 def generate_mcqs_from_multiple_pdfs(pdf_files, num_questions_per_pdf=10):
     """
-    Generate MCQs from multiple PDF files
+    Generate MCQs from multiple PDF files.
+    
     Args:
-        pdf_files: List of PDF files (InMemoryUploadedFile objects)
-        num_questions_per_pdf (int): Number of questions to generate per PDF
+        pdf_files: List of PDF files (can be File objects or file paths)
+        num_questions_per_pdf: Number of questions to generate per PDF
+        
     Returns:
-        list: List of MCQ dictionaries
+        List of dictionaries containing MCQ data
     """
-    try:
-        all_mcqs = []
-        for pdf_file in pdf_files:
+    all_mcqs = []
+    
+    for pdf_file in pdf_files:
+        try:
             # Extract text from PDF
             text = extract_text_from_pdf(pdf_file)
             if not text:
-                logger.warning(f"No text extracted from PDF: {pdf_file.name}")
+                logger.warning(f"No text extracted from PDF: {pdf_file.name if hasattr(pdf_file, 'name') else pdf_file}")
                 continue
+                
+            # Generate MCQs from text
+            mcqs = generate_mcqs_from_text(text, num_questions_per_pdf)
+            if mcqs:
+                all_mcqs.extend(mcqs)
+                
+        except Exception as e:
+            logger.error(f"Error processing PDF {pdf_file.name if hasattr(pdf_file, 'name') else pdf_file}: {str(e)}")
+            continue
+            
+    return all_mcqs
 
-            # Update the prompt with the text
-            dmcq[1]['content'] = f"""
-            context: {text}
-
-            Based on the provided context, generate {num_questions_per_pdf} multiple-choice questions. Your response must be strictly in the following JSON format:
-
-            [{{"question": "<question text>",
-              "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"],
-              "correct_answer": "<exact text of the correct option>"}}]
-
-            CRITICAL REQUIREMENTS:
-            1. Each question MUST have EXACTLY 4 options - no more, no less
-            2. The correct_answer MUST match EXACTLY one of the options
-            3. Return ONLY the JSON array, no additional text
-            4. Each option MUST be a string
-            5. The options array MUST contain EXACTLY 4 strings
-            6. Do not include any explanations or additional text
-            7. Ensure the JSON is valid and properly formatted
-
-            Example of valid response:
-            [
-                {{
-                    "question": "What is the capital of France?",
-                    "options": ["London", "Berlin", "Paris", "Madrid"],
-                    "correct_answer": "Paris"
-                }}
-            ]
-            """
-
-            # Make API call to generate MCQs
-            completion = client.chat.completions.create(
-                model=settings.AI_MODEL,
-                messages=dmcq,
-                temperature=0.7,  # Lower temperature for more consistent output
-                max_tokens=2000,  # Increased max tokens for multiple questions
-            )
-
-            # Extract and validate JSON from response
-            try:
-                response_content = completion.choices[0].message.content
-                logger.debug(f"Raw AI response: {response_content}")
-
-                # First try to find JSON array in the response
-                json_match = re.search(r'\[.*\]', response_content, re.DOTALL)
-                if json_match:
-                    json_str = json_match.group(0)
-                    mcq_data = json.loads(json_str)
-                else:
-                    # If no JSON array found, try to parse the entire response
-                    mcq_data = json.loads(response_content)
-
-                # Validate the structure
-                if not isinstance(mcq_data, list):
-                    logger.error(f"Response is not a list: {mcq_data}")
-                    raise ValueError("Response is not a list")
-
-                # Validate each question
-                for q in mcq_data:
-                    if not isinstance(q, dict):
-                        logger.error(f"Invalid question format: {q}")
-                        raise ValueError("Invalid question format")
-                    
-                    if not all(key in q for key in ['question', 'options', 'correct_answer']):
-                        logger.error(f"Missing required fields in question: {q}")
-                        raise ValueError("Missing required fields")
-                    
-                    if not isinstance(q['options'], list):
-                        logger.error(f"Options is not a list: {q['options']}")
-                        raise ValueError("Options must be a list")
-                    
-                    if len(q['options']) != 4:
-                        logger.error(f"Invalid number of options: {len(q['options'])}")
-                        raise ValueError(f"Must have exactly 4 options, got {len(q['options'])}")
-                    
-                    if not all(isinstance(opt, str) for opt in q['options']):
-                        logger.error(f"Non-string option found: {q['options']}")
-                        raise ValueError("All options must be strings")
-                    
-                    if q['correct_answer'] not in q['options']:
-                        logger.error(f"Correct answer not in options: {q['correct_answer']} not in {q['options']}")
-                        raise ValueError("Correct answer must match one of the options")
-
-                all_mcqs.extend(mcq_data[:num_questions_per_pdf])
-
-            except json.JSONDecodeError as e:
-                logger.error(f"JSON parsing error: {str(e)}")
-                logger.debug(f"Raw response: {response_content}")
-                raise ValueError(f"Failed to parse AI response: {str(e)}")
-
-        if not all_mcqs:
-            raise ValueError("No valid MCQs were generated from any of the PDFs")
-
-        return all_mcqs
-
+def extract_text_from_pdf(pdf_file):
+    """
+    Extract text from a PDF file.
+    
+    Args:
+        pdf_file: PDF file (can be File object or file path)
+        
+    Returns:
+        Extracted text as string
+    """
+    try:
+        # If it's a File object, get the path
+        if hasattr(pdf_file, 'path'):
+            pdf_path = pdf_file.path
+        else:
+            pdf_path = pdf_file
+            
+        # Extract text using PyPDF2
+        text = ""
+        with open(pdf_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            for page in pdf_reader.pages:
+                text += page.extract_text() + "\n"
+                
+        return text.strip()
+        
     except Exception as e:
-        logger.error(f"Failed to generate MCQs from multiple PDFs: {str(e)}")
-        raise ValueError(f"Failed to generate MCQs: {str(e)}")
+        logger.error(f"Error extracting text from PDF: {str(e)}")
+        return None

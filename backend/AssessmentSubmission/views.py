@@ -101,14 +101,13 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
 
             # Get all questions based on user role
             if user.role == "Student":
-                # For students, only get their own questions
+                # For students, get their own MCQ questions and all handwritten questions
                 mcq_questions = assessment.mcq_questions.filter(
                     assessment=assessment,
-                    created_by=enrollment.user
+                    
                 )
                 handwritten_questions = assessment.handwritten_questions.filter(
-                    assessment=assessment,
-                    created_by=enrollment.user
+                    assessment=assessment
                 )
             else:
                 # For teachers and institutions, get all questions
@@ -201,6 +200,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
 
             try:
                 assessment = Assessment.objects.get(id=assessment_id)
+                print(f"Found assessment: {assessment.title}")
             except Assessment.DoesNotExist:
                 return Response(
                     {"detail": "Assessment not found"},
@@ -215,6 +215,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     course=assessment.course,
                     is_completed=is_completed
                 )
+                print(f"Found enrollment for user: {request.user.email}")
             except Enrollments.DoesNotExist:
                 return Response(
                     {"detail": "You are not enrolled in this course"},
@@ -223,6 +224,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
 
             # Get or create submission
             submission = AssessmentSubmission.get_or_create_submission(assessment, enrollment)
+            print(f"Got/Created submission: {submission.id}")
 
             # Check if already submitted
             if submission.is_submitted:
@@ -231,100 +233,94 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Get all questions for the assessment that were generated for this student
-            mcq_questions = McqQuestion.objects.filter(
-                assessment=assessment,
-                created_by=enrollment.user
-            )
-            
-            handwritten_questions = HandwrittenQuestion.objects.filter(
-                assessment=assessment,
-                created_by=enrollment.user
-            )
-            
-            # Get question details for better error messages
-            question_details = {
-                str(q.id): {
-                    'question': q.question,
-                    'options': q.options,
-                    'answer_key': q.answer_key,
-                    'question_grade': str(q.question_grade)
-                } for q in mcq_questions
-            }
-            question_ids = list(question_details.keys())
-
-            # Process MCQ answers
+            # Initialize answers dictionaries
             mcq_answers = {}
+            handwritten_answers = {}
+
+            # Get all questions for the assessment
+            mcq_questions = McqQuestion.objects.filter(assessment=assessment)
+            handwritten_questions = HandwrittenQuestion.objects.filter(assessment=assessment)
+
+            # Log the number of questions found
+            print(f"Found {mcq_questions.count()} MCQ questions and {handwritten_questions.count()} handwritten questions")
+
+            # Check if there are any questions at all
+            if not mcq_questions.exists() and not handwritten_questions.exists():
+                print("No questions found for assessment")
+                return Response(
+                    {"detail": "No questions found for this assessment"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Process MCQ answers if provided
             mcq_data = request.data.get('mcq_answers')
-            if mcq_data is None:
-                return Response(
-                    {"detail": "MCQ answers are required"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            if mcq_data is not None and mcq_questions.exists():
+                print(f"Processing MCQ answers: {mcq_data}")
+                # Get question details for better error messages
+                question_details = {
+                    str(q.id): {
+                        'question': q.question,
+                        'options': q.options,
+                        'answer_key': q.answer_key,
+                        'question_grade': str(q.question_grade)
+                    } for q in mcq_questions
+                }
+                question_ids = list(question_details.keys())
 
-            if isinstance(mcq_data, str):
-                import json
-                try:
-                    mcq_data = json.loads(mcq_data)
-                except json.JSONDecodeError:
+                if isinstance(mcq_data, str):
+                    import json
+                    try:
+                        mcq_data = json.loads(mcq_data)
+                    except json.JSONDecodeError:
+                        return Response(
+                            {"detail": "Invalid MCQ answers format"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+
+                if not isinstance(mcq_data, dict):
                     return Response(
-                        {"detail": "Invalid MCQ answers format"},
+                        {"detail": "MCQ answers must be a dictionary"},
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
-            if not isinstance(mcq_data, dict):
-                return Response(
-                    {"detail": "MCQ answers must be a dictionary"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Check if all MCQ questions are answered
-            missing_questions = set(question_ids) - set(mcq_data.keys())
-            if missing_questions:
-                return Response(
-                    {
-                        "detail": "Missing answers for some MCQ questions",
-                        "missing_questions": list(missing_questions),
-                        "question_details": {qid: question_details[qid] for qid in missing_questions}
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Validate MCQ answers
-            for question_id, answer in mcq_data.items():
-                if question_id not in question_details:
-                    return Response(
-                        {
-                            "detail": f"Invalid question ID: {question_id}",
-                            "valid_questions": question_details
-                        },
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                
-                if answer not in question_details[question_id]['options']:
-                    return Response(
-                        {
-                            "detail": f"Invalid answer for question {question_id}",
-                            "question": question_details[question_id],
-                            "provided_answer": answer
-                        },
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                
-                mcq_answers[question_id] = answer
+                # Validate MCQ answers
+                for question_id, answer in mcq_data.items():
+                    if question_id not in question_details:
+                        return Response(
+                            {
+                                "detail": f"Invalid question ID: {question_id}",
+                                "valid_questions": question_details
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    if answer not in question_details[question_id]['options']:
+                        return Response(
+                            {
+                                "detail": f"Invalid answer for question {question_id}",
+                                "question": question_details[question_id],
+                                "provided_answer": answer
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    
+                    mcq_answers[question_id] = answer
 
             # Process Handwritten answers
-            handwritten_answers = {}
+            print(f"Processing files: {list(request.FILES.keys())}")
             for question_id, image in request.FILES.items():
                 if question_id.startswith('handwritten_'):
                     question_id = question_id.replace('handwritten_', '')
-                    # Verify the question exists and belongs to this student
+                    print(f"Processing handwritten question: {question_id}")
+                    # Verify the question exists
                     try:
                         question = HandwrittenQuestion.objects.get(
                             id=question_id,
                             assessment=assessment
                         )
+                        print(f"Found handwritten question: {question.question_text[:50]}...")
                     except HandwrittenQuestion.DoesNotExist:
+                        print(f"Handwritten question not found: {question_id}")
                         return Response(
                             {"detail": f"Invalid handwritten question ID: {question_id}"},
                             status=status.HTTP_400_BAD_REQUEST
@@ -387,6 +383,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                                     student_answer_image=file_obj,
                                     max_grade=float(question.max_grade)
                                 )
+                                print(f"AI evaluation completed. Score: {score}")
                             finally:
                                 # Ensure the file is closed
                                 file_obj.close()
@@ -413,41 +410,51 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                                 'extracted_text': extracted_text
                             }
                         )
+                        print(f"Created/Updated score record: {score_obj.id}")
 
                         # Store only the relative path in handwritten_answers
                         relative_path = os.path.relpath(score_obj.answer_image.path, settings.MEDIA_ROOT)
                         handwritten_answers[str(question_id)] = relative_path
                     except Exception as e:
+                        print(f"Error processing handwritten answer: {str(e)}")
                         return Response(
                             {"detail": f"Error evaluating handwritten answer: {str(e)}"},
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
-            # Check if all handwritten questions are answered
-            missing_handwritten = set(str(q.id) for q in handwritten_questions) - set(handwritten_answers.keys())
-            if missing_handwritten:
+            # Check if at least one type of answer is provided
+            if not mcq_answers and not handwritten_answers:
+                print("No answers provided")
                 return Response(
-                    {
-                        "detail": "Missing answers for some handwritten questions",
-                        "missing_questions": list(missing_handwritten)
-                    },
+                    {"detail": "At least one answer (MCQ or handwritten) must be provided"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
             # Update submission
             with transaction.atomic():
-                submission.mcq_answers = mcq_answers
-                submission.handwritten_answers = handwritten_answers
+                if mcq_answers:
+                    submission.mcq_answers = mcq_answers
+                if handwritten_answers:
+                    submission.handwritten_answers = handwritten_answers
                 submission.is_submitted = True
                 submission.save()
+                print(f"Updated submission with answers. MCQ: {len(mcq_answers)}, Handwritten: {len(handwritten_answers)}")
 
-            # Return simple success message
-            return Response(
-                {"message": "Assessment submitted successfully"},
-                status=status.HTTP_201_CREATED
-            )
+            # Return success message with details
+            response_data = {
+                "message": "Assessment submitted successfully",
+                "submission_details": {
+                    "mcq_answers_count": len(mcq_answers) if mcq_answers else 0,
+                    "handwritten_answers_count": len(handwritten_answers) if handwritten_answers else 0
+                }
+            }
+
+            return Response(response_data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
+            print(f"Error in create method: {str(e)}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
             return Response(
                 {"detail": f"An error occurred: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

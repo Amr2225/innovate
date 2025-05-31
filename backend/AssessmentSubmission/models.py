@@ -54,14 +54,13 @@ class AssessmentSubmission(models.Model):
         from mcqQuestion.models import McqQuestion
         from HandwrittenQuestion.models import HandwrittenQuestion
 
-        # Get all questions for the assessment that were generated for this student
+        # Get all questions for the assessment
         mcq_questions = McqQuestion.objects.filter(
             assessment=self.assessment,
             created_by=self.enrollment.user
         )
         handwritten_questions = HandwrittenQuestion.objects.filter(
-            assessment=self.assessment,
-            created_by=self.enrollment.user
+            assessment=self.assessment
         )
 
         # Check if there are any questions
