@@ -7,7 +7,6 @@ from django.db.models import Sum
 from decimal import Decimal
 from django.conf import settings
 import os
-from django.apps import apps
 
 class AssessmentSubmission(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -63,18 +62,9 @@ class AssessmentSubmission(models.Model):
         handwritten_questions = HandwrittenQuestion.objects.filter(
             assessment=self.assessment
         )
-        
-        # Get dynamic MCQ questions
-        DynamicMCQ = apps.get_model('DynamicMCQ', 'DynamicMCQ')
-        DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
-        dynamic_mcq = DynamicMCQ.objects.filter(assessment=self.assessment).first()
-        dynamic_questions = DynamicMCQQuestions.objects.filter(
-            dynamic_mcq=dynamic_mcq,
-            created_by=self.enrollment.user
-        ) if dynamic_mcq else DynamicMCQQuestions.objects.none()
 
         # Check if there are any questions
-        if not mcq_questions.exists() and not handwritten_questions.exists() and not dynamic_questions.exists():
+        if not mcq_questions.exists() and not handwritten_questions.exists():
             raise ValidationError("No questions found for this assessment")
 
         # Check MCQ answers
@@ -83,13 +73,6 @@ class AssessmentSubmission(models.Model):
                 raise ValidationError(f"Missing answer for MCQ question {question.id}")
             if self.mcq_answers[str(question.id)] not in question.options:
                 raise ValidationError(f"Invalid answer for MCQ question {question.id}")
-
-        # Check Dynamic MCQ answers
-        for question in dynamic_questions:
-            if str(question.id) not in self.mcq_answers:
-                raise ValidationError(f"Missing answer for Dynamic MCQ question {question.id}")
-            if self.mcq_answers[str(question.id)] not in question.options:
-                raise ValidationError(f"Invalid answer for Dynamic MCQ question {question.id}")
 
         # Check Handwritten answers
         for question in handwritten_questions:
@@ -102,30 +85,11 @@ class AssessmentSubmission(models.Model):
         """Create MCQQuestionScore records for each answer"""
         from MCQQuestionScore.models import MCQQuestionScore
         from mcqQuestion.models import McqQuestion
-        from django.apps import apps
-
-        DynamicMCQ = apps.get_model('DynamicMCQ', 'DynamicMCQ')
-        DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
 
         for question_id, selected_answer in self.mcq_answers.items():
             try:
-                # Try to find the question in regular MCQ questions first
-                try:
-                    question = McqQuestion.objects.get(id=question_id)
-                    question_type = 'mcq'
-                except McqQuestion.DoesNotExist:
-                    # If not found in regular MCQs, try dynamic MCQs
-                    dynamic_mcq = DynamicMCQ.objects.filter(assessment=self.assessment).first()
-                    if dynamic_mcq:
-                        question = DynamicMCQQuestions.objects.get(
-                            id=question_id,
-                            dynamic_mcq=dynamic_mcq,
-                            created_by=self.enrollment.user
-                        )
-                        question_type = 'dynamic_mcq'
-                    else:
-                        raise ValidationError(f"Question {question_id} not found in either regular or dynamic MCQs")
-
+                question = McqQuestion.objects.get(id=question_id)
+                
                 # Create or update score
                 MCQQuestionScore.objects.update_or_create(
                     question=question,
@@ -133,14 +97,13 @@ class AssessmentSubmission(models.Model):
                     defaults={
                         'selected_answer': selected_answer,
                         'is_correct': selected_answer == question.answer_key,
-                        'score': question.question_grade if selected_answer == question.answer_key else 0,
-                        'question_type': question_type
+                        'score': question.question_grade if selected_answer == question.answer_key else 0
                     }
                 )
-            except (McqQuestion.DoesNotExist, DynamicMCQQuestions.DoesNotExist):
-                raise ValidationError(f"Question {question_id} does not exist")
+            except McqQuestion.DoesNotExist:
+                raise ValidationError(f"MCQ question {question_id} does not exist")
             except Exception as e:
-                raise ValidationError(f"Error creating score for question {question_id}: {str(e)}")
+                raise ValidationError(f"Error creating score for MCQ question {question_id}: {str(e)}")
 
     def create_handwritten_scores(self):
         """Create HandwrittenQuestionScore records for each answer"""

@@ -14,7 +14,6 @@ from mcqQuestion.models import McqQuestion
 from HandwrittenQuestion.models import HandwrittenQuestion, HandwrittenQuestionScore
 from django.conf import settings
 import os
-from django.apps import apps
 
 class AssessmentSubmissionPermission(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -46,37 +45,80 @@ class AssessmentSubmissionPermission(permissions.BasePermission):
         
         return False
 
-class AssessmentSubmissionAPIView(generics.GenericAPIView):
+class AssessmentSubmissionAPIView(generics.CreateAPIView):
     """View to submit all answers for an assessment"""
-    permission_classes = [permissions.IsAuthenticated, AssessmentSubmissionPermission]
-    parser_classes = (JSONParser, MultiPartParser, FormParser)
     serializer_class = AssessmentSubmissionSerializer
-
-    def post(self, request, *args, **kwargs):
-        """Handle POST requests by calling the create method"""
-        return self.create(request, *args, **kwargs)
+    permission_classes = [permissions.IsAuthenticated, AssessmentSubmissionPermission]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request, *args, **kwargs):
         """Get all students' answers for an assessment"""
         try:
             assessment_id = kwargs.get('pk')
             assessment = Assessment.objects.get(id=assessment_id)
-            
-            # Get all submissions for this assessment
-            submissions = AssessmentSubmission.objects.filter(assessment=assessment)
-            
-            # Get all questions
-            mcq_questions = McqQuestion.objects.filter(assessment=assessment)
-            handwritten_questions = HandwrittenQuestion.objects.filter(assessment=assessment)
-            DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
-            dynamic_questions = DynamicMCQQuestions.objects.filter(
-                dynamic_mcq__assessment=assessment,
-                created_by=request.user
-            )
-            
+            user = request.user
+
+            # Check permissions
+            if user.role == "Student":
+                # Students can only view their own submissions
+                is_completed = request.query_params.get('is_completed', 'false').lower() == 'true'
+                try:
+                    enrollment = Enrollments.objects.get(
+                        user=user,
+                        course=assessment.course,
+                        is_completed=is_completed
+                    )
+                    submissions = AssessmentSubmission.objects.filter(
+                        assessment=assessment,
+                        enrollment=enrollment
+                    )
+                except Enrollments.DoesNotExist:
+                    return Response(
+                        {"detail": "You are not enrolled in this course"},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            elif user.role == "Teacher":
+                # Teachers can view submissions for courses they teach
+                if not assessment.course.teacher == user.teacher:
+                    return Response(
+                        {"detail": "You don't have permission to view these submissions"},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                submissions = AssessmentSubmission.objects.filter(assessment=assessment)
+            elif user.role == "Institution":
+                # Institution can view all submissions for their courses
+                if assessment.course.institution != user.institution:
+                    return Response(
+                        {"detail": "You don't have permission to view these submissions"},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                submissions = AssessmentSubmission.objects.filter(assessment=assessment)
+            else:
+                return Response(
+                    {"detail": "You don't have permission to view these submissions"},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Get all questions based on user role
+            if user.role == "Student":
+                # For students, get their own MCQ questions and all handwritten questions
+                mcq_questions = assessment.mcq_questions.filter(
+                    assessment=assessment,
+                    
+                )
+                handwritten_questions = assessment.handwritten_questions.filter(
+                    assessment=assessment
+                )
+            else:
+                # For teachers and institutions, get all questions
+                mcq_questions = assessment.mcq_questions.filter(assessment=assessment)
+                handwritten_questions = assessment.handwritten_questions.filter(assessment=assessment)
+
+            # Prepare response data
             response_data = {
                 'assessment_id': str(assessment.id),
                 'assessment_title': assessment.title,
+                'total_submissions': submissions.count(),
                 'questions': []
             }
 
@@ -89,7 +131,6 @@ class AssessmentSubmissionAPIView(generics.GenericAPIView):
                 for question in mcq_questions:
                     question_data = {
                         'id': str(question.id),
-                        'type': 'mcq',
                         'question': question.question,
                         'options': question.options,
                         'answer_key': question.answer_key,
@@ -106,33 +147,10 @@ class AssessmentSubmissionAPIView(generics.GenericAPIView):
                     
                     response_data['questions'].append(question_data)
 
-                # Add Dynamic MCQ questions with their answers
-                for question in dynamic_questions:
-                    question_data = {
-                        'id': str(question.id),
-                        'type': 'dynamic_mcq',
-                        'question': question.question,
-                        'options': question.options,
-                        'answer_key': question.answer_key,
-                        'question_grade': str(question.question_grade),
-                        'difficulty': question.difficulty
-                    }
-                    
-                    # Add student's answer if available
-                    if str(question.id) in mcq_answers:
-                        answer = mcq_answers[str(question.id)]
-                        question_data.update({
-                            'selected_answer': answer,
-                            'is_correct': answer == question.answer_key
-                        })
-                    
-                    response_data['questions'].append(question_data)
-
                 # Add Handwritten questions with their answers
                 for question in handwritten_questions:
                     question_data = {
                         'id': str(question.id),
-                        'type': 'handwritten',
                         'question': question.question_text,
                         'answer_key': question.answer_key,
                         'max_grade': str(question.max_grade)
@@ -154,6 +172,7 @@ class AssessmentSubmissionAPIView(generics.GenericAPIView):
                         except HandwrittenQuestionScore.DoesNotExist:
                             pass
                     
+                    # Always append the question data, regardless of whether it has been answered
                     response_data['questions'].append(question_data)
 
             return Response(response_data)
@@ -221,50 +240,13 @@ class AssessmentSubmissionAPIView(generics.GenericAPIView):
             # Get all questions for the assessment
             mcq_questions = McqQuestion.objects.filter(assessment=assessment)
             handwritten_questions = HandwrittenQuestion.objects.filter(assessment=assessment)
-            DynamicMCQ = apps.get_model('DynamicMCQ', 'DynamicMCQ')
-            DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
-            
-            # Get dynamic questions through DynamicMCQ
-            dynamic_mcq = DynamicMCQ.objects.filter(assessment=assessment).first()
-            print(f"Found DynamicMCQ: {dynamic_mcq}")
-            
-            if dynamic_mcq:
-                print(f"DynamicMCQ details - ID: {dynamic_mcq.id}, Assessment: {dynamic_mcq.assessment.title}")
-                dynamic_questions = DynamicMCQQuestions.objects.filter(
-                    dynamic_mcq=dynamic_mcq,
-                    created_by=request.user
-                )
-                print(f"Found {dynamic_questions.count()} dynamic questions for user {request.user.email}")
-                for q in dynamic_questions:
-                    print(f"Question ID: {q.id}, Question: {q.question[:50]}...")
-            else:
-                print("No DynamicMCQ found for this assessment")
-                dynamic_questions = DynamicMCQQuestions.objects.none()
 
             # Log the number of questions found
-            print(f"Found {mcq_questions.count()} MCQ questions, {dynamic_questions.count()} dynamic MCQ questions, and {handwritten_questions.count()} handwritten questions")
+            print(f"Found {mcq_questions.count()} MCQ questions and {handwritten_questions.count()} handwritten questions")
 
             # Check if there are any questions at all
-            if not mcq_questions.exists() and not dynamic_questions.exists() and not handwritten_questions.exists():
+            if not mcq_questions.exists() and not handwritten_questions.exists():
                 print("No questions found for assessment")
-                # Try to generate questions if they don't exist
-                try:
-                    questions = assessment.get_all_questions_for_student(request.user)
-                    print(f"Generated questions: {questions}")
-                    if questions['dynamic_mcq'] or questions['mcq'] or questions['handwritten']:
-                        # Questions were generated, try to get them again
-                        dynamic_mcq = DynamicMCQ.objects.filter(assessment=assessment).first()
-                        if dynamic_mcq:
-                            dynamic_questions = DynamicMCQQuestions.objects.filter(
-                                dynamic_mcq=dynamic_mcq,
-                                created_by=request.user
-                            )
-                            if dynamic_questions.exists():
-                                print(f"Found {dynamic_questions.count()} questions after generation")
-                                return self.create(request, *args, **kwargs)
-                except Exception as e:
-                    print(f"Error generating questions: {str(e)}")
-                
                 return Response(
                     {"detail": "No questions found for this assessment"},
                     status=status.HTTP_400_BAD_REQUEST
@@ -272,7 +254,7 @@ class AssessmentSubmissionAPIView(generics.GenericAPIView):
 
             # Process MCQ answers if provided
             mcq_data = request.data.get('mcq_answers')
-            if mcq_data is not None and (mcq_questions.exists() or dynamic_questions.exists()):
+            if mcq_data is not None and mcq_questions.exists():
                 print(f"Processing MCQ answers: {mcq_data}")
                 # Get question details for better error messages
                 question_details = {
@@ -281,7 +263,7 @@ class AssessmentSubmissionAPIView(generics.GenericAPIView):
                         'options': q.options,
                         'answer_key': q.answer_key,
                         'question_grade': str(q.question_grade)
-                    } for q in list(mcq_questions) + list(dynamic_questions)
+                    } for q in mcq_questions
                 }
                 question_ids = list(question_details.keys())
 
@@ -326,48 +308,119 @@ class AssessmentSubmissionAPIView(generics.GenericAPIView):
 
             # Process Handwritten answers
             print(f"Processing files: {list(request.FILES.keys())}")
-            handwritten_data = request.data.get('handwritten_answers', {})
-            if isinstance(handwritten_data, str):
-                try:
-                    handwritten_data = json.loads(handwritten_data)
-                except json.JSONDecodeError:
-                    return Response(
-                        {"detail": "Invalid handwritten answers format"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
-            if not isinstance(handwritten_data, dict):
-                return Response(
-                    {"detail": "Handwritten answers must be a dictionary"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Process each handwritten answer
-            for question_id, image_file in request.FILES.items():
-                if question_id in handwritten_data:
+            for question_id, image in request.FILES.items():
+                if question_id.startswith('handwritten_'):
+                    question_id = question_id.replace('handwritten_', '')
+                    print(f"Processing handwritten question: {question_id}")
+                    # Verify the question exists
                     try:
-                        question = HandwrittenQuestion.objects.get(id=question_id)
+                        question = HandwrittenQuestion.objects.get(
+                            id=question_id,
+                            assessment=assessment
+                        )
+                        print(f"Found handwritten question: {question.question_text[:50]}...")
                     except HandwrittenQuestion.DoesNotExist:
+                        print(f"Handwritten question not found: {question_id}")
                         return Response(
-                            {"detail": f"Handwritten question {question_id} not found"},
+                            {"detail": f"Invalid handwritten question ID: {question_id}"},
                             status=status.HTTP_400_BAD_REQUEST
                         )
 
-                    # Save the image file
-                    file_path = os.path.join(
-                        'handwritten_answers',
-                        str(assessment.id),
-                        str(enrollment.id),
-                        f"{question_id}_{image_file.name}"
-                    )
-                    full_path = os.path.join(settings.MEDIA_ROOT, file_path)
-                    os.makedirs(os.path.dirname(full_path), exist_ok=True)
-                    
-                    with open(full_path, 'wb+') as destination:
-                        for chunk in image_file.chunks():
-                            destination.write(chunk)
-                    
-                    handwritten_answers[question_id] = file_path
+                    try:
+                        # Now evaluate the answer using AI
+                        from main.AI import evaluate_handwritten_answer
+                        from django.core.files.base import ContentFile
+                        import io
+                        from PIL import Image as PILImage
+                        import tempfile
+                        import os
+
+                        # Ensure we have a proper file object
+                        if not hasattr(image, 'read'):
+                            # If it's not a file object, create one
+                            image_content = image.read()
+                            image = ContentFile(image_content, name=image.name)
+                        
+                        # Reset file pointer to beginning
+                        image.seek(0)
+                        
+                        # Open and process the image
+                        pil_image = PILImage.open(image)
+                        if pil_image.mode != 'RGB':
+                            pil_image = pil_image.convert('RGB')
+                        
+                        # Create a temporary file
+                        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+                            # Save the image to the temporary file
+                            pil_image.save(temp_file, format='JPEG', quality=95)
+                            temp_file_path = temp_file.name
+                        
+                        try:
+                            # Create a file-like object with both read and path attributes
+                            class FileWithPath:
+                                def __init__(self, path):
+                                    self.path = path
+                                    self._file = open(path, 'rb')
+                                
+                                def read(self, size=-1):
+                                    return self._file.read(size)
+                                
+                                def seek(self, pos):
+                                    self._file.seek(pos)
+                                
+                                def close(self):
+                                    if hasattr(self._file, 'close'):
+                                        self._file.close()
+                            
+                            # Create the file object
+                            file_obj = FileWithPath(temp_file_path)
+                            
+                            try:
+                                # Evaluate the answer using the file object
+                                score, feedback, extracted_text = evaluate_handwritten_answer(
+                                    question=question.question_text,
+                                    answer_key=question.answer_key,
+                                    student_answer_image=file_obj,
+                                    max_grade=float(question.max_grade)
+                                )
+                                print(f"AI evaluation completed. Score: {score}")
+                            finally:
+                                # Ensure the file is closed
+                                file_obj.close()
+                        finally:
+                            # Clean up the temporary file
+                            try:
+                                if os.path.exists(temp_file_path):
+                                    os.unlink(temp_file_path)
+                            except Exception as e:
+                                # Log the error but don't fail the request
+                                print(f"Warning: Failed to delete temporary file {temp_file_path}: {str(e)}")
+                        
+                        # Reset file pointer again for saving
+                        image.seek(0)
+
+                        # Create or update the score record
+                        score_obj, created = HandwrittenQuestionScore.objects.update_or_create(
+                            question=question,
+                            enrollment=enrollment,
+                            defaults={
+                                'answer_image': image,
+                                'score': score,
+                                'feedback': feedback,
+                                'extracted_text': extracted_text
+                            }
+                        )
+                        print(f"Created/Updated score record: {score_obj.id}")
+
+                        # Store only the relative path in handwritten_answers
+                        relative_path = os.path.relpath(score_obj.answer_image.path, settings.MEDIA_ROOT)
+                        handwritten_answers[str(question_id)] = relative_path
+                    except Exception as e:
+                        print(f"Error processing handwritten answer: {str(e)}")
+                        return Response(
+                            {"detail": f"Error evaluating handwritten answer: {str(e)}"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
 
             # Check if at least one type of answer is provided
             if not mcq_answers and not handwritten_answers:
