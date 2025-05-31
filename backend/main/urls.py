@@ -11,8 +11,14 @@ urlpatterns = [
     path('chapter/', include('chapter.urls')),
     path('lecture/', include('lecture.urls')),
     path('assessment/', include('assessment.urls')),
-    path('mcqQuestion/', include('mcqQuestion.urls')),  # Assuming your app is mcqquestions
-    path('chat/', include('chat.urls')),  # Assuming your app is mcqquestions
+    path('mcqQuestion/', include('mcqQuestion.urls')), 
+    path('chat/', include('chat.urls')), 
+    path('mcqQuestionScore/', include('MCQQuestionScore.urls')), 
+    path('handwrittenQuestion/', include('HandwrittenQuestion.urls')),
+    path('codingQuestion/', include('CodingQuestion.urls')),
+    path('dynamicMCQ/', include('DynamicMCQ.urls')),
+    path('assessmentSubmission/', include('AssessmentSubmission.urls')),
+
 
     # Auth API
     path("auth/", include("users.urls")),
