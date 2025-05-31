@@ -34,6 +34,27 @@ class Assessment(models.Model):
         # Check if due date has passed
         if self.due_date < timezone.now():
             self.accepting_submissions = False
+
+        # Validate that the sum of all assessment grades doesn't exceed course total_grade
+        if self.course.total_grade is not None:
+            # Get sum of grades for all assessments in this course
+            total_assessment_grade = Assessment.objects.filter(
+                course=self.course
+            ).exclude(
+                id=self.id  # Exclude current assessment when updating
+            ).aggregate(
+                total=Sum('grade')
+            )['total'] or 0
+
+            # Add current assessment grade
+            total_assessment_grade += self.grade
+
+            # Check if total exceeds course grade
+            if total_assessment_grade > self.course.total_grade:
+                raise ValidationError(
+                    f"Total assessment grade ({total_assessment_grade}) exceeds course total grade ({self.course.total_grade})"
+                )
+
         super().save(*args, **kwargs)
 
     @property
