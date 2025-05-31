@@ -98,6 +98,6 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
                 print(f"Error creating progress entries: {e}")
 
         return Response({
-            "enrolled": EnrollmentsSerializer(enrolled_courses, many=True).data,
+            "enrolled": EnrollmentsSerializer(enrolled_courses, many=True, context={'request': request}).data,
             "skipped": skipped_courses
         }, status=status.HTTP_201_CREATED)

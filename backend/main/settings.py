@@ -69,6 +69,11 @@ INSTALLED_APPS = [
     'assessment',
     'mcqQuestion',
     'chat',
+    'MCQQuestionScore',
+    'HandwrittenQuestion',
+    'CodingQuestion',
+    'DynamicMCQ',
+    'AssessmentSubmission',
 ]
 
 ASGI_APPLICATION = 'main.asgi.application'
@@ -183,6 +188,13 @@ MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
 MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
+# Assessment Uploads Configuration
+ASSESSMENT_UPLOADS_DIR = 'AssessmentUploads'
+ASSESSMENT_UPLOADS_PATH = os.path.join(MEDIA_ROOT, ASSESSMENT_UPLOADS_DIR)
+
+# Create upload directories if they don't exist
+os.makedirs(MEDIA_ROOT, exist_ok=True)
+os.makedirs(ASSESSMENT_UPLOADS_PATH, exist_ok=True)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -212,7 +224,7 @@ REST_FRAMEWORK = {
 
 # Simple JWT
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=900),
     "REFRESH_TOKEN_LIFETIME": timedelta(minutes=30),
     "SIGNING_KEY": os.environ.get('JWT_MAIN', SECRET_KEY),
     "ISSUER": None,
@@ -243,8 +255,6 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
-
-# AI CONFIG
 AI_API_KEY = os.environ.get('AI_API_KEY')
 AI_PROVIDER = os.environ.get('AI_PROVIDER')
 AI_MODEL = os.environ.get('AI_MODEL')
