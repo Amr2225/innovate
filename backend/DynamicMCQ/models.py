@@ -16,7 +16,7 @@ class DynamicMCQ(models.Model):
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='dynamic_mcqs')
     section_number = models.PositiveSmallIntegerField(null=False, blank=False, help_text="Section number within the assessment")
     context = models.TextField(null=True, blank=True)
-    attachments = models.JSONField(default=list, help_text="Array of attachment URLs")
+    lecture_ids = models.JSONField(default=list, help_text="Array of lecture UUIDs")
     difficulty = models.CharField(
         max_length=1,
         choices=DIFFICULTY_CHOICES,
@@ -42,6 +42,11 @@ class DynamicMCQQuestions(models.Model):
     answer_key = models.CharField(max_length=255, help_text="The correct answer from the options")
     question_grade = models.PositiveSmallIntegerField()
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='dynamic_mcq_questions')
+    difficulty = models.CharField(
+        max_length=1,
+        choices=DynamicMCQ.DIFFICULTY_CHOICES,
+        default='3'
+    )
 
     def __str__(self):
         return f"Question for {self.dynamic_mcq}"

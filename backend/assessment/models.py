@@ -75,7 +75,8 @@ class Assessment(models.Model):
         DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
         McqQuestion = apps.get_model('mcqQuestion', 'McqQuestion')
         HandwrittenQuestion = apps.get_model('HandwrittenQuestion', 'HandwrittenQuestion')
-        from main.AI import generate_mcq_questions
+        Lecture = apps.get_model('lecture', 'Lecture')
+        from main.AI import generate_mcqs_from_multiple_pdfs
 
         questions = {
             'dynamic_mcq': [],
@@ -96,36 +97,60 @@ class Assessment(models.Model):
                 )
                 
                 if not dynamic_questions.exists():
-                    # Generate new questions if none exist
-                    generated_questions = generate_mcq_questions(
-                        context=dynamic_mcq.context,
-                        num_questions=dynamic_mcq.number_of_questions,
-                        difficulty=dynamic_mcq.difficulty
+                    # Get lectures and their attachments
+                    lectures = Lecture.objects.filter(
+                        id__in=dynamic_mcq.lecture_ids,
+                        attachment__isnull=False
+                    )
+
+                    if not lectures.exists():
+                        raise ValidationError("No lectures with attachments found for this course")
+
+                    # Get all PDF attachments
+                    pdf_files = []
+                    for lecture in lectures:
+                        if lecture.attachment and lecture.attachment.name.endswith('.pdf'):
+                            pdf_files.append(lecture.attachment)
+                    
+                    if not pdf_files:
+                        raise ValidationError("No PDF attachments found in lectures")
+
+                    # Generate questions using AI from PDFs with specified difficulty
+                    generated_questions = generate_mcqs_from_multiple_pdfs(
+                        pdf_files=pdf_files,
+                        num_questions_per_pdf=dynamic_mcq.number_of_questions // len(pdf_files),  # Distribute questions evenly
+                        difficulty=dynamic_mcq.difficulty  # Pass the difficulty from DynamicMCQ model
                     )
                     
                     # Create questions for this student
                     for q in generated_questions:
                         question = DynamicMCQQuestions.objects.create(
                             dynamic_mcq=dynamic_mcq,
-                            question_text=q['question'],
+                            question=q['question'],
                             options=q['options'],
-                            correct_answer=q['correct_answer'],
-                            created_by=student
+                            answer_key=q['correct_answer'],
+                            question_grade=dynamic_mcq.total_grade / dynamic_mcq.number_of_questions,
+                            created_by=student,
+                            difficulty=dynamic_mcq.difficulty  # Store the difficulty level
                         )
                         questions['dynamic_mcq'].append({
                             'id': str(question.id),
-                            'question': question.question_text,
+                            'question': question.question,
                             'options': question.options,
-                            'difficulty': question.difficulty
+                            'grade': question.question_grade,
+                            'section_number': dynamic_mcq.section_number,
+                            'difficulty': question.difficulty  # Include difficulty in response
                         })
                 else:
                     # Return existing questions
                     for question in dynamic_questions:
                         questions['dynamic_mcq'].append({
                             'id': str(question.id),
-                            'question': question.question_text,
+                            'question': question.question,
                             'options': question.options,
-                            'difficulty': question.difficulty
+                            'grade': question.question_grade,
+                            'section_number': dynamic_mcq.section_number,
+                            'difficulty': question.difficulty  # Include difficulty in response
                         })
         except Exception as e:
             print(f"Error getting dynamic MCQ questions: {str(e)}")
@@ -138,7 +163,8 @@ class Assessment(models.Model):
                     'id': str(question.id),
                     'question': question.question,
                     'options': question.options,
-                    'grade': question.question_grade
+                    'grade': question.question_grade,
+                    'section_number': question.section_number
                 })
         except Exception as e:
             print(f"Error getting MCQ questions: {str(e)}")
@@ -150,7 +176,8 @@ class Assessment(models.Model):
                 questions['handwritten'].append({
                     'id': str(question.id),
                     'question': question.question_text,
-                    'max_grade': question.max_grade
+                    'max_grade': question.max_grade,
+                    'section_number': question.section_number
                 })
         except Exception as e:
             print(f"Error getting handwritten questions: {str(e)}")
@@ -159,14 +186,15 @@ class Assessment(models.Model):
 
     def generate_dynamic_questions(self, student):
         """
-        Generate dynamic MCQ questions for a specific student
+        Generate dynamic MCQ questions for a specific student using lecture attachments
         """
         if self.type != 'Dynamic_MCQ':
             return None
 
-        from main.AI import generate_mcq_questions
+        from main.AI import generate_mcqs_from_multiple_pdfs
         McqQuestion = apps.get_model('mcqQuestion', 'McqQuestion')
         Enrollments = apps.get_model('enrollments', 'Enrollments')
+        Lecture = apps.get_model('lecture', 'Lecture')
 
         try:
             # Get student's enrollment
@@ -180,26 +208,25 @@ class Assessment(models.Model):
             if existing_questions.exists():
                 return existing_questions
 
-            # Get context from file or text
-            context = ""
-            if self.context_file:
-                # Read PDF or text file
-                import PyPDF2
-                if self.context_file.name.endswith('.pdf'):
-                    with self.context_file.open('rb') as file:
-                        pdf_reader = PyPDF2.PdfReader(file)
-                        for page in pdf_reader.pages:
-                            context += page.extract_text()
-                else:
-                    context = self.context_file.read().decode('utf-8')
-            else:
-                context = self.context_text
+            # Get lectures and their attachments
+            lectures = Lecture.objects.filter(
+                course=self.course,
+                attachment__isnull=False
+            ).exclude(attachment='')
+
+            if not lectures.exists():
+                raise ValidationError("No lectures with attachments found for this course")
+
+            # Get all PDF attachments
+            pdf_files = [lecture.attachment for lecture in lectures if lecture.attachment.name.endswith('.pdf')]
+            
+            if not pdf_files:
+                raise ValidationError("No PDF attachments found in lectures")
 
             # Generate questions using AI
-            questions = generate_mcq_questions(
-                context=context,
-                num_questions=self.number_of_questions,
-                difficulty=self.difficulty_level
+            questions = generate_mcqs_from_multiple_pdfs(
+                pdf_files=pdf_files,
+                num_questions_per_pdf=self.number_of_questions // len(pdf_files)  # Distribute questions evenly
             )
 
             # Create questions for this student
@@ -210,7 +237,8 @@ class Assessment(models.Model):
                     question=q['question'],
                     options=q['options'],
                     answer_key=q['correct_answer'],
-                    created_by=student
+                    created_by=student,
+                    question_grade=self.grade / len(questions)  # Distribute grade evenly
                 )
                 created_questions.append(question)
 
