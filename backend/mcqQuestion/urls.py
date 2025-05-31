@@ -35,8 +35,8 @@ urlpatterns = [
         name='mcq-generate-from-pdf'
     ),
     path(
-        'assessments/<str:assessment_id>/generate-from-multiple-pdfs/',
+        'assessments/<str:assessment_id>/generate-from-lectures/',
         GenerateMCQsFromMultiplePDFsView.as_view(),
-        name='mcq-generate-from-multiple-pdfs'
+        name='mcq-generate-from-lectures'
     ),
 ]

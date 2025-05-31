@@ -12,7 +12,6 @@ from rest_framework.parsers import MultiPartParser, JSONParser
 from django.core.exceptions import ValidationError as DjangoValidationError
 from main.AI import generate_mcqs_from_text, extract_text_from_pdf, generate_mcqs_from_multiple_pdfs
 from decimal import Decimal
-from assessment.models import AssessmentScore, Assessment
 from django.db import transaction
 from users.permissions import isInstitution, isTeacher, isStudent
 from enrollments.models import Enrollments
@@ -21,6 +20,18 @@ import logging
 from .models import McqQuestion
 
 logger = logging.getLogger(__name__)
+
+def get_assessment_model():
+    return apps.get_model('assessment', 'Assessment')
+
+def get_assessment_score_model():
+    return apps.get_model('assessment', 'AssessmentScore')
+
+def get_mcq_question_score_model():
+    return apps.get_model('MCQQuestionScore', 'MCQQuestionScore')
+
+def get_enrollments_model():
+    return apps.get_model('enrollments', 'Enrollments')
 
 class McqQuestionPermission(permissions.BasePermission):
     """Custom permission class for MCQ questions"""
@@ -71,6 +82,7 @@ class McqQuestionListCreateAPIView(generics.ListCreateAPIView):
         assessment_id = self.kwargs.get('assessment_id')
         
         try:
+            Assessment = get_assessment_model()
             assessment = Assessment.objects.get(id=assessment_id)
         except Assessment.DoesNotExist:
             raise ValidationError({"assessment": "Assessment not found"})
@@ -96,6 +108,7 @@ class McqQuestionListCreateAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         assessment_id = self.kwargs.get('assessment_id')
         try:
+            Assessment = get_assessment_model()
             assessment = Assessment.objects.get(id=assessment_id)
         except Assessment.DoesNotExist:
             raise ValidationError({"assessment": "Assessment not found"})
@@ -358,14 +371,16 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
                     answer_key=mcq['correct_answer'],
                     created_by=self.request.user,
                     assessment_id=self.kwargs['assessment_id'],
-                    question_grade=question_grade
+                    question_grade=question_grade,
+                    section_number=1  # Add default section number
                 )
                 saved_questions.append({
                     'id': str(question.id),
                     'question': question.question,
                     'options': question.options,
                     'answer': question.answer_key,
-                    'question_grade': str(question.question_grade)
+                    'question_grade': str(question.question_grade),
+                    'section_number': question.section_number  # Include section number in response
                 })
             except Exception as e:
                 # If any question fails, delete all previously saved questions
@@ -417,15 +432,18 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
 
 class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
     """
-    View for generating MCQ questions from multiple PDF files.
-    POST /mcqQuestion/assessments/{assessment_id}/generate-from-multiple-pdfs/
+    View for generating MCQ questions from multiple lecture attachments.
+    POST /mcqQuestion/assessments/{assessment_id}/generate-from-lectures/
     
-    Request body (multipart/form-data):
-    - pdf_files: Multiple PDF files to generate questions from (required)
-    - num_questions_per_pdf: number of questions per PDF (optional, default=10)
-    - question_grade: grade per question (optional, default=0.00)
+    Request body (JSON):
+    {
+        "lecture_ids": ["uuid1", "uuid2", ...],  // List of lecture IDs
+        "num_questions_per_lecture": 10,  // optional, default=10
+        "question_grade": "2.00",  // optional, default=0.00
+        "section_number": 1  // optional, default=1
+    }
     """
-    parser_classes = (MultiPartParser,)
+    parser_classes = (JSONParser,)
     serializer_class = McqQuestionSerializer
     permission_classes = [McqQuestionPermission]
 
@@ -451,7 +469,7 @@ class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
             if num < 1:
                 raise ValidationError("Number of questions must be positive")
             if num > 50:
-                raise ValidationError("Maximum 50 questions allowed per PDF")
+                raise ValidationError("Maximum 50 questions allowed per lecture")
             return num
         except (TypeError, ValueError):
             raise ValidationError("Number of questions must be a valid integer")
@@ -467,7 +485,7 @@ class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
         except (TypeError, ValueError):
             raise ValidationError("Question grade must be a valid decimal number")
 
-    def save_mcq_questions(self, mcq_data, question_grade):
+    def save_mcq_questions(self, mcq_data, question_grade, section_number=1):
         saved_questions = []
         for mcq in mcq_data:
             try:
@@ -479,7 +497,7 @@ class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
                     'answer_key': mcq['correct_answer'],
                     'assessment': self.kwargs['assessment_id'],
                     'question_grade': question_grade,
-                    'section_number': 1  # Default section number
+                    'section_number': section_number
                 })
                 
                 # Log validation data
@@ -519,41 +537,60 @@ class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         try:
+            logger.info("Starting MCQ generation from lectures")
+            
             # Validate input
-            if 'pdf_files' not in request.FILES:
-                raise ValidationError({"pdf_files": "PDF files are required"})
+            if 'lecture_ids' not in request.data:
+                raise ValidationError({"lecture_ids": "Lecture IDs are required"})
             
-            pdf_files = request.FILES.getlist('pdf_files')
-            if not pdf_files:
-                raise ValidationError({"pdf_files": "At least one PDF file is required"})
+            lecture_ids = request.data['lecture_ids']
+            if not isinstance(lecture_ids, list) or not lecture_ids:
+                raise ValidationError({"lecture_ids": "At least one lecture ID is required"})
             
-            # Validate all files are PDFs
-            for pdf_file in pdf_files:
-                if not pdf_file.name.endswith('.pdf'):
-                    raise ValidationError({"pdf_files": f"File {pdf_file.name} is not a PDF"})
+            # Get lectures and validate attachments
+            from lecture.models import Lecture
+            lectures = Lecture.objects.filter(id__in=lecture_ids)
             
-            num_questions_per_pdf = self.validate_num_questions(request.data.get('num_questions_per_pdf'))
+            if len(lectures) != len(lecture_ids):
+                raise ValidationError({"lecture_ids": "One or more lecture IDs are invalid"})
+            
+            # Check if all lectures have PDF attachments
+            for lecture in lectures:
+                if not lecture.attachment or not lecture.attachment.name.endswith('.pdf'):
+                    raise ValidationError({"lecture_ids": f"Lecture {lecture.title} does not have a PDF attachment"})
+            
+            logger.info(f"Processing {len(lectures)} lectures")
+            num_questions_per_lecture = self.validate_num_questions(request.data.get('num_questions_per_lecture'))
             question_grade = self.validate_question_grade(request.data.get('question_grade'))
+            section_number = request.data.get('section_number', 1)
             
-            # Generate MCQs from all PDFs
-            mcq_data = generate_mcqs_from_multiple_pdfs(pdf_files, num_questions_per_pdf)
+            # Generate MCQs from all lectures
+            mcq_data = generate_mcqs_from_multiple_pdfs(
+                [lecture.attachment for lecture in lectures],
+                num_questions_per_lecture
+            )
+            logger.info(f"Generated {len(mcq_data)} MCQs")
             
             # Save to database
-            saved_questions = self.save_mcq_questions(mcq_data, question_grade)
+            logger.info("Saving MCQs to database")
+            saved_questions = self.save_mcq_questions(mcq_data, question_grade, section_number)
+            logger.info(f"Successfully saved {len(saved_questions)} MCQs")
             
             return Response({
-                'message': f'Successfully generated and saved {len(saved_questions)} MCQ questions from {len(pdf_files)} PDF files',
+                'message': f'Successfully generated and saved {len(saved_questions)} MCQ questions from {len(lectures)} lectures',
                 'mcqs': saved_questions,
                 'num_questions': len(saved_questions),
-                'num_pdfs': len(pdf_files)
+                'num_lectures': len(lectures)
             }, status=status.HTTP_201_CREATED)
 
         except ValidationError as e:
+            logger.error(f"Validation error: {str(e)}")
             return Response({
                 'error': e.detail if hasattr(e, 'detail') else str(e),
                 'error_type': 'validation_error'
             }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.error(f"Processing error: {str(e)}")
             return Response({
                 'error': str(e),
                 'error_type': 'processing_error'
@@ -586,6 +623,7 @@ class McqQuestionViewSet(viewsets.ModelViewSet):
         if user.role != "Student":
             raise PermissionDenied("Only students can access this endpoint")
             
+        Assessment = get_assessment_model()
         assessments = Assessment.objects.filter(
             course__enrollments__user=user,
             due_date__gt=timezone.now()
@@ -627,9 +665,11 @@ class McqQuestionViewSet(viewsets.ModelViewSet):
                     raise ValidationError(f"Question {question_id} not found or not accessible")
                 
                 # Get the enrollment for this user and course
+                Enrollments = get_enrollments_model()
                 enrollment = Enrollments.objects.get(user=user, course=question.assessment.course)
                 
                 # Create or update score
+                MCQQuestionScore = get_mcq_question_score_model()
                 score, created = MCQQuestionScore.objects.update_or_create(
                     question=question,
                     enrollment=enrollment,
@@ -662,6 +702,7 @@ class McqQuestionViewSet(viewsets.ModelViewSet):
             raise ValidationError("assessment_id is required")
             
         try:
+            Assessment = get_assessment_model()
             assessment = Assessment.objects.get(id=assessment_id)
         except Assessment.DoesNotExist:
             raise ValidationError("Assessment not found")
@@ -672,6 +713,7 @@ class McqQuestionViewSet(viewsets.ModelViewSet):
         elif user.role == "Teacher" and not assessment.course.instructors.filter(id=user.id).exists():
             raise PermissionDenied("You don't have permission to view answers for this assessment")
             
+        MCQQuestionScore = get_mcq_question_score_model()
         scores = MCQQuestionScore.objects.filter(
             question__assessment=assessment
         ).select_related('enrollment', 'question')

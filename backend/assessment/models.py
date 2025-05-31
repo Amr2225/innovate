@@ -8,6 +8,7 @@ from enrollments.models import Enrollments
 from decimal import Decimal
 import json
 from django.core.exceptions import ValidationError
+from django.apps import apps
 
 class Assessment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -53,7 +54,7 @@ class Assessment(models.Model):
         """
         Calculate total score for a student based on their MCQQuestionScores
         """
-        from MCQQuestionScore.models import MCQQuestionScore
+        MCQQuestionScore = apps.get_model('MCQQuestionScore', 'MCQQuestionScore')
         
         # Get the enrollment for this student and course
         enrollment = Enrollments.objects.get(user=student, course=self.course)
@@ -70,9 +71,10 @@ class Assessment(models.Model):
         2. MCQQuestion app - Get all MCQ questions
         3. HandwrittenQuestion app - Get all handwritten questions
         """
-        from DynamicMCQ.models import DynamicMCQ, DynamicMCQQuestions
-        from mcqQuestion.models import McqQuestion
-        from HandwrittenQuestion.models import HandwrittenQuestion
+        DynamicMCQ = apps.get_model('DynamicMCQ', 'DynamicMCQ')
+        DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
+        McqQuestion = apps.get_model('mcqQuestion', 'McqQuestion')
+        HandwrittenQuestion = apps.get_model('HandwrittenQuestion', 'HandwrittenQuestion')
         from main.AI import generate_mcq_questions
 
         questions = {
@@ -163,8 +165,8 @@ class Assessment(models.Model):
             return None
 
         from main.AI import generate_mcq_questions
-        from mcqQuestion.models import McqQuestion
-        from enrollments.models import Enrollments
+        McqQuestion = apps.get_model('mcqQuestion', 'McqQuestion')
+        Enrollments = apps.get_model('enrollments', 'Enrollments')
 
         try:
             # Get student's enrollment
@@ -200,7 +202,7 @@ class Assessment(models.Model):
                 difficulty=self.difficulty_level
             )
 
-            # Create MCQ questions for this student
+            # Create questions for this student
             created_questions = []
             for q in questions:
                 question = McqQuestion.objects.create(
@@ -208,64 +210,38 @@ class Assessment(models.Model):
                     question=q['question'],
                     options=q['options'],
                     answer_key=q['correct_answer'],
-                    question_grade=self.grade / self.number_of_questions,
-                    created_by=student  # Track who generated the questions
+                    created_by=student
                 )
                 created_questions.append(question)
 
             return created_questions
 
         except Exception as e:
-            raise ValidationError(f"Error generating dynamic questions: {str(e)}")
+            print(f"Error generating dynamic questions: {str(e)}")
+            return None
 
     def validate_question_grade(self, new_question_grade, existing_question_id=None):
         """
-        Validate that adding a new question grade won't exceed the assessment's total grade.
-        
-        Args:
-            new_question_grade: The grade of the new question being added
-            existing_question_id: The ID of an existing question being updated (if any)
-        
-        Returns:
-            bool: True if validation passes
-        
-        Raises:
-            ValidationError: If the total grade would exceed the assessment grade
+        Validate that the total grade of all questions doesn't exceed the assessment grade
         """
-        # Get total grade of all MCQ questions
-        mcq_total = self.mcq_questions.aggregate(
-            total=models.Sum('question_grade')
-        )['total'] or 0
-
-        # Get total grade of all handwritten questions
-        handwritten_total = self.handwritten_questions.aggregate(
-            total=models.Sum('max_grade')
-        )['total'] or 0
-
-        # If updating an existing question, subtract its current grade
+        # Get current total grade excluding the question being updated
+        current_total = self.total_grade
+        
         if existing_question_id:
+            # If updating an existing question, subtract its grade from the total
+            McqQuestion = apps.get_model('mcqQuestion', 'McqQuestion')
             try:
-                # Check MCQ questions
-                mcq_question = self.mcq_questions.get(id=existing_question_id)
-                mcq_total -= mcq_question.question_grade
+                existing_question = McqQuestion.objects.get(id=existing_question_id)
+                current_total -= existing_question.question_grade
             except McqQuestion.DoesNotExist:
-                try:
-                    # Check handwritten questions
-                    handwritten_question = self.handwritten_questions.get(id=existing_question_id)
-                    handwritten_total -= handwritten_question.max_grade
-                except HandwrittenQuestion.DoesNotExist:
-                    pass
+                pass
 
-        # Calculate new total
-        new_total = mcq_total + handwritten_total + new_question_grade
-
-        # Check if new total exceeds assessment grade
-        if new_total > self.grade:
+        # Check if adding the new grade would exceed the assessment grade
+        if current_total + new_question_grade > self.grade:
             raise ValidationError(
-                f"Total question grades ({new_total}) would exceed assessment grade ({self.grade})"
+                f"Total grade of questions ({current_total + new_question_grade}) "
+                f"exceeds assessment grade ({self.grade})"
             )
-
-        return True
 
 class AssessmentScore(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -280,18 +256,23 @@ class AssessmentScore(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.enrollment.user.email} - {self.assessment.title}"
+        return f"{self.assessment.title} - {self.enrollment.user.email}"
 
     def save(self, *args, **kwargs):
         # Calculate total score from MCQ and Handwritten scores
-        mcq_total = self.enrollment.mcq_scores.filter(
-            question__assessment=self.assessment
+        MCQQuestionScore = apps.get_model('MCQQuestionScore', 'MCQQuestionScore')
+        HandwrittenQuestionScore = apps.get_model('HandwrittenQuestion', 'HandwrittenQuestionScore')
+        
+        mcq_score = MCQQuestionScore.objects.filter(
+            question__assessment=self.assessment,
+            enrollment=self.enrollment
         ).aggregate(total=Sum('score'))['total'] or 0
-
-        handwritten_total = self.enrollment.handwritten_scores.filter(
-            question__assessment=self.assessment
+        
+        handwritten_score = HandwrittenQuestionScore.objects.filter(
+            question__assessment=self.assessment,
+            enrollment=self.enrollment
         ).aggregate(total=Sum('score'))['total'] or 0
-
-        self.total_score = Decimal(str(mcq_total)) + Decimal(str(handwritten_total))
+        
+        self.total_score = mcq_score + handwritten_score
         super().save(*args, **kwargs)
 
