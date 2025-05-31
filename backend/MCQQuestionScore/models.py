@@ -6,24 +6,30 @@ from assessment.models import AssessmentScore
 from enrollments.models import Enrollments
 import uuid
 import logging
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 logger = logging.getLogger(__name__)
 
 class MCQQuestionScore(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    question = models.ForeignKey(McqQuestion, on_delete=models.CASCADE, related_name='scores')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.UUIDField()
+    question = GenericForeignKey('content_type', 'object_id')
     enrollment = models.ForeignKey(Enrollments, on_delete=models.CASCADE, related_name='mcq_scores')
     selected_answer = models.CharField(max_length=255)
     is_correct = models.BooleanField(default=False)
     score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    question_type = models.CharField(max_length=20, choices=[('mcq', 'MCQ'), ('dynamic_mcq', 'Dynamic MCQ')])
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('question', 'enrollment')
+        unique_together = ('content_type', 'object_id', 'enrollment')
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['question', 'enrollment']),
+            models.Index(fields=['content_type', 'object_id']),
+            models.Index(fields=['enrollment']),
             models.Index(fields=['created_at']),
         ]
 
@@ -44,7 +50,7 @@ class MCQQuestionScore(models.Model):
 
         try:
             # Update or create AssessmentScore
-            assessment = self.question.assessment
+            assessment = self.question.assessment if hasattr(self.question, 'assessment') else self.question.dynamic_mcq.assessment
             assessment_score, created = AssessmentScore.objects.get_or_create(
                 enrollment=self.enrollment,
                 assessment=assessment,
