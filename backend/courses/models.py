@@ -21,7 +21,7 @@ class Course(models.Model):
     credit_hours = models.PositiveSmallIntegerField(null=True, blank=True)
 
     # School fields
-    total_grade = models.PositiveIntegerField(null=True, blank=True)
+    total_grade = models.PositiveSmallIntegerField(null=True, blank=True)
 
     @property
     def level(self):
