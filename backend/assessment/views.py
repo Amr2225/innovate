@@ -3,6 +3,7 @@ from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q
 from .models import Assessment, AssessmentScore
 from .serializers import AssessmentSerializer, AssessmentScoreSerializer, AssessmentListSerializer
+from .filters import AssessmentFilterSet
 from courses.models import Course
 from enrollments.models import Enrollments
 from mcqQuestion.models import McqQuestion
@@ -20,6 +21,7 @@ from HandwrittenQuestion.models import HandwrittenQuestion, HandwrittenQuestionS
 from django.utils import timezone
 from AssessmentSubmission.models import AssessmentSubmission
 from django.apps import apps
+from django_filters.rest_framework import DjangoFilterBackend
 
 # ----------------------
 # Assessment Views
@@ -61,8 +63,61 @@ class AssessmentPermission(permissions.BasePermission):
         return False
 
 class AssessmentListCreateAPIView(generics.ListCreateAPIView):
+    """
+    API endpoint to list and create assessments.
+
+    GET /api/assessments/
+    List all assessments with filtering options:
+    - course: Filter by course ID
+    - title: Filter by assessment title (case-insensitive contains)
+    - type: Filter by assessment type
+    - due_date: Filter by due date
+    - accepting_submissions: Filter by whether assessment is accepting submissions
+    - created_at: Filter by creation date
+
+    POST /api/assessments/
+    Create a new assessment.
+
+    Parameters:
+    - course: Course ID
+    - title: Assessment title
+    - description: Assessment description
+    - type: Assessment type
+    - grade: Assessment grade
+    - due_date: Due date
+    - accepting_submissions: Whether assessment is accepting submissions
+
+    Returns:
+    ```json
+    {
+        "id": "uuid",
+        "course": "uuid",
+        "title": "string",
+        "description": "string",
+        "type": "string",
+        "grade": "decimal",
+        "due_date": "datetime",
+        "accepting_submissions": "boolean",
+        "created_at": "datetime",
+        "updated_at": "datetime"
+    }
+    ```
+
+    Status Codes:
+    - 200: Successfully retrieved assessments
+    - 201: Successfully created assessment
+    - 400: Invalid input data
+    - 403: Not authorized to create assessment
+
+    Permissions:
+    - Students: Can view assessments for courses they're enrolled in
+    - Teachers: Can manage assessments for courses they teach
+    - Institutions: Can manage assessments for their courses
+    """
     serializer_class = AssessmentListSerializer
     permission_classes = [permissions.IsAuthenticated, AssessmentPermission]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = AssessmentFilterSet
 
     def get_queryset(self):
         user = self.request.user
@@ -287,7 +342,47 @@ class AssessmentScoreDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         instance.delete()
 
 class AssessmentQuestionsAPIView(generics.ListAPIView):
-    """View to get all questions for a specific assessment"""
+    """
+    API endpoint to get all questions for a specific assessment.
+
+    This endpoint returns all questions (MCQ, Dynamic MCQ, and Handwritten) for an assessment
+    based on the user's role and permissions.
+
+    GET /api/assessments/{assessment_id}/questions/
+
+    Parameters:
+    - assessment_id (UUID): The ID of the assessment
+    - is_completed (boolean, optional): Filter by enrollment completion status (for students)
+
+    Returns:
+    ```json
+    {
+        "questions": [
+            {
+                "id": "uuid",
+                "type": "mcq|dynamic_mcq|handwritten",
+                "question": "string",
+                "options": ["string"],  // For MCQ and Dynamic MCQ
+                "answer_key": "string",  // Only for teachers/institutions
+                "question_grade": "string",  // For MCQ
+                "max_grade": "string",  // For Handwritten
+                "section_number": "integer",
+                "difficulty": "string"  // For Dynamic MCQ
+            }
+        ]
+    }
+    ```
+
+    Status Codes:
+    - 200: Successfully retrieved questions
+    - 403: Not authorized to view questions
+    - 404: Assessment not found
+
+    Permissions:
+    - Students: Can view questions for courses they're enrolled in
+    - Teachers: Can view questions for courses they teach
+    - Institutions: Can view questions for their courses
+    """
     serializer_class = McqQuestionSerializer
     permission_classes = [AssessmentPermission]
 
@@ -331,10 +426,55 @@ class AssessmentQuestionsAPIView(generics.ListAPIView):
         return context
 
 class StudentGradesAPIView(generics.GenericAPIView):
-    """View to get total grade for a student's assessment"""
-    serializer_class = AssessmentScoreSerializer
+    """
+    API endpoint to get a student's grades for a specific assessment.
+
+    This endpoint returns detailed information about a student's performance in an assessment,
+    including their answers, scores, and feedback for each question.
+
+    GET /api/assessments/{assessment_id}/student-grades/
+
+    Parameters:
+    - assessment_id (UUID): The ID of the assessment
+
+    Returns:
+    ```json
+    {
+        "assessment_id": "uuid",
+        "assessment_title": "string",
+        "questions": [
+            {
+                "question_id": "uuid",
+                "question_text": "string",
+                "type": "mcq|handwritten",
+                "student_answer": "string",
+                "is_correct": "boolean",  // For MCQ
+                "score": "string",
+                "max_score": "string",
+                "options": ["string"],  // For MCQ
+                "correct_answer": "string",  // For teachers/institutions
+                "extracted_text": "string",  // For Handwritten
+                "feedback": "string",  // For Handwritten
+                "answer_image": "url"  // For Handwritten
+            }
+        ],
+        "total_score": "float",
+        "total_max_score": "float"
+    }
+    ```
+
+    Status Codes:
+    - 200: Successfully retrieved grades
+    - 400: Assessment not submitted
+    - 403: Not authorized to view grades
+    - 404: Assessment or score not found
+
+    Permissions:
+    - Students: Can view their own grades
+    - Teachers: Can view grades for their courses
+    - Institutions: Can view grades for their courses
+    """
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [JSONParser]
 
     def get(self, request, *args, **kwargs):
         try:
@@ -407,10 +547,17 @@ class StudentGradesAPIView(generics.GenericAPIView):
                 enrollment=assessment_score.enrollment
             ).select_related('question')
 
+            # Get all Dynamic MCQ questions
+            DynamicMCQ = apps.get_model('DynamicMCQ', 'DynamicMCQ')
+            DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
+            
+            # Get all Dynamic MCQ questions for this assessment
+            dynamic_mcqs = DynamicMCQ.objects.filter(assessment=assessment)
+            dynamic_mcq_questions = DynamicMCQQuestions.objects.filter(dynamic_mcq__in=dynamic_mcqs)
+
             # Calculate total score of answered questions
-            mcq_total = mcq_scores.aggregate(total=Sum('score'))['total'] or 0
-            handwritten_total = handwritten_scores.aggregate(total=Sum('score'))['total'] or 0
-            total_answered_score = mcq_total + handwritten_total
+            mcq_total = float(mcq_scores.aggregate(total=Sum('score'))['total'] or 0)
+            handwritten_total = float(handwritten_scores.aggregate(total=Sum('score'))['total'] or 0)
 
             # Build questions data with student scores
             questions_data = []
@@ -455,11 +602,47 @@ class StudentGradesAPIView(generics.GenericAPIView):
                 
                 questions_data.append(question_data)
 
+            # Add Dynamic MCQ questions
+            dynamic_mcq_total = 0
+            for question in dynamic_mcq_questions:
+                # Get the score for this question from MCQQuestionScore using dynamic_question_id
+                score = MCQQuestionScore.objects.filter(
+                    dynamic_question_id=question.id,  # Match by dynamic_question_id
+                    enrollment=assessment_score.enrollment
+                ).first()
+                
+                if score:
+                    dynamic_mcq_total += float(score.score)
+                
+                # Get the student's answer from the score's selected_answer field
+                student_answer = score.selected_answer if score and hasattr(score, 'selected_answer') else None
+                
+                question_data = {
+                    'question_id': str(question.id),
+                    'question_text': question.question,
+                    'type': 'dynamic_mcq',
+                    'max_score': str(question.question_grade),
+                    'difficulty': question.difficulty,
+                    'score': str(score.score) if score else '0',
+                    'is_correct': score.is_correct if score else False,
+                    'student_answer': student_answer
+                }
+                
+                if request.user.role in ['Teacher', 'Institution', 'Student']:
+                    question_data.update({
+                        'options': question.options,
+                        'correct_answer': question.answer_key
+                    })
+                
+                questions_data.append(question_data)
+
+            total_answered_score = mcq_total + handwritten_total + dynamic_mcq_total
+
             response_data = {
                 'assessment_id': str(assessment_score.assessment.id),
                 'assessment_title': assessment_score.assessment.title,
                 'questions': questions_data,
-                'total_score': float(total_answered_score),
+                'total_score': total_answered_score,
                 'total_max_score': float(assessment_score.assessment.grade)
             }
 
@@ -557,7 +740,7 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
                     'type': 'dynamic_mcq',
                     'question': question.question_text,
                     'options': question.options,
-                    'answer_key': question.correct_answer,
+                    'answer_key': question.answer_key,
                     'difficulty': question.difficulty,
                     'created_by': str(question.created_by.id) if question.created_by else None
                 }
