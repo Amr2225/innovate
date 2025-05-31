@@ -71,6 +71,11 @@ INSTALLED_APPS = [
     'assessment',
     'mcqQuestion',
     'chat',
+    'MCQQuestionScore',
+    'HandwrittenQuestion',
+    'CodingQuestion',
+    'DynamicMCQ',
+    'AssessmentSubmission',
 ]
 
 ASGI_APPLICATION = 'main.asgi.application'
@@ -175,7 +180,19 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
+<<<<<<< HEAD
 
+=======
+MEDIA_URL = '/uploads/'
+MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
+# Assessment Uploads Configuration
+ASSESSMENT_UPLOADS_DIR = 'AssessmentUploads'
+ASSESSMENT_UPLOADS_PATH = os.path.join(MEDIA_ROOT, ASSESSMENT_UPLOADS_DIR)
+
+# Create upload directories if they don't exist
+os.makedirs(MEDIA_ROOT, exist_ok=True)
+os.makedirs(ASSESSMENT_UPLOADS_PATH, exist_ok=True)
+>>>>>>> sherif
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -205,8 +222,13 @@ REST_FRAMEWORK = {
 
 # Simple JWT
 SIMPLE_JWT = {
+<<<<<<< HEAD
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
     "REFRESH_TOKEN_LIFETIME": timedelta(minutes=60*3),
+=======
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=900),
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=30),
+>>>>>>> sherif
     "SIGNING_KEY": os.environ.get('JWT_MAIN', SECRET_KEY),
     "ISSUER": None,
     "USER_ID_FIELD": "id",  # The id field in the model
@@ -243,12 +265,15 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
+<<<<<<< HEAD
 # Payment Config
 PAYMOB_PK = os.environ.get('PAYMOB_PK')
 PAYMOB_SK = os.environ.get('PAYMOB_SK')
 CLIENT_URL = os.environ.get('CLIENT_URL')
 
 # AI CONFIG
+=======
+>>>>>>> sherif
 AI_API_KEY = os.environ.get('AI_API_KEY')
 AI_PROVIDER = os.environ.get('AI_PROVIDER')
 AI_MODEL = os.environ.get('AI_MODEL')
