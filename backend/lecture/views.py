@@ -1,15 +1,21 @@
 from rest_framework import generics
 from lecture.models import Lecture, LectureProgress
-from lecture.serializers import LectureSerializer, LectureProgressSerializer
+from lecture.serializers import LectureSerializer, LectureProgressSerializer, LectureBulkCreateSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import serializers
 from users.permissions import isInstitution, isStudent, isTeacher
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 
+
 class LectureListCreateAPIView(generics.ListCreateAPIView):
-    serializer_class = LectureSerializer
-    filterset_fields = ['id', 'title', 'description', 'chapter']
+    filterset_fields = ['id', 'title',
+                        'description', 'chapter', 'chapter__course']
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return LectureBulkCreateSerializer
+        return LectureSerializer
 
     def get_queryset(self):
         user = self.request.user
@@ -36,19 +42,26 @@ class LectureListCreateAPIView(generics.ListCreateAPIView):
         return super().get_permissions()
 
     def perform_create(self, serializer):
+        # For bulk creation, validation is handled in the serializer
+        if isinstance(serializer, LectureBulkCreateSerializer):
+            serializer.save()
+            return
+
+        # For single lecture creation
         chapter = serializer.validated_data['chapter']
         user = self.request.user
 
         if user.role == "Teacher":
             if user not in chapter.course.instructors.all():
-                raise serializers.ValidationError("You are not the instructor of this course.")
+                raise serializers.ValidationError(
+                    "You are not the instructor of this course.")
 
         elif user.role == "Institution":
             if chapter.course.institution != user:
-                raise serializers.ValidationError("You do not have permission to add a lecture to this chapter.")
+                raise serializers.ValidationError(
+                    "You do not have permission to add a lecture to this chapter.")
 
         serializer.save()
-
 
 
 class LectureRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
@@ -79,16 +92,19 @@ class LectureRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
         return super().get_permissions()
 
     def perform_update(self, serializer):
-        chapter = serializer.validated_data.get('chapter', self.get_object().chapter)
+        chapter = serializer.validated_data.get(
+            'chapter', self.get_object().chapter)
         user = self.request.user
 
         if user.role == "Teacher":
             if chapter.course.instructor != user:
-                raise serializers.ValidationError("You are not the instructor of this course.")
+                raise serializers.ValidationError(
+                    "You are not the instructor of this course.")
 
         elif user.role == "Institution":
             if chapter.course.institution != user:
-                raise serializers.ValidationError("You do not have permission to update this lecture.")
+                raise serializers.ValidationError(
+                    "You do not have permission to update this lecture.")
 
         serializer.save()
 
@@ -97,13 +113,14 @@ class LectureRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView)
 
         if user.role == "Teacher":
             if instance.chapter.course.instructor != user:
-                raise serializers.ValidationError("You are not the instructor of this course.")
+                raise serializers.ValidationError(
+                    "You are not the instructor of this course.")
         elif user.role == "Institution":
             if instance.chapter.course.institution != user:
-                raise serializers.ValidationError("You do not have permission to delete this lecture.")
+                raise serializers.ValidationError(
+                    "You do not have permission to delete this lecture.")
 
         instance.delete()
-
 
 
 class LecturesProgressListCreateAPIView(generics.ListCreateAPIView):

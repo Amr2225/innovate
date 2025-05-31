@@ -36,6 +36,7 @@ export default function RegistrationForm({
   const inputRef = useRef<HTMLInputElement>(null);
   const { addCreds, setFile } = store();
 
+  // TODO: implement logo from store
   const form = useForm<InstitutionRegisterSchemaType>({
     resolver: zodResolver(InstitutionRegisterSchema),
     defaultValues: {

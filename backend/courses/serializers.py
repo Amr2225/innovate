@@ -6,9 +6,11 @@ from enrollments.models import Enrollments
 
 
 class InstructorSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(read_only=True)
+
     class Meta:
         model = User
-        fields = ["id", "first_name", "middle_name", "last_name", "avatar"]
+        fields = ["id", "full_name", "avatar", "email"]
 
         extra_kwargs = {
             'avatar': {'read_only': True},
