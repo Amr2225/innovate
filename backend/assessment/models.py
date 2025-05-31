@@ -164,28 +164,41 @@ class AssessmentScore(models.Model):
         return f"{self.enrollment.user.email} - {self.assessment.title} - {self.total_score}"
 
     def save(self, *args, **kwargs):
+        print(f"DEBUG: Starting AssessmentScore save for assessment {self.assessment.id}")
+        print(f"DEBUG: Current total_score before calculation: {self.total_score}")
+        
         # Calculate total score from MCQQuestionScores
         from MCQQuestionScore.models import MCQQuestionScore
-        mcq_total = MCQQuestionScore.objects.filter(
+        mcq_scores = MCQQuestionScore.objects.filter(
             question__assessment=self.assessment,
             enrollment=self.enrollment
-        ).aggregate(total=Sum('score'))['total'] or Decimal('0')
+        )
+        mcq_total = mcq_scores.aggregate(total=Sum('score'))['total'] or Decimal('0')
+        print(f"DEBUG: Found {mcq_scores.count()} MCQ scores")
+        print(f"DEBUG: MCQ Total: {mcq_total}")
         
         # Calculate total score from HandwrittenQuestionScores
         from HandwrittenQuestion.models import HandwrittenQuestionScore
-        handwritten_total = HandwrittenQuestionScore.objects.filter(
+        handwritten_scores = HandwrittenQuestionScore.objects.filter(
             question__assessment=self.assessment,
             enrollment=self.enrollment
-        ).aggregate(total=Sum('score'))['total'] or Decimal('0')
+        )
+        handwritten_total = handwritten_scores.aggregate(total=Sum('score'))['total'] or Decimal('0')
+        print(f"DEBUG: Found {handwritten_scores.count()} Handwritten scores")
+        print(f"DEBUG: Handwritten Total: {handwritten_total}")
         
-        # Set total score
-        self.total_score = mcq_total + handwritten_total
+        # Set total score for this assessment
+        self.total_score = (mcq_total + handwritten_total).quantize(Decimal('0.01'))
+        print(f"DEBUG: New total_score after calculation: {self.total_score}")
         
         # Save the assessment score
         super().save(*args, **kwargs)
+        print(f"DEBUG: Saved AssessmentScore with total: {self.total_score}")
         
-        # Update the enrollment's total score
+        # Update the enrollment's total score by recalculating from all assessments
+        print(f"DEBUG: Current enrollment total before update: {self.enrollment.total_score}")
         self.enrollment.update_total_score()
+        print(f"DEBUG: Enrollment total after update: {self.enrollment.total_score}")
 
 class AssessmentSubmission(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -319,13 +332,31 @@ class AssessmentSubmission(models.Model):
         """Update the AssessmentScore with total score"""
         from assessment.models import AssessmentScore
 
+        # Get or create the assessment score
         assessment_score, created = AssessmentScore.objects.get_or_create(
             enrollment=self.enrollment,
             assessment=self.assessment,
-            defaults={'total_score': 0}
+            defaults={'total_score': Decimal('0.00')}
         )
         
-        # The AssessmentScore's save method will automatically calculate the total score
+        # Calculate new total from all question scores
+        from MCQQuestionScore.models import MCQQuestionScore
+        from HandwrittenQuestion.models import HandwrittenQuestionScore
+        
+        # Get MCQ scores
+        mcq_total = MCQQuestionScore.objects.filter(
+            question__assessment=self.assessment,
+            enrollment=self.enrollment
+        ).aggregate(total=Sum('score'))['total'] or Decimal('0.00')
+        
+        # Get Handwritten scores
+        handwritten_total = HandwrittenQuestionScore.objects.filter(
+            question__assessment=self.assessment,
+            enrollment=self.enrollment
+        ).aggregate(total=Sum('score'))['total'] or Decimal('0.00')
+        
+        # Update the total score
+        assessment_score.total_score = (mcq_total + handwritten_total).quantize(Decimal('0.01'))
         assessment_score.save()
 
     @classmethod

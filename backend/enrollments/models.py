@@ -23,30 +23,32 @@ class Enrollments(models.Model):
 
     def update_total_score(self):
         """
-        Updates the total score from all assessment scores for this enrollment.
-        Calculates the average score across all assessments and saves it to the database.
+        Updates the total score by summing up all assessment scores for this enrollment.
         """
+        print(f"DEBUG: Starting enrollment update_total_score for enrollment {self.id}")
+        print(f"DEBUG: Current total_score before update: {self.total_score}")
+        
         from assessment.models import AssessmentScore
         
         # Get all assessment scores for this enrollment
         scores = AssessmentScore.objects.filter(enrollment=self)
+        print(f"DEBUG: Found {scores.count()} assessment scores")
         
         # If no scores exist, set total_score to 0
         if not scores.exists():
+            print("DEBUG: No assessment scores found, setting total to 0")
             self.total_score = Decimal('0.00')
             self.save()
             return
         
-        # Calculate total and count
-        result = scores.aggregate(
-            total=Sum('total_score'),
-            count=Count('id')
-        )
+        # Calculate total of all scores
+        total = scores.aggregate(total=Sum('total_score'))['total'] or Decimal('0.00')
+        print(f"DEBUG: Calculated total from all assessment scores: {total}")
         
-        # Ensure we have valid numbers
-        total = result['total'] or Decimal('0.00')
-        count = result['count'] or 1
+        # Set total score and round to 2 decimal places
+        self.total_score = total.quantize(Decimal('0.01'))
+        print(f"DEBUG: New total_score after calculation: {self.total_score}")
         
-        # Calculate average and round to 2 decimal places
-        self.total_score = (total / count).quantize(Decimal('0.01'))
+        # Save the changes
         self.save()
+        print(f"DEBUG: Saved enrollment with new total_score: {self.total_score}")

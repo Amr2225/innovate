@@ -11,6 +11,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator, FileExt
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 import logging
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -126,45 +127,26 @@ class HandwrittenQuestionScore(models.Model):
             )
             os.makedirs(upload_path, exist_ok=True)
         
+        # Save the HandwrittenQuestionScore
         super().save(*args, **kwargs)
 
-        # Update assessment score
-        assessment = self.question.assessment
-        from assessment.models import AssessmentScore
-        assessment_score, created = AssessmentScore.objects.get_or_create(
-            enrollment=self.enrollment,
-            assessment=assessment,
-            defaults={'total_score': 0}
-        )
-        
-        # Calculate total score including both MCQ and Handwritten scores
-        mcq_total = float(assessment.mcq_questions.filter(
-            scores__enrollment=self.enrollment
-        ).aggregate(total=models.Sum('scores__score'))['total'] or 0)
-        
-        handwritten_total = float(assessment.handwritten_questions.filter(
-            scores__enrollment=self.enrollment
-        ).aggregate(total=models.Sum('scores__score'))['total'] or 0)
-        
-        # Calculate total possible score
-        mcq_max = float(assessment.mcq_questions.aggregate(total=models.Sum('question_grade'))['total'] or 0)
-        handwritten_max = float(assessment.handwritten_questions.aggregate(total=models.Sum('max_grade'))['total'] or 0)
-        total_max = mcq_max + handwritten_max
-        
-        # Calculate percentage score
-        if total_max > 0:
-            percentage_score = ((mcq_total + handwritten_total) / total_max) * 100
-        else:
-            percentage_score = 0
-            
-        # Update assessment score
-        assessment_score.total_score = mcq_total + handwritten_total
-        assessment_score.percentage_score = percentage_score
-        assessment_score.save()
-        
-        logger.info(f"Updated assessment score for enrollment {self.enrollment.id} and assessment {assessment.id}")
-        logger.info(f"MCQ total: {mcq_total}, Handwritten total: {handwritten_total}")
-        logger.info(f"Total score: {assessment_score.total_score}, Percentage: {percentage_score}%")
+        try:
+            # Get the assessment score and trigger its save to recalculate total
+            from assessment.models import AssessmentScore
+            assessment_score = AssessmentScore.objects.get(
+                enrollment=self.enrollment,
+                assessment=self.question.assessment
+            )
+            assessment_score.save()
+        except AssessmentScore.DoesNotExist:
+            # If no assessment score exists yet, create one
+            AssessmentScore.objects.create(
+                enrollment=self.enrollment,
+                assessment=self.question.assessment,
+                total_score=Decimal('0.00')
+            )
+        except Exception as e:
+            logger.error(f"Error updating assessment score: {str(e)}")
 
     def clean(self):
         if self.answer_image:
