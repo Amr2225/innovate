@@ -4,6 +4,7 @@ from users.models import User
 from courses.models import Course
 from assessment.models import AssessmentScore
 from enrollments.models import Enrollments
+from DynamicMCQ.models import DynamicMCQQuestions
 import uuid
 import logging
 
@@ -11,7 +12,9 @@ logger = logging.getLogger(__name__)
 
 class MCQQuestionScore(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    question = models.ForeignKey(McqQuestion, on_delete=models.CASCADE, related_name='scores')
+    
+    question = models.ForeignKey(McqQuestion, on_delete=models.CASCADE, related_name='scores', null=True, blank=True)
+    dynamic_question = models.ForeignKey(DynamicMCQQuestions, on_delete=models.CASCADE, related_name='scores', null=True, blank=True)
     enrollment = models.ForeignKey(Enrollments, on_delete=models.CASCADE, related_name='mcq_scores')
     selected_answer = models.CharField(max_length=255)
     is_correct = models.BooleanField(default=False)
@@ -20,31 +23,41 @@ class MCQQuestionScore(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ('question', 'enrollment')
+        unique_together = [('question', 'enrollment'), ('dynamic_question', 'enrollment')]
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['question', 'enrollment']),
+            models.Index(fields=['dynamic_question', 'enrollment']),
             models.Index(fields=['created_at']),
         ]
 
     def __str__(self):
-        return f"{self.enrollment.user.email} - {self.question.question} - {self.score}"
+        question_text = self.question.question if self.question else self.dynamic_question.question
+        return f"{self.enrollment.user.email} - {question_text} - {self.score}"
 
     def save(self, *args, **kwargs):
         # Calculate score based on whether the answer is correct
-        if self.selected_answer == self.question.answer_key:
-            self.is_correct = True
-            self.score = self.question.question_grade
-        else:
-            self.is_correct = False
-            self.score = 0
+        if self.question:
+            if self.selected_answer == self.question.answer_key:
+                self.is_correct = True
+                self.score = self.question.question_grade
+            else:
+                self.is_correct = False
+                self.score = 0
+        elif self.dynamic_question:
+            if self.selected_answer == self.dynamic_question.answer_key:
+                self.is_correct = True
+                self.score = self.dynamic_question.question_grade
+            else:
+                self.is_correct = False
+                self.score = 0
 
         # Save the MCQQuestionScore first
         super().save(*args, **kwargs)
 
         try:
             # Update or create AssessmentScore
-            assessment = self.question.assessment
+            assessment = self.question.assessment if self.question else self.dynamic_question.dynamic_mcq.assessment
             assessment_score, created = AssessmentScore.objects.get_or_create(
                 enrollment=self.enrollment,
                 assessment=assessment,

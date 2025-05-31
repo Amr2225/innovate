@@ -290,17 +290,27 @@ class AssessmentScore(models.Model):
         # Calculate total score from MCQ and Handwritten scores
         MCQQuestionScore = apps.get_model('MCQQuestionScore', 'MCQQuestionScore')
         HandwrittenQuestionScore = apps.get_model('HandwrittenQuestion', 'HandwrittenQuestionScore')
+        DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
         
+        # Get regular MCQ scores
         mcq_score = MCQQuestionScore.objects.filter(
             question__assessment=self.assessment,
             enrollment=self.enrollment
         ).aggregate(total=Sum('score'))['total'] or 0
         
+        # Get dynamic MCQ scores
+        dynamic_mcq_score = MCQQuestionScore.objects.filter(
+            dynamic_question__dynamic_mcq__assessment=self.assessment,
+            enrollment=self.enrollment
+        ).aggregate(total=Sum('score'))['total'] or 0
+        
+        # Get handwritten scores
         handwritten_score = HandwrittenQuestionScore.objects.filter(
             question__assessment=self.assessment,
             enrollment=self.enrollment
         ).aggregate(total=Sum('score'))['total'] or 0
         
-        self.total_score = mcq_score + handwritten_score
+        # Calculate total score
+        self.total_score = mcq_score + dynamic_mcq_score + handwritten_score
         super().save(*args, **kwargs)
 

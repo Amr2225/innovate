@@ -41,6 +41,60 @@ class DynamicMCQPermission(permissions.BasePermission):
         return False
 
 class DynamicMCQListCreateAPIView(generics.ListCreateAPIView):
+    """
+    API endpoint for listing and creating Dynamic MCQ sections.
+
+    This endpoint allows teachers and institutions to:
+    - List all Dynamic MCQ sections for an assessment (GET)
+    - Create new Dynamic MCQ sections (POST)
+
+    GET /api/assessments/{assessment_id}/dynamic-mcqs/
+    
+    Returns a list of Dynamic MCQ sections:
+    ```json
+    [
+        {
+            "id": "uuid",
+            "assessment_details": {
+                "id": "uuid",
+                "title": "string",
+                "course": "uuid"
+            },
+            "section_number": "integer",
+            "context": "string",
+            "lecture_ids": ["uuid"],
+            "difficulty": "string",
+            "total_grade": "integer",
+            "number_of_questions": "integer"
+        }
+    ]
+    ```
+
+    POST /api/assessments/{assessment_id}/dynamic-mcqs/
+    
+    Create a new Dynamic MCQ section:
+    ```json
+    {
+        "section_number": 1,
+        "context": "string",  // Optional if lecture_ids provided
+        "lecture_ids": ["uuid"],  // Optional if context provided
+        "difficulty": "1|2|3|4|5",  // 1: Very Easy, 5: Very Hard
+        "total_grade": 10,
+        "number_of_questions": 5
+    }
+    ```
+
+    Status Codes:
+    - 200: Successfully retrieved sections
+    - 201: Section created successfully
+    - 400: Invalid input data
+    - 403: Not authorized to create sections
+    - 404: Assessment not found
+
+    Notes:
+    - Either context or lecture_ids must be provided
+    - Questions will be generated automatically for each student
+    """
     serializer_class = DynamicMCQSerializer
     permission_classes = [permissions.IsAuthenticated, DynamicMCQPermission]
 
@@ -114,6 +168,50 @@ class DynamicMCQDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         return DynamicMCQ.objects.none()
 
 class DynamicMCQQuestionsListCreateAPIView(generics.ListCreateAPIView):
+    """
+    API endpoint for listing and creating Dynamic MCQ questions.
+
+    This endpoint allows teachers and institutions to:
+    - List all questions for a Dynamic MCQ section (GET)
+    - Create new questions manually (POST)
+
+    GET /api/dynamic-mcqs/{dynamic_mcq_id}/questions/
+    
+    Returns a list of questions:
+    ```json
+    [
+        {
+            "id": "uuid",
+            "question": "string",
+            "options": ["string"],
+            "answer_key": "string",
+            "question_grade": "string",
+            "difficulty": "string",
+            "created_by": "uuid"
+        }
+    ]
+    ```
+
+    POST /api/dynamic-mcqs/{dynamic_mcq_id}/questions/
+    
+    Create a new question:
+    ```json
+    {
+        "question": "What is...?",
+        "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+        "answer_key": "Option 1",
+        "question_grade": "2.00",
+        "difficulty": "3"
+    }
+    ```
+
+    Status Codes:
+    - 200: Successfully retrieved questions
+    - 201: Question created successfully
+    - 400: Invalid input data
+    - 403: Not authorized to create questions
+    - 404: Dynamic MCQ section not found
+    """
     serializer_class = DynamicMCQQuestionsSerializer
     permission_classes = [permissions.IsAuthenticated, DynamicMCQPermission]
 
@@ -162,6 +260,53 @@ class DynamicMCQQuestionsListCreateAPIView(generics.ListCreateAPIView):
             raise PermissionDenied("Dynamic MCQ not found")
 
 class DynamicMCQQuestionsDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API endpoint for retrieving, updating, and deleting Dynamic MCQ questions.
+
+    This endpoint allows teachers and institutions to:
+    - Get a specific question's details (GET)
+    - Update a question (PUT/PATCH)
+    - Delete a question (DELETE)
+
+    GET /api/dynamic-mcqs/{dynamic_mcq_id}/questions/{question_id}/
+    
+    Returns question details:
+    ```json
+    {
+        "id": "uuid",
+        "question": "string",
+        "options": ["string"],
+        "answer_key": "string",
+        "question_grade": "string",
+        "difficulty": "string",
+        "created_by": "uuid"
+    }
+    ```
+
+    PUT /api/dynamic-mcqs/{dynamic_mcq_id}/questions/{question_id}/
+    
+    Update a question:
+    ```json
+    {
+        "question": "Updated question?",
+        "options": ["New Option 1", "New Option 2", "New Option 3", "New Option 4"],
+        "answer_key": "New Option 1",
+        "question_grade": "2.00",
+        "difficulty": "3"
+    }
+    ```
+
+    DELETE /api/dynamic-mcqs/{dynamic_mcq_id}/questions/{question_id}/
+    
+    Delete a question.
+
+    Status Codes:
+    - 200: Successfully retrieved/updated question
+    - 204: Question deleted successfully
+    - 400: Invalid input data
+    - 403: Not authorized to modify question
+    - 404: Question not found
+    """
     serializer_class = DynamicMCQQuestionsSerializer
     permission_classes = [permissions.IsAuthenticated, DynamicMCQPermission]
 
