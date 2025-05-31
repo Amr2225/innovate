@@ -471,7 +471,43 @@ class StudentGradesAPIView(generics.GenericAPIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
-    """API view to get all questions for an assessment"""
+    """
+    API endpoint to get all questions for an assessment.
+
+    This endpoint returns all questions (MCQ, Dynamic MCQ, and Handwritten) for an assessment
+    based on the user's role.
+
+    GET /api/assessments/{assessment_id}/all-questions/
+
+    Parameters:
+    - assessment_id (UUID): The ID of the assessment
+
+    Returns:
+    ```json
+    {
+        "assessment_id": "uuid",
+        "assessment_title": "string",
+        "questions": [
+            {
+                "id": "uuid",
+                "type": "dynamic_mcq|mcq|handwritten",
+                "question": "string",
+                "options": ["string"],  // For MCQ and Dynamic MCQ
+                "answer_key": "string",
+                "difficulty": "string",  // For Dynamic MCQ
+                "question_grade": "string",  // For MCQ
+                "max_grade": "string",  // For Handwritten
+                "created_by": "uuid"
+            }
+        ]
+    }
+    ```
+
+    Status Codes:
+    - 200: Successfully retrieved questions
+    - 403: Not authorized to view questions
+    - 404: Assessment not found
+    """
     permission_classes = [permissions.IsAuthenticated, AssessmentPermission]
     serializer_class = AssessmentSerializer
 
@@ -562,11 +598,37 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
 
 class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
     """
-    API view to get all questions for a student in an assessment.
-    This includes:
-    1. Dynamic MCQ questions (generated if not exists)
-    2. Regular MCQ questions
-    3. Handwritten questions
+    API endpoint to get questions for a specific student in an assessment.
+
+    This endpoint returns all questions (MCQ, Dynamic MCQ, and Handwritten) for a specific student
+    in an assessment, including their section numbers and grades.
+
+    GET /api/assessments/{assessment_id}/student-questions/
+
+    Parameters:
+    - assessment_id (UUID): The ID of the assessment
+
+    Returns:
+    ```json
+    {
+        "questions": [
+            {
+                "type": "dynamic_mcq|mcq|handwritten",
+                "id": "uuid",
+                "question": "string",
+                "options": ["string"],  // For MCQ and Dynamic MCQ
+                "grade": "string",  // For MCQ and Dynamic MCQ
+                "max_grade": "string",  // For Handwritten
+                "section_number": "integer"
+            }
+        ]
+    }
+    ```
+
+    Status Codes:
+    - 200: Successfully retrieved questions
+    - 403: Not authorized to view questions
+    - 404: Assessment not found
     """
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = AssessmentSerializer

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import AssessmentSubmission
 from django.core.exceptions import ValidationError
+from DynamicMCQ.models import DynamicMCQQuestions
 
 class AssessmentSubmissionSerializer(serializers.ModelSerializer):
     student_email = serializers.ReadOnlyField(source='enrollment.user.email')
@@ -35,11 +36,21 @@ class AssessmentSubmissionSerializer(serializers.ModelSerializer):
         # Validate MCQ answers
         for question_id, answer in data.get('mcq_answers', {}).items():
             try:
-                question = data['assessment'].mcq_questions.get(id=question_id)
+                # Try to get regular MCQ question first
+                try:
+                    question = data['assessment'].mcq_questions.get(id=question_id)
+                except Exception:
+                    # If not found, try to get dynamic MCQ question
+                    question = DynamicMCQQuestions.objects.get(
+                        id=question_id,
+                        dynamic_mcq__assessment=data['assessment'],
+                        created_by=self.context['request'].user
+                    )
+                
                 if answer not in question.options:
-                    raise ValidationError(f"Invalid answer for MCQ question {question_id}")
+                    raise ValidationError(f"Invalid answer for question {question_id}")
             except Exception as e:
-                raise ValidationError(f"Invalid MCQ question ID: {question_id}")
+                raise ValidationError(f"Invalid question ID: {question_id}")
 
         # Validate Handwritten answers
         for question_id, image_path in data.get('handwritten_answers', {}).items():

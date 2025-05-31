@@ -62,16 +62,55 @@ class McqQuestionPermission(permissions.BasePermission):
 
 class McqQuestionListCreateAPIView(generics.ListCreateAPIView):
     """
-    View for listing and manually creating MCQ questions.
-    POST /mcqQuestion/assessments/{assessment_id}/mcq-questions/
+    API endpoint for listing and creating MCQ questions.
+
+    This endpoint allows teachers and institutions to:
+    - List all MCQ questions for an assessment (GET)
+    - Create new MCQ questions manually (POST)
+
+    GET /api/assessments/{assessment_id}/mcq-questions/
     
-    For manual creation:
+    Returns a list of MCQ questions with their details:
+    ```json
+    [
+        {
+            "id": "uuid",
+            "question": "string",
+            "options": ["string"],
+            "answer_key": "string",
+            "question_grade": "string",
+            "section_number": "integer",
+            "created_by": "uuid",
+            "created_at": "datetime",
+            "updated_at": "datetime"
+        }
+    ]
+    ```
+
+    POST /api/assessments/{assessment_id}/mcq-questions/
+    
+    Create a new MCQ question:
+    ```json
     {
         "question": "What is...?",
         "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
         "answer_key": "Option 1",
-        "question_grade": "10.00"
+        "question_grade": "10.00",
+        "section_number": 1
     }
+    ```
+
+    Status Codes:
+    - 200: Successfully retrieved questions
+    - 201: Question created successfully
+    - 400: Invalid input data
+    - 403: Not authorized to create questions
+    - 404: Assessment not found
+
+    Notes:
+    - Only teachers and institutions can create questions
+    - Students can only view questions for their enrolled courses
+    - The total grade of all questions cannot exceed the assessment grade
     """
     serializer_class = McqQuestionSerializer
     parser_classes = (JSONParser,)
