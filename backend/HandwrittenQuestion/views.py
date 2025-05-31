@@ -13,73 +13,165 @@ from django.db.models import Q
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 import logging
+from rest_framework.exceptions import PermissionDenied
+from django.conf import settings
+from django.apps import apps
+from assessment.filters import HandwrittenQuestionFilterSet
+from decimal import Decimal
+from users.permissions import isInstitution, isTeacher, isStudent
 
 logger = logging.getLogger(__name__)
 
+def get_assessment_model():
+    return apps.get_model('assessment', 'Assessment')
+
 class HandwrittenQuestionPermission(permissions.BasePermission):
-    """Custom permission class for handwritten questions"""
+    """Custom permission class for Handwritten questions"""
     
     def has_permission(self, request, view):
-        # Anyone authenticated can view
+        if not request.user.is_authenticated:
+            return False
+            
         if request.method in permissions.SAFE_METHODS:
-            return request.user.is_authenticated
-        # Teachers and institutions can create/update/delete
+            return True
+            
         return request.user.role in ["Teacher", "Institution"]
     
     def has_object_permission(self, request, view, obj):
         user = request.user
-        # For read operations
+        
         if request.method in permissions.SAFE_METHODS:
+            # Students can only view questions for their enrolled courses
             if user.role == "Student":
-                # Students can only view questions for courses they're enrolled in
-                is_completed = request.query_params.get('is_completed', 'false').lower() == 'true'
-                return Enrollments.objects.filter(
-                    user=user,
-                    course=obj.assessment.course,
-                    is_completed=is_completed
-                ).exists()
-            elif user.role == "Teacher":
-                # Teachers can view questions for courses they teach
-                return obj.assessment.course.instructors.filter(id=user.id).exists()
-            elif user.role == "Institution":
-                # Institution can view any question in their courses
-                return obj.assessment.course.institution == user
-            return False
-
-        # For write operations (create/update/delete)
-        if user.role == "Teacher":
-            # Teachers can modify questions for courses they teach
-            return obj.assessment.course.instructors.filter(id=user.id).exists()
-        elif user.role == "Institution":
-            # Institution can modify any question in their courses
-            return obj.assessment.course.institution == user
-        return False
+                return obj.assessment.course.enrollments.filter(user=user).exists()
+            return True
+            
+        # Only creator or course instructor/institution can modify
+        return (obj.created_by == user or 
+                obj.assessment.course.instructors.filter(id=user.id).exists() or
+                obj.assessment.course.institution == user)
 
 class HandwrittenQuestionListCreateAPIView(generics.ListCreateAPIView):
+    """
+    API endpoint to list and create Handwritten questions for an assessment.
+
+    This endpoint allows teachers and institutions to manage Handwritten questions for their assessments.
+
+    GET /api/assessments/{assessment_id}/handwritten-questions/
+    List all Handwritten questions for an assessment with filtering options:
+    - assessment: Filter by assessment ID
+    - question: Filter by question text (case-insensitive contains)
+    - max_grade: Filter by maximum grade
+    - section_number: Filter by section number
+    - created_by: Filter by creator ID
+    - created_at: Filter by creation date
+
+    POST /api/assessments/{assessment_id}/handwritten-questions/
+    Create a new Handwritten question for an assessment.
+
+    Parameters:
+    - assessment_id (UUID): The ID of the assessment
+
+    POST Request Body:
+    ```json
+    {
+        "question": "string",
+        "max_grade": "decimal",
+        "section_number": "integer"
+    }
+    ```
+
+    Returns:
+    ```json
+    {
+        "id": "uuid",
+        "assessment": "uuid",
+        "question": "string",
+        "max_grade": "decimal",
+        "section_number": "integer",
+        "created_by": "uuid",
+        "created_at": "datetime",
+        "updated_at": "datetime"
+    }
+    ```
+
+    Status Codes:
+    - 200: Successfully retrieved questions
+    - 201: Successfully created question
+    - 400: Invalid input data
+    - 403: Not authorized to manage questions
+    - 404: Assessment not found
+
+    Permissions:
+    - Students: Can view questions for courses they're enrolled in
+    - Teachers: Can manage questions for courses they teach
+    - Institutions: Can manage questions for their courses
+
+    Notes:
+    - Question grade must not exceed assessment's remaining grade
+    - Assessment must not be past due date
+    """
     serializer_class = HandwrittenQuestionSerializer
+    parser_classes = (MultiPartParser, JSONParser)
     permission_classes = [HandwrittenQuestionPermission]
-    parser_classes = [MultiPartParser, FormParser]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = HandwrittenQuestionFilterSet
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "Institution":
-            # Institution can see all questions in their courses
-            return HandwrittenQuestion.objects.filter(assessment__course__institution=user)
-        elif user.role == "Teacher":
-            # Teachers can see questions for courses they teach
-            return HandwrittenQuestion.objects.filter(assessment__course__instructors=user)
-        elif user.role == "Student":
-            # Students can only see questions for courses they're enrolled in
-            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
-            enrolled_courses = Enrollments.objects.filter(
-                user=user,
-                is_completed=is_completed
-            ).values_list('course', flat=True)
-            return HandwrittenQuestion.objects.filter(assessment__course__id__in=enrolled_courses)
+        assessment_id = self.kwargs.get('assessment_id')
+        
+        try:
+            Assessment = get_assessment_model()
+            assessment = Assessment.objects.get(id=assessment_id)
+        except Assessment.DoesNotExist:
+            raise ValidationError({"assessment": "Assessment not found"})
+            
+        base_queryset = HandwrittenQuestion.objects.filter(assessment=assessment)
+        
+        if user.role == "Student":
+            # Students can only see questions for their enrolled courses
+            return base_queryset.filter(
+                assessment__course__enrollments__user=user
+            ).select_related('assessment', 'created_by')
+            
+        elif user.role in ["Teacher", "Institution"]:
+            # Teachers/Institutions can see questions they created or for their courses
+            return base_queryset.filter(
+                Q(created_by=user) |
+                Q(assessment__course__instructors=user) |
+                Q(assessment__course__institution=user)
+            ).select_related('assessment', 'created_by')
+            
         return HandwrittenQuestion.objects.none()
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        assessment_id = self.kwargs.get('assessment_id')
+        try:
+            Assessment = get_assessment_model()
+            assessment = Assessment.objects.get(id=assessment_id)
+        except Assessment.DoesNotExist:
+            raise ValidationError({"assessment": "Assessment not found"})
+            
+        # Validate course ownership
+        user = self.request.user
+        if user.role == "Institution" and assessment.course.institution != user:
+            raise PermissionDenied("You don't have permission to add questions to this assessment")
+        elif user.role == "Teacher" and not assessment.course.instructors.filter(id=user.id).exists():
+            raise PermissionDenied("You don't have permission to add questions to this assessment")
+            
+        # Validate assessment status
+        if assessment.due_date < timezone.now():
+            raise ValidationError("Cannot add questions to past-due assessments")
+            
+        # Set default grade if not provided
+        if 'max_grade' not in self.request.data:
+            serializer.validated_data['max_grade'] = Decimal('0.00')
+            
+        serializer.save(
+            created_by=user,
+            assessment=assessment
+        )
 
 class HandwrittenQuestionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = HandwrittenQuestionSerializer

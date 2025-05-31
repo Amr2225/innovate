@@ -18,6 +18,8 @@ from enrollments.models import Enrollments
 from MCQQuestionScore.models import MCQQuestionScore
 import logging
 from .models import McqQuestion
+from assessment.filters import McqQuestionFilterSet
+from django_filters.rest_framework import DjangoFilterBackend
 
 logger = logging.getLogger(__name__)
 
@@ -62,59 +64,74 @@ class McqQuestionPermission(permissions.BasePermission):
 
 class McqQuestionListCreateAPIView(generics.ListCreateAPIView):
     """
-    API endpoint for listing and creating MCQ questions.
+    API endpoint to list and create MCQ questions for an assessment.
 
-    This endpoint allows teachers and institutions to:
-    - List all MCQ questions for an assessment (GET)
-    - Create new MCQ questions manually (POST)
+    This endpoint allows teachers and institutions to manage MCQ questions for their assessments.
 
     GET /api/assessments/{assessment_id}/mcq-questions/
-    
-    Returns a list of MCQ questions with their details:
-    ```json
-    [
-        {
-            "id": "uuid",
-            "question": "string",
-            "options": ["string"],
-            "answer_key": "string",
-            "question_grade": "string",
-            "section_number": "integer",
-            "created_by": "uuid",
-            "created_at": "datetime",
-            "updated_at": "datetime"
-        }
-    ]
-    ```
+    List all MCQ questions for an assessment with filtering options:
+    - assessment: Filter by assessment ID
+    - question: Filter by question text (case-insensitive contains)
+    - question_grade: Filter by question grade
+    - section_number: Filter by section number
+    - created_by: Filter by creator ID
+    - created_at: Filter by creation date
 
     POST /api/assessments/{assessment_id}/mcq-questions/
-    
-    Create a new MCQ question:
+    Create a new MCQ question for an assessment.
+
+    Parameters:
+    - assessment_id (UUID): The ID of the assessment
+
+    POST Request Body:
     ```json
     {
-        "question": "What is...?",
-        "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-        "answer_key": "Option 1",
-        "question_grade": "10.00",
-        "section_number": 1
+        "question": "string",
+        "options": ["string"],
+        "answer_key": "string",
+        "question_grade": "decimal",
+        "section_number": "integer"
+    }
+    ```
+
+    Returns:
+    ```json
+    {
+        "id": "uuid",
+        "assessment": "uuid",
+        "question": "string",
+        "options": ["string"],
+        "answer_key": "string",  // Only for teachers/institutions
+        "question_grade": "decimal",
+        "section_number": "integer",
+        "created_by": "uuid",
+        "created_at": "datetime",
+        "updated_at": "datetime"
     }
     ```
 
     Status Codes:
     - 200: Successfully retrieved questions
-    - 201: Question created successfully
+    - 201: Successfully created question
     - 400: Invalid input data
-    - 403: Not authorized to create questions
+    - 403: Not authorized to manage questions
     - 404: Assessment not found
 
+    Permissions:
+    - Students: Can view questions for courses they're enrolled in
+    - Teachers: Can manage questions for courses they teach
+    - Institutions: Can manage questions for their courses
+
     Notes:
-    - Only teachers and institutions can create questions
-    - Students can only view questions for their enrolled courses
-    - The total grade of all questions cannot exceed the assessment grade
+    - Question grade must not exceed assessment's remaining grade
+    - Answer key must be one of the provided options
+    - Assessment must not be past due date
     """
     serializer_class = McqQuestionSerializer
     parser_classes = (JSONParser,)
     permission_classes = [McqQuestionPermission]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = McqQuestionFilterSet
 
     def get_queryset(self):
         user = self.request.user

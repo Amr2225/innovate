@@ -63,109 +63,73 @@ class AssessmentSubmissionPermission(permissions.BasePermission):
 
 class AssessmentSubmissionAPIView(generics.CreateAPIView):
     """
-    API endpoint for submitting and retrieving assessment answers.
+    API endpoint to submit an assessment.
 
-    This endpoint allows students to:
-    - Submit their answers for an assessment (POST)
-    - View their submitted answers and scores (GET)
+    This endpoint allows students to submit their answers for an assessment,
+    including MCQ answers and handwritten answer images.
 
-    POST:
-    Submit answers for an assessment.
-    
+    POST /api/assessments/{assessment_id}/submit/
+
     Parameters:
     - assessment_id (UUID): The ID of the assessment
-    - mcq_answers (dict): Dictionary mapping question IDs to selected answers
-    - handwritten_answers (files): Files containing handwritten answers
-    
-    Example POST request with all types of questions:
+    - mcq_answers (JSON): Dictionary mapping question IDs to selected answers
+    - handwritten_{question_id} (File): Image file for handwritten answers
+
+    Example Request:
     ```json
     {
         "mcq_answers": {
-            // Regular MCQ questions
-            "9a22dada-8ceb-442e-9893-dac434eb5fd6": "Deciding whether to open a new store",
-            "ad652943-ac10-4cef-a13f-0aa3930dca08": "To improve the quality of decisions",
-            
-            // Dynamic MCQ questions
-            "b7f3e9d1-5a2c-4f8b-9d6e-1a2b3c4d5e6f": "Option A",
-            "c8g4f0e2-6b3d-5g9c-0e7f-2b3c4d5e6f7g": "Option B"
+            "question_id_1": "selected_option",
+            "question_id_2": "selected_option"
         }
     }
     ```
-    
-    For handwritten answers, send files with keys in the format:
+    And form data for handwritten answers:
     ```
-    handwritten_<question_id>: <file>
+    handwritten_question_id_1: [image_file]
+    handwritten_question_id_2: [image_file]
     ```
-    
-    Example multipart form data:
-    ```
-    mcq_answers: {
-        "9a22dada-8ceb-442e-9893-dac434eb5fd6": "Deciding whether to open a new store",
-        "ad652943-ac10-4cef-a13f-0aa3930dca08": "To improve the quality of decisions",
-        "b7f3e9d1-5a2c-4f8b-9d6e-1a2b3c4d5e6f": "Option A",
-        "c8g4f0e2-6b3d-5g9c-0e7f-2b3c4d5e6f7g": "Option B"
-    }
-    handwritten_7h5g1f3-7c4e-6h0d-1f8g-3c4d5e6f7g8h: <image_file>
-    handwritten_8i6h2g4-8d5f-7i1e-2g9h-4d5e6f7g8h9i: <image_file>
-    ```
-    
+
     Returns:
     ```json
     {
-        "message": "Assessment submitted successfully",
-        "submission_details": {
-            "mcq_answers_count": 4,
-            "handwritten_answers_count": 2
-        }
+        "id": "uuid",
+        "assessment": "uuid",
+        "enrollment": "uuid",
+        "student_email": "string",
+        "assessment_title": "string",
+        "course_name": "string",
+        "mcq_answers": {
+            "question_id": "selected_option"
+        },
+        "handwritten_answers": {
+            "question_id": "file_url"
+        },
+        "submitted_at": "datetime",
+        "is_submitted": "boolean"
     }
     ```
-    
+
     Status Codes:
-    - 201: Assessment submitted successfully
-    - 400: Invalid input data (e.g., invalid question ID, answer not in options)
-    - 403: Not authorized to submit
+    - 201: Successfully submitted assessment
+    - 400: Invalid submission data or assessment not accepting submissions
+    - 403: Not authorized to submit assessment
     - 404: Assessment not found
 
-    GET:
-    Retrieve submitted answers and scores for an assessment.
-    
-    Parameters:
-    - assessment_id (UUID): The ID of the assessment
-    - is_completed (bool, optional): Filter by enrollment completion status
-    
-    Returns:
-    ```json
-    {
-        "assessment_id": "uuid",
-        "assessment_title": "string",
-        "total_submissions": 1,
-        "total_score": 10.0,
-        "max_score": 20.0,
-        "percentage_score": "50.00 %",
-        "questions": [
-            {
-                "id": "uuid",
-                "question": "string",
-                "options": ["string"],
-                "answer_key": "string",
-                "question_grade": "string",
-                "selected_answer": "string",
-                "is_correct": true,
-                "score": "string",
-                "max_score": "string"
-            }
-        ]
-    }
-    ```
-    
-    Status Codes:
-    - 200: Successfully retrieved submission
-    - 403: Not authorized to view
-    - 404: Assessment not found
+    Permissions:
+    - Students: Can submit assessments for courses they're enrolled in
+    - Teachers/Institutions: Cannot submit assessments
+
+    Notes:
+    - All questions must be answered
+    - MCQ answers must be one of the provided options
+    - Handwritten answers must be valid image files (JPEG, PNG, GIF, BMP)
+    - Assessment must be accepting submissions
+    - Student must be enrolled in the course
     """
     serializer_class = AssessmentSubmissionSerializer
-    permission_classes = [permissions.IsAuthenticated, AssessmentSubmissionPermission]
-    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [AssessmentSubmissionPermission]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get(self, request, *args, **kwargs):
         """
