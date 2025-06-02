@@ -14,3 +14,5 @@ json5
 channels
 channels-redis
 daphne
+PyPDF2
+
