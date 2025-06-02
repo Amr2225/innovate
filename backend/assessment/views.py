@@ -3,7 +3,7 @@ from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q
 from .models import Assessment, AssessmentScore
 from .serializers import AssessmentSerializer, AssessmentScoreSerializer, AssessmentListSerializer
-from .filters import AssessmentFilterSet
+# from .filters import AssessmentFilterSet
 from courses.models import Course
 from enrollments.models import Enrollments
 from mcqQuestion.models import McqQuestion
@@ -27,40 +27,42 @@ from django_filters.rest_framework import DjangoFilterBackend
 # Assessment Views
 # ----------------------
 
+
 class AssessmentPermission(permissions.BasePermission):
     """Custom permission class for assessments"""
-    
+
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        
+
         # Allow all authenticated users to view
         if request.method in permissions.SAFE_METHODS:
             return True
-        
+
         # Only teachers and institutions can create/edit
         return request.user.role in ["Teacher", "Institution"]
-    
+
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
             return False
-        
+
         # Students can only view their own assessments
         if request.user.role == "Student":
             return Enrollments.objects.filter(
                 user=request.user,
                 course=obj.course
             ).exists()
-        
+
         # Teachers can access assessments for their courses
         if request.user.role == "Teacher":
             return obj.course.teacher == request.user.teacher
-        
+
         # Institutions can access assessments for their courses
         if request.user.role == "Institution":
             return obj.course.institution == request.user.institution
-        
+
         return False
+
 
 class AssessmentListCreateAPIView(generics.ListCreateAPIView):
     """
@@ -116,37 +118,36 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
     """
     serializer_class = AssessmentListSerializer
     permission_classes = [permissions.IsAuthenticated, AssessmentPermission]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = AssessmentFilterSet
+    # filterset_class = AssessmentFilterSet
 
     def get_queryset(self):
         user = self.request.user
         course_id = self.kwargs.get('course_id')
-        
+
         base_queryset = Assessment.objects.all()
-        
+
         # Filter by course if course_id is provided in URL
         if course_id:
             base_queryset = base_queryset.filter(course_id=course_id)
-        
+
         if user.role == "Student":
             # Students can only see assessments for courses they are enrolled in
             return base_queryset.filter(
                 course__enrollments__user=user
             ).distinct()
-        
+
         elif user.role == "Teacher":
             # Teachers can see assessments for courses they teach
             return base_queryset.filter(
-                course__teacher=user.teacher
+                course__instructors=user
             )
-        
+
         elif user.role == "Institution":
             # Institutions can see assessments for their courses
             return base_queryset.filter(
-                course__institution=user.institution
+                course__institution=user
             )
-        
+
         return Assessment.objects.none()
 
     def get_serializer_context(self):
@@ -162,16 +163,20 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user
         if user.role not in ["Teacher", "Institution"]:
-            raise PermissionDenied("Only teachers and institutions can create assessments")
-        
+            raise PermissionDenied(
+                "Only teachers and institutions can create assessments")
+
         # Check if user has permission to create assessment for this course
         course = serializer.validated_data['course']
         if user.role == "Teacher" and course.teacher != user.teacher:
-            raise PermissionDenied("You can only create assessments for courses you teach")
+            raise PermissionDenied(
+                "You can only create assessments for courses you teach")
         if user.role == "Institution" and course.institution != user.institution:
-            raise PermissionDenied("You can only create assessments for your institution's courses")
-        
+            raise PermissionDenied(
+                "You can only create assessments for your institution's courses")
+
         serializer.save()
+
 
 class AssessmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AssessmentSerializer
@@ -179,58 +184,65 @@ class AssessmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        
+
         if user.role == "Student":
             # Students can only see assessments for courses they are enrolled in
             return Assessment.objects.filter(
                 course__enrollments__user=user
             ).distinct()
-        
+
         elif user.role == "Teacher":
             # Teachers can see assessments for courses they teach
             return Assessment.objects.filter(
                 course__teacher=user.teacher
             )
-        
+
         elif user.role == "Institution":
             # Institutions can see assessments for their courses
             return Assessment.objects.filter(
                 course__institution=user.institution
             )
-        
+
         return Assessment.objects.none()
 
     def perform_update(self, serializer):
         user = self.request.user
         if user.role not in ["Teacher", "Institution"]:
-            raise PermissionDenied("Only teachers and institutions can update assessments")
-        
+            raise PermissionDenied(
+                "Only teachers and institutions can update assessments")
+
         # Check if user has permission to update assessment for this course
         course = serializer.instance.course
         if user.role == "Teacher" and course.teacher != user.teacher:
-            raise PermissionDenied("You can only update assessments for courses you teach")
+            raise PermissionDenied(
+                "You can only update assessments for courses you teach")
         if user.role == "Institution" and course.institution != user.institution:
-            raise PermissionDenied("You can only update assessments for your institution's courses")
-        
+            raise PermissionDenied(
+                "You can only update assessments for your institution's courses")
+
         serializer.save()
 
     def perform_destroy(self, instance):
         user = self.request.user
         if user.role not in ["Teacher", "Institution"]:
-            raise PermissionDenied("Only teachers and institutions can delete assessments")
-        
+            raise PermissionDenied(
+                "Only teachers and institutions can delete assessments")
+
         # Check if user has permission to delete assessment for this course
         course = instance.course
         if user.role == "Teacher" and course.teacher != user.teacher:
-            raise PermissionDenied("You can only delete assessments for courses you teach")
+            raise PermissionDenied(
+                "You can only delete assessments for courses you teach")
         if user.role == "Institution" and course.institution != user.institution:
-            raise PermissionDenied("You can only delete assessments for your institution's courses")
-        
+            raise PermissionDenied(
+                "You can only delete assessments for your institution's courses")
+
         instance.delete()
 
 # ----------------------
 # Assessment Score Views
 # ----------------------
+
 
 class AssessmentScoreListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = AssessmentScoreSerializer
@@ -238,53 +250,60 @@ class AssessmentScoreListCreateAPIView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        
+
         if user.role == "Student":
             # Students can only see their own scores
             return AssessmentScore.objects.filter(
                 enrollment__user=user
             )
-        
+
         elif user.role == "Teacher":
             # Teachers can see scores for their courses
             return AssessmentScore.objects.filter(
                 assessment__course__teacher=user.teacher
             )
-        
+
         elif user.role == "Institution":
             # Institutions can see scores for their courses
             return AssessmentScore.objects.filter(
                 assessment__course__institution=user.institution
             )
-        
+
         return AssessmentScore.objects.none()
 
     def perform_create(self, serializer):
         user = self.request.user
         if user.role != "Student":
-            raise PermissionDenied("Only students can submit assessment scores")
+            raise PermissionDenied(
+                "Only students can submit assessment scores")
 
-        assessment = Assessment.objects.get(id=self.request.data.get('assessment'))
-        
+        assessment = Assessment.objects.get(
+            id=self.request.data.get('assessment'))
+
         # Check if the assessment is still accepting submissions
         if not assessment.accepting_submissions:
-            raise PermissionDenied("This assessment is no longer accepting submissions as it has passed its due date")
-        
+            raise PermissionDenied(
+                "This assessment is no longer accepting submissions as it has passed its due date")
+
         # Check if student is enrolled in the course
-        is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
+        is_completed = self.request.query_params.get(
+            'is_completed', 'false').lower() == 'true'
         if not Enrollments.objects.filter(
             user=user,
             course=assessment.course,
             is_completed=is_completed
         ).exists():
             raise PermissionDenied("You are not enrolled in this course")
-        
-        enrollment = Enrollments.objects.get(user=user, course=assessment.course)
+
+        enrollment = Enrollments.objects.get(
+            user=user, course=assessment.course)
         # Check if student has already submitted
         if AssessmentScore.objects.filter(assessment=assessment, enrollment=enrollment).exists():
-            raise PermissionDenied("You have already submitted this assessment")
-        
+            raise PermissionDenied(
+                "You have already submitted this assessment")
+
         serializer.save(enrollment=enrollment)
+
 
 class AssessmentScoreDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AssessmentScoreSerializer
@@ -292,54 +311,61 @@ class AssessmentScoreDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        
+
         if user.role == "Student":
             # Students can only see their own scores
             return AssessmentScore.objects.filter(
                 enrollment__user=user
             )
-        
+
         elif user.role == "Teacher":
             # Teachers can see scores for their courses
             return AssessmentScore.objects.filter(
                 assessment__course__teacher=user.teacher
             )
-        
+
         elif user.role == "Institution":
             # Institutions can see scores for their courses
             return AssessmentScore.objects.filter(
                 assessment__course__institution=user.institution
             )
-        
+
         return AssessmentScore.objects.none()
 
     def perform_update(self, serializer):
         user = self.request.user
         if user.role not in ["Teacher", "Institution"]:
-            raise PermissionDenied("Only teachers and institutions can update assessment scores")
-        
+            raise PermissionDenied(
+                "Only teachers and institutions can update assessment scores")
+
         # Check if user has permission to update score for this course
         course = serializer.instance.assessment.course
         if user.role == "Teacher" and course.teacher != user.teacher:
-            raise PermissionDenied("You can only update scores for courses you teach")
+            raise PermissionDenied(
+                "You can only update scores for courses you teach")
         if user.role == "Institution" and course.institution != user.institution:
-            raise PermissionDenied("You can only update scores for your institution's courses")
-        
+            raise PermissionDenied(
+                "You can only update scores for your institution's courses")
+
         serializer.save()
 
     def perform_destroy(self, instance):
         user = self.request.user
         if user.role not in ["Teacher", "Institution"]:
-            raise PermissionDenied("Only teachers and institutions can delete assessment scores")
-        
+            raise PermissionDenied(
+                "Only teachers and institutions can delete assessment scores")
+
         # Check if user has permission to delete score for this course
         course = instance.assessment.course
         if user.role == "Teacher" and course.teacher != user.teacher:
-            raise PermissionDenied("You can only delete scores for courses you teach")
+            raise PermissionDenied(
+                "You can only delete scores for courses you teach")
         if user.role == "Institution" and course.institution != user.institution:
-            raise PermissionDenied("You can only delete scores for your institution's courses")
-        
+            raise PermissionDenied(
+                "You can only delete scores for your institution's courses")
+
         instance.delete()
+
 
 class AssessmentQuestionsAPIView(generics.ListAPIView):
     """
@@ -398,7 +424,8 @@ class AssessmentQuestionsAPIView(generics.ListAPIView):
         # Check permissions
         if user.role == "Student":
             # Students can only view questions for courses they're enrolled in
-            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
+            is_completed = self.request.query_params.get(
+                'is_completed', 'false').lower() == 'true'
             if not Enrollments.objects.filter(
                 user=user,
                 course=assessment.course,
@@ -424,6 +451,7 @@ class AssessmentQuestionsAPIView(generics.ListAPIView):
         # Add request to context for role-based answer key visibility
         context['request'] = self.request
         return context
+
 
 class StudentGradesAPIView(generics.GenericAPIView):
     """
@@ -495,7 +523,8 @@ class StudentGradesAPIView(generics.GenericAPIView):
 
             # Get student's enrollment
             try:
-                is_completed = request.query_params.get('is_completed', 'false').lower() == 'true'
+                is_completed = request.query_params.get(
+                    'is_completed', 'false').lower() == 'true'
                 enrollment = Enrollments.objects.get(
                     user=request.user,
                     course=assessment.course,
@@ -549,19 +578,23 @@ class StudentGradesAPIView(generics.GenericAPIView):
 
             # Get all Dynamic MCQ questions
             DynamicMCQ = apps.get_model('DynamicMCQ', 'DynamicMCQ')
-            DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
-            
+            DynamicMCQQuestions = apps.get_model(
+                'DynamicMCQ', 'DynamicMCQQuestions')
+
             # Get all Dynamic MCQ questions for this assessment
             dynamic_mcqs = DynamicMCQ.objects.filter(assessment=assessment)
-            dynamic_mcq_questions = DynamicMCQQuestions.objects.filter(dynamic_mcq__in=dynamic_mcqs)
+            dynamic_mcq_questions = DynamicMCQQuestions.objects.filter(
+                dynamic_mcq__in=dynamic_mcqs)
 
             # Calculate total score of answered questions
-            mcq_total = float(mcq_scores.aggregate(total=Sum('score'))['total'] or 0)
-            handwritten_total = float(handwritten_scores.aggregate(total=Sum('score'))['total'] or 0)
+            mcq_total = float(mcq_scores.aggregate(
+                total=Sum('score'))['total'] or 0)
+            handwritten_total = float(handwritten_scores.aggregate(
+                total=Sum('score'))['total'] or 0)
 
             # Build questions data with student scores
             questions_data = []
-            
+
             # Add MCQ questions
             for mcq_score in mcq_scores:
                 question_data = {
@@ -573,13 +606,13 @@ class StudentGradesAPIView(generics.GenericAPIView):
                     'max_score': str(mcq_score.question.question_grade),
                     'type': 'mcq'
                 }
-                
+
                 if request.user.role in ['Teacher', 'Institution', 'Student']:
                     question_data.update({
                         'options': mcq_score.question.options,
                         'correct_answer': mcq_score.question.answer_key
                     })
-                
+
                 questions_data.append(question_data)
 
             # Add Handwritten questions
@@ -594,12 +627,12 @@ class StudentGradesAPIView(generics.GenericAPIView):
                     'feedback': handwritten_score.feedback,
                     'answer_image': request.build_absolute_uri(handwritten_score.answer_image.url) if handwritten_score.answer_image else None
                 }
-                
+
                 if request.user.role in ['Teacher', 'Institution']:
                     question_data.update({
                         'correct_answer': handwritten_score.question.answer_key
                     })
-                
+
                 questions_data.append(question_data)
 
             # Add Dynamic MCQ questions
@@ -610,13 +643,14 @@ class StudentGradesAPIView(generics.GenericAPIView):
                     dynamic_question_id=question.id,  # Match by dynamic_question_id
                     enrollment=assessment_score.enrollment
                 ).first()
-                
+
                 if score:
                     dynamic_mcq_total += float(score.score)
-                
+
                 # Get the student's answer from the score's selected_answer field
-                student_answer = score.selected_answer if score and hasattr(score, 'selected_answer') else None
-                
+                student_answer = score.selected_answer if score and hasattr(
+                    score, 'selected_answer') else None
+
                 question_data = {
                     'question_id': str(question.id),
                     'question_text': question.question,
@@ -627,13 +661,13 @@ class StudentGradesAPIView(generics.GenericAPIView):
                     'is_correct': score.is_correct if score else False,
                     'student_answer': student_answer
                 }
-                
+
                 if request.user.role in ['Teacher', 'Institution', 'Student']:
                     question_data.update({
                         'options': question.options,
                         'correct_answer': question.answer_key
                     })
-                
+
                 questions_data.append(question_data)
 
             total_answered_score = mcq_total + handwritten_total + dynamic_mcq_total
@@ -652,6 +686,7 @@ class StudentGradesAPIView(generics.GenericAPIView):
             return Response({
                 'detail': f'An error occurred: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
     """
@@ -703,7 +738,7 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
     def retrieve(self, request, *args, **kwargs):
         try:
             assessment = self.get_object()
-            
+
             # Get all questions based on user role
             if request.user.role == "Student":
                 # For students, only get their own questions
@@ -722,9 +757,11 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
 
             # Get dynamic MCQs
             DynamicMCQ = apps.get_model('DynamicMCQ', 'DynamicMCQ')
-            DynamicMCQQuestions = apps.get_model('DynamicMCQ', 'DynamicMCQQuestions')
+            DynamicMCQQuestions = apps.get_model(
+                'DynamicMCQ', 'DynamicMCQQuestions')
             dynamic_mcqs = DynamicMCQ.objects.filter(assessment=assessment)
-            dynamic_questions = DynamicMCQQuestions.objects.filter(dynamic_mcq__in=dynamic_mcqs)
+            dynamic_questions = DynamicMCQQuestions.objects.filter(
+                dynamic_mcq__in=dynamic_mcqs)
 
             # Prepare response data
             response_data = {
@@ -779,6 +816,7 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
 class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
     """
     API endpoint to get questions for a specific student in an assessment.
@@ -820,36 +858,37 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
         assessment_id = self.kwargs.get('pk')
         try:
             assessment = Assessment.objects.get(id=assessment_id)
-        
+
             # Check if student is enrolled in the course
             if not Enrollments.objects.filter(
                 user=self.request.user,
                 course=assessment.course
             ).exists():
                 raise PermissionDenied("You are not enrolled in this course")
-            
+
             # Check if assessment is still accepting submissions
             if not assessment.accepting_submissions:
-                raise PermissionDenied("This assessment is no longer accepting submissions")
-            
+                raise PermissionDenied(
+                    "This assessment is no longer accepting submissions")
+
             # Check if assessment has started
             if assessment.start_date > timezone.now():
                 raise PermissionDenied("This assessment has not started yet")
-            
+
             return assessment
         except Assessment.DoesNotExist:
             raise Http404("Assessment not found")
 
     def retrieve(self, request, *args, **kwargs):
         assessment = self.get_object()
-        
+
         try:
             # Get all questions for the student
             questions = assessment.get_all_questions_for_student(request.user)
-            
+
             # Format all questions into a single list with their types
             formatted_questions = []
-            
+
             # Add dynamic MCQ questions
             formatted_questions.extend([
                 {
@@ -861,7 +900,7 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
                     'section_number': q.get('section_number', 1)
                 } for q in questions.get('dynamic_mcq', [])
             ])
-            
+
             # Add regular MCQ questions
             formatted_questions.extend([
                 {
@@ -873,7 +912,7 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
                     'section_number': q.get('section_number', 1)
                 } for q in questions.get('mcq', [])
             ])
-            
+
             # Add handwritten questions
             formatted_questions.extend([
                 {
@@ -884,10 +923,10 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
                     'section_number': q.get('section_number', 1)
                 } for q in questions.get('handwritten', [])
             ])
-            
+
             # Sort questions by section number
             formatted_questions.sort(key=lambda x: x['section_number'])
-            
+
             # Add assessment details
             response_data = {
                 'assessment': {
@@ -900,7 +939,7 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
                 },
                 'questions': formatted_questions
             }
-            
+
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:

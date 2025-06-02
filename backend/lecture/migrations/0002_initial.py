@@ -10,18 +10,18 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('enrollments', '0001_initial'),
+        ('lecture', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='enrollments',
+            model_name='lectureprogress',
             name='user',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollments', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(limit_choices_to={'role': 'Student'}, on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
         ),
         migrations.AlterUniqueTogether(
-            name='enrollments',
-            unique_together={('user', 'course')},
+            name='lectureprogress',
+            unique_together={('user', 'lecture')},
         ),
     ]

@@ -10,20 +10,22 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('DynamicMCQ', '0001_initial'),
+        ('assessment', '0003_initial'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='MCQQuestionScore',
+            name='McqQuestion',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('selected_answer', models.CharField(max_length=255)),
-                ('is_correct', models.BooleanField(default=False)),
-                ('score', models.DecimalField(decimal_places=2, default=0, max_digits=5)),
+                ('question', models.CharField(max_length=1000)),
+                ('options', models.JSONField(help_text='List of possible answers')),
+                ('answer_key', models.CharField(max_length=255)),
+                ('question_grade', models.DecimalField(decimal_places=2, default=0.0, max_digits=5)),
+                ('section_number', models.PositiveSmallIntegerField(help_text='Section number within the assessment')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('dynamic_question', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='scores', to='DynamicMCQ.dynamicmcqquestions')),
+                ('assessment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='mcq_questions', to='assessment.assessment')),
             ],
             options={
                 'ordering': ['-created_at'],

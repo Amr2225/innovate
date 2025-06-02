@@ -2,8 +2,10 @@ from rest_framework import serializers
 from .models import DynamicMCQ, DynamicMCQQuestions
 from assessment.serializers import AssessmentSerializer
 
+
 class DynamicMCQSerializer(serializers.ModelSerializer):
-    assessment_details = AssessmentSerializer(source='assessment', read_only=True)
+    assessment_details = AssessmentSerializer(
+        source='assessment', read_only=True)
 
     class Meta:
         model = DynamicMCQ
@@ -15,15 +17,17 @@ class DynamicMCQSerializer(serializers.ModelSerializer):
             'lecture_ids',
             'difficulty',
             'total_grade',
-            'number_of_questions'
+            'number_of_questions',
         ]
         read_only_fields = ['id', 'assessment_details']
 
     def validate(self, data):
         # Validate that either context or lecture_ids is provided
         if not data.get('context') and not data.get('lecture_ids'):
-            raise serializers.ValidationError("Either context or lecture_ids must be provided")
+            raise serializers.ValidationError(
+                "Either context or lecture_ids must be provided")
         return data
+
 
 class DynamicMCQQuestionsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -34,12 +38,14 @@ class DynamicMCQQuestionsSerializer(serializers.ModelSerializer):
             'question',
             'options',
             'answer_key',
-            'question_grade'
+            'question_grade',
+            # 'created_by'
         ]
         read_only_fields = ['id']
 
     def validate(self, data):
         # Validate that answer_key is one of the options
         if data.get('answer_key') not in data.get('options', []):
-            raise serializers.ValidationError("Answer key must be one of the provided options")
-        return data 
+            raise serializers.ValidationError(
+                "Answer key must be one of the provided options")
+        return data
