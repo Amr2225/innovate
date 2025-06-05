@@ -16,7 +16,6 @@ import logging
 from rest_framework.exceptions import PermissionDenied
 from django.conf import settings
 from django.apps import apps
-from assessment.filters import HandwrittenQuestionFilterSet
 from decimal import Decimal
 from users.permissions import isInstitution, isTeacher, isStudent
 
@@ -114,8 +113,6 @@ class HandwrittenQuestionListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = HandwrittenQuestionSerializer
     parser_classes = (MultiPartParser, JSONParser)
     permission_classes = [HandwrittenQuestionPermission]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = HandwrittenQuestionFilterSet
 
     def get_queryset(self):
         user = self.request.user
