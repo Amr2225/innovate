@@ -633,58 +633,46 @@ class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         try:
-            logger.info("Starting MCQ generation from lectures")
+            logger.info("Starting MCQ generation from lectures (no save)")
 
             # Validate input
             if 'lecture_ids' not in request.data:
-                raise ValidationError(
-                    {"lecture_ids": "Lecture IDs are required"})
+                raise ValidationError({"lecture_ids": "Lecture IDs are required"})
 
             lecture_ids = request.data['lecture_ids']
             if not isinstance(lecture_ids, list) or not lecture_ids:
-                raise ValidationError(
-                    {"lecture_ids": "At least one lecture ID is required"})
+                raise ValidationError({"lecture_ids": "At least one lecture ID is required"})
 
             # Get lectures and validate attachments
             from lecture.models import Lecture
             lectures = Lecture.objects.filter(id__in=lecture_ids)
 
-            if len(lectures) != len(lecture_ids):
-                raise ValidationError(
-                    {"lecture_ids": "One or more lecture IDs are invalid"})
+            if lectures.count() != len(lecture_ids):
+                raise ValidationError({"lecture_ids": "One or more lecture IDs are invalid"})
 
             # Check if all lectures have PDF attachments
-            for lecture in lectures:
-                if not lecture.attachment or not lecture.attachment.name.endswith('.pdf'):
-                    raise ValidationError(
-                        {"lecture_ids": f"Lecture {lecture.title} does not have a PDF attachment"})
+        #    for lecture in lectures:
+        #        if not lecture.attachment or not lecture.attachment.name.endswith('.pdf'):
+        #            raise ValidationError({"lecture_ids": f"Lecture {lecture.title} does not have a PDF attachment"})
 
             logger.info(f"Processing {len(lectures)} lectures")
             num_questions_per_lecture = self.validate_num_questions(
                 request.data.get('num_questions_per_lecture'))
-            question_grade = self.validate_question_grade(
-                request.data.get('question_grade'))
-            section_number = request.data.get('section_number', 1)
 
-            # Generate MCQs from all lectures
+            # Generate MCQs (no save)
             mcq_data = generate_mcqs_from_multiple_pdfs(
                 [lecture.attachment for lecture in lectures],
                 num_questions_per_lecture
             )
-            logger.info(f"Generated {len(mcq_data)} MCQs")
+            logger.info(f"Generated {len(mcq_data)} MCQs (not saved)")
 
-            # Save to database
-            logger.info("Saving MCQs to database")
-            saved_questions = self.save_mcq_questions(
-                mcq_data, question_grade, section_number)
-            logger.info(f"Successfully saved {len(saved_questions)} MCQs")
-
+            # Return generated MCQs
             return Response({
-                'message': f'Successfully generated and saved {len(saved_questions)} MCQ questions from {len(lectures)} lectures',
-                'mcqs': saved_questions,
-                'num_questions': len(saved_questions),
+                'message': f'Successfully generated {len(mcq_data)} MCQ questions from {len(lectures)} lectures',
+                'mcqs': mcq_data,
+                'num_questions': len(mcq_data),
                 'num_lectures': len(lectures)
-            }, status=status.HTTP_201_CREATED)
+            }, status=status.HTTP_200_OK)
 
         except ValidationError as e:
             logger.error(f"Validation error: {str(e)}")
