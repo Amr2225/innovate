@@ -181,48 +181,47 @@ class Assessment(models.Model):
                                 attachment__isnull=False
                             )
 
-                    # if not lectures.exists():
-                    #     raise ValidationError(
-                    #         "No lectures with attachments found for this course")
-                    if lectures.exists():
-                        # Get all PDF attachments
-                        pdf_files = []
-                        for lecture in lectures:
-                            if lecture.attachment and lecture.attachment.name.endswith('.pdf'):
-                                pdf_files.append(lecture.attachment)
+                            if lectures.exists():
+                                # Get all PDF attachments
+                                pdf_files = []
+                                for lecture in lectures:
+                                    if lecture.attachment and lecture.attachment.name.endswith('.pdf'):
+                                        pdf_files.append(lecture.attachment)
 
-                        if not pdf_files:
-                            raise ValidationError(
-                                "No PDF attachments found in lectures")
+                                if not pdf_files:
+                                    raise ValidationError(
+                                        "No PDF attachments found in lectures")
 
-                        # Generate questions using AI from PDFs with specified difficulty
-                        generated_questions = generate_mcqs_from_multiple_pdfs(
-                            pdf_files=pdf_files,
-                            # Distribute questions evenly
-                            num_questions_per_pdf=dynamic_mcq.number_of_questions // len(
-                                pdf_files),
-                            difficulty=dynamic_mcq.difficulty  # Pass the difficulty from DynamicMCQ model
-                        )
+                                # Generate questions using AI from PDFs with specified difficulty
+                                generated_questions = generate_mcqs_from_multiple_pdfs(
+                                    pdf_files=pdf_files,
+                                    # Distribute questions evenly
+                                    num_questions_per_pdf=dynamic_mcq.number_of_questions // len(
+                                        pdf_files),
+                                    difficulty=dynamic_mcq.difficulty  # Pass the difficulty from DynamicMCQ model
+                                )
 
-                        # Create questions for this student
-                        for q in generated_questions:
-                            question = DynamicMCQQuestions.objects.create(
-                                dynamic_mcq=dynamic_mcq,
-                                question=q['question'],
-                                options=q['options'],
-                                answer_key=q['correct_answer'],
-                                question_grade=dynamic_mcq.total_grade / dynamic_mcq.number_of_questions,
-                                created_by=student,
-                                difficulty=dynamic_mcq.difficulty  # Store the difficulty level
-                            )
-                            questions['dynamic_mcq'].append({
-                                'id': str(question.id),
-                                'question': question.question,
-                                'options': question.options,
-                                'grade': question.question_grade,
-                                'section_number': dynamic_mcq.section_number,
-                                'difficulty': question.difficulty  # Include difficulty in response
-                            })
+                                # Create questions for this student
+                                for q in generated_questions:
+                                    question = DynamicMCQQuestions.objects.create(
+                                        dynamic_mcq=dynamic_mcq,
+                                        question=q['question'],
+                                        options=q['options'],
+                                        answer_key=q['correct_answer'],
+                                        question_grade=dynamic_mcq.total_grade / dynamic_mcq.number_of_questions,
+                                        created_by=student,
+                                        difficulty=dynamic_mcq.difficulty  # Store the difficulty level
+                                    )
+                                    questions['dynamic_mcq'].append({
+                                        'id': str(question.id),
+                                        'question': question.question,
+                                        'options': question.options,
+                                        'grade': question.question_grade,
+                                        'section_number': dynamic_mcq.section_number,
+                                        'difficulty': question.difficulty  # Include difficulty in response
+                                    })
+                        except Exception as e:
+                            print(f"Error getting dynamic MCQ questions: {str(e)}")
                     # If no lectures with attachments but context is provided, generate MCQs from the context
                     elif dynamic_mcq.context:
                         # Generate questions using AI from text context with specified difficulty
