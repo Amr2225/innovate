@@ -14,45 +14,53 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def get_handwritten_answer_path(instance, filename):
     logger = logging.getLogger(__name__)
-    
+
     try:
         # Get the assessment ID from the question
         assessment_id = instance.question.assessment.id
         logger.info(f"Processing image upload for assessment: {assessment_id}")
         logger.info(f"Original filename: {filename}")
-        
+
         # Ensure filename has correct extension
         ext = filename.split('.')[-1].lower()
         if ext not in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
             logger.error(f"Invalid file extension: {ext}")
-            raise ValidationError(f"Invalid file extension: {ext}. Allowed extensions: jpg, jpeg, png, gif, bmp")
-        
+            raise ValidationError(
+                f"Invalid file extension: {ext}. Allowed extensions: jpg, jpeg, png, gif, bmp")
+
         # Create a unique filename
-        unique_filename = f"{uuid.uuid4()}.{ext}"
+        unique_filename = f"{instance.enrollment.user.full_name}-{instance.question.question_text}-{uuid.uuid4()}.{ext}"
         logger.info(f"Generated unique filename: {unique_filename}")
-        
+
         # Create path: AssessmentUploads/assessment_id/filename
-        path = os.path.join(settings.ASSESSMENT_UPLOADS_DIR, str(assessment_id), unique_filename)
+        path = os.path.join(settings.ASSESSMENT_UPLOADS_DIR,
+                            str(assessment_id), unique_filename)
         logger.info(f"Final upload path: {path}")
-        
+
         return path
     except Exception as e:
         logger.error(f"Error in get_handwritten_answer_path: {str(e)}")
         raise ValidationError(f"Error processing image upload: {str(e)}")
 
+
 class HandwrittenQuestion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='handwritten_questions')
+    assessment = models.ForeignKey(
+        Assessment, on_delete=models.CASCADE, related_name='handwritten_questions')
     question_text = models.TextField()
-    section_number = models.PositiveSmallIntegerField(null=False, blank=False, help_text="Section number within the assessment")
-    answer_key = models.TextField(help_text="The correct answer or key points for evaluation", blank=True, null=True)
+    section_number = models.PositiveSmallIntegerField(
+        null=False, blank=False, help_text="Section number within the assessment", default=1)
+    answer_key = models.TextField(
+        help_text="The correct answer or key points for evaluation", blank=True, null=True)
     max_grade = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(100)],
         help_text="Maximum grade for this question"
     )
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_handwritten_questions')
+    created_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='created_handwritten_questions')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -74,10 +82,13 @@ class HandwrittenQuestion(models.Model):
         )
         super().save(*args, **kwargs)
 
+
 class HandwrittenQuestionScore(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    question = models.ForeignKey(HandwrittenQuestion, on_delete=models.CASCADE, related_name='scores')
-    enrollment = models.ForeignKey(Enrollments, on_delete=models.CASCADE, related_name='handwritten_scores')
+    question = models.ForeignKey(
+        HandwrittenQuestion, on_delete=models.CASCADE, related_name='scores')
+    enrollment = models.ForeignKey(
+        Enrollments, on_delete=models.CASCADE, related_name='handwritten_scores')
     score = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -91,11 +102,12 @@ class HandwrittenQuestionScore(models.Model):
         blank=True,
         help_text="Upload a JPEG, PNG, GIF, or BMP image file (max 5MB)",
         validators=[
-            FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'bmp'])
+            FileExtensionValidator(allowed_extensions=[
+                                   'jpg', 'jpeg', 'png', 'gif', 'bmp'])
         ]
     )
     extracted_text = models.TextField(
-        blank=True, 
+        blank=True,
         null=True,
         help_text="Text extracted from the handwritten answer image"
     )
@@ -116,10 +128,10 @@ class HandwrittenQuestionScore(models.Model):
     def save(self, *args, **kwargs):
         # Ensure score is not negative
         self.score = max(0, self.score)
-        
+
         # Clean and validate
         self.clean()
-        
+
         # Create the upload directory if it doesn't exist
         if self.answer_image:
             upload_path = os.path.join(
@@ -128,7 +140,7 @@ class HandwrittenQuestionScore(models.Model):
                 str(self.question.assessment.id)
             )
             os.makedirs(upload_path, exist_ok=True)
-        
+
         super().save(*args, **kwargs)
 
         # Update assessment score
@@ -139,35 +151,41 @@ class HandwrittenQuestionScore(models.Model):
             assessment=assessment,
             defaults={'total_score': 0}
         )
-        
+
         # Calculate total score including both MCQ and Handwritten scores
         mcq_total = float(assessment.mcq_questions.filter(
             scores__enrollment=self.enrollment
         ).aggregate(total=models.Sum('scores__score'))['total'] or 0)
-        
+
         handwritten_total = float(assessment.handwritten_questions.filter(
             scores__enrollment=self.enrollment
         ).aggregate(total=models.Sum('scores__score'))['total'] or 0)
-        
+
         # Calculate total possible score
-        mcq_max = float(assessment.mcq_questions.aggregate(total=models.Sum('question_grade'))['total'] or 0)
-        handwritten_max = float(assessment.handwritten_questions.aggregate(total=models.Sum('max_grade'))['total'] or 0)
+        mcq_max = float(assessment.mcq_questions.aggregate(
+            total=models.Sum('question_grade'))['total'] or 0)
+        handwritten_max = float(assessment.handwritten_questions.aggregate(
+            total=models.Sum('max_grade'))['total'] or 0)
         total_max = mcq_max + handwritten_max
-        
+
         # Calculate percentage score
         if total_max > 0:
-            percentage_score = ((mcq_total + handwritten_total) / total_max) * 100
+            percentage_score = (
+                (mcq_total + handwritten_total) / total_max) * 100
         else:
             percentage_score = 0
-            
+
         # Update assessment score
         assessment_score.total_score = mcq_total + handwritten_total
         assessment_score.percentage_score = percentage_score
         assessment_score.save()
-        
-        logger.info(f"Updated assessment score for enrollment {self.enrollment.id} and assessment {assessment.id}")
-        logger.info(f"MCQ total: {mcq_total}, Handwritten total: {handwritten_total}")
-        logger.info(f"Total score: {assessment_score.total_score}, Percentage: {percentage_score}%")
+
+        logger.info(
+            f"Updated assessment score for enrollment {self.enrollment.id} and assessment {assessment.id}")
+        logger.info(
+            f"MCQ total: {mcq_total}, Handwritten total: {handwritten_total}")
+        logger.info(
+            f"Total score: {assessment_score.total_score}, Percentage: {percentage_score}%")
 
     def clean(self):
         if self.answer_image:
@@ -176,9 +194,11 @@ class HandwrittenQuestionScore(models.Model):
                 from PIL import Image
                 image = Image.open(self.answer_image)
                 if image.format not in ['JPEG', 'PNG', 'GIF', 'BMP']:
-                    raise ValidationError("Unsupported image format. Please upload a JPEG, PNG, GIF, or BMP file")
+                    raise ValidationError(
+                        "Unsupported image format. Please upload a JPEG, PNG, GIF, or BMP file")
             except Exception as e:
                 raise ValidationError(f"Invalid image file: {str(e)}")
+
 
 @receiver(post_delete, sender=HandwrittenQuestionScore)
 def update_assessment_score_on_delete(sender, instance, **kwargs):
@@ -190,16 +210,16 @@ def update_assessment_score_on_delete(sender, instance, **kwargs):
             enrollment=instance.enrollment,
             assessment=assessment
         )
-        
+
         # Recalculate total score
         mcq_total = assessment.mcq_questions.filter(
             scores__enrollment=instance.enrollment
         ).aggregate(total=models.Sum('scores__score'))['total'] or 0
-        
+
         handwritten_total = assessment.handwritten_questions.filter(
             scores__enrollment=instance.enrollment
         ).aggregate(total=models.Sum('scores__score'))['total'] or 0
-        
+
         assessment_score.total_score = mcq_total + handwritten_total
         assessment_score.save()
     except AssessmentScore.DoesNotExist:

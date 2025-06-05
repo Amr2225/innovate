@@ -14,8 +14,8 @@ export default function Notfound() {
           <h1 className='text-neutral-500 text-4xl font-bold'>Error 404</h1>
           <h2 className='font-bold text-2xl mb-3'>Oops! page not found</h2>
           <p className='my-5'>
-            Something went wrong. It&apos;s look that your requested could not be found. It's look
-            like the link is broken or the page is removed.
+            Something went wrong. It&apos;s look that your requested could not be found. It&apos;s
+            look like the link is broken or the page is removed.
           </p>
           <BackButton />
         </div>

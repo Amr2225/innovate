@@ -2,11 +2,14 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from django.core.signing import Signer
-from django.utils import timezone
 
 # DRF
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import serializers
+# Refresh Token
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+
 
 # Models
 from enrollments.models import Enrollments
@@ -18,8 +21,10 @@ from users.errors import EmailNotVerifiedError, UserAccountDisabledError
 from users.validation import nationalId_length_validation
 from users.helper import generateOTP, sendEmail
 
-# Python
 import random
+from django.utils import timezone
+
+# Python
 User = get_user_model()
 
 
@@ -277,3 +282,32 @@ class UserAddCredentialsSerializer(serializers.ModelSerializer):
         token = signer.sign(user.email)
 
         return {"token": token}
+
+
+class CustomTokenRefreshSerializer(TokenRefreshSerializer):
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        # Get the user from the refresh token
+        refresh = RefreshToken(attrs['refresh'])
+        user_id = refresh.get('user_id')
+        user = User.objects.get(id=user_id)
+
+        # Create new access token with updated claims
+        new_access_token = RefreshToken.for_user(user)
+
+        if user.role == "Institution":
+            new_access_token['name'] = user.name
+            new_access_token['credits'] = user.credits
+            new_access_token['profile_picture'] = user.logo.url if user.logo else None
+        else:
+            new_access_token['name'] = user.full_name
+            new_access_token['profile_picture'] = user.avatar.url if user.avatar else None
+
+        new_access_token['role'] = user.role
+        new_access_token['email'] = user.email
+
+        # Update the access token in the response
+        data['access'] = str(new_access_token.access_token)
+
+        return data

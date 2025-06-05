@@ -11,9 +11,9 @@ urlpatterns = [
     path('chapter/', include('chapter.urls')),
     path('lecture/', include('lecture.urls')),
     path('assessment/', include('assessment.urls')),
-    path('mcqQuestion/', include('mcqQuestion.urls')), 
-    path('chat/', include('chat.urls')), 
-    path('mcqQuestionScore/', include('MCQQuestionScore.urls')), 
+    path('mcqQuestion/', include('mcqQuestion.urls')),
+    path('chat/', include('chat.urls')),
+    path('mcqQuestionScore/', include('MCQQuestionScore.urls')),
     path('handwrittenQuestion/', include('HandwrittenQuestion.urls')),
     path('codingQuestion/', include('CodingQuestion.urls')),
     path('dynamicMCQ/', include('DynamicMCQ.urls')),
@@ -22,6 +22,10 @@ urlpatterns = [
 
     # Auth API
     path("auth/", include("users.urls")),
+
+    # Institution API
+    path("institution/", include("institution.urls")),
+
 
     # Swagger Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

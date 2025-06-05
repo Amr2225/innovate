@@ -11,6 +11,7 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenRefreshView
 
 # Schema
 from drf_spectacular.utils import extend_schema, OpenApiResponse
@@ -27,14 +28,15 @@ from users.serializers import (ErrorResponseSerializer,
                                FirstLoginSerializer,
                                UserAddCredentialsSerializer,
                                UserLoginSeralizer,
-                               LoginResponseSerializer)
+                               LoginResponseSerializer,
+                               CustomTokenRefreshSerializer)
 
 # Authentication
 from users.authentication import FirstLoginAuthentication
 
 # Google
-# from google.oauth2 import id_token
-# from google.auth.transport import requests
+from google.oauth2 import id_token
+from google.auth.transport import requests
 
 User = get_user_model()
 
@@ -71,7 +73,7 @@ class UserLoginView(APIView):
                 user = serializer.validated_data['user']
 
                 # Generate tokens
-                [refresh, access] = generateTokens(user)
+                [access, refresh] = generateTokens(user)
 
                 return Response({
                     'refresh': refresh,
@@ -119,56 +121,58 @@ class UserAddCredentialsView(generics.CreateAPIView):
     serializer_class = UserAddCredentialsSerializer
     allowed_methods = ["POST"]
 
-    # def post(self, request):
-    #     return JsonResponse({"Message": "message"})
+
+class GoogleAuthView(APIView):
+    permission_classes = []
+
+    def post(self, request):
+        try:
+            # Verify the Google token
+            id_info = id_token.verify_oauth2_token(
+                request.data.get('id_token'),
+                requests.Request(),
+                settings.GOOGLE_OAUTH2_CLIENT_ID
+            )
+
+            if id_info['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
+                return Response({'error': 'Wrong issuer.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get or create user
+            email = id_info['email']
+
+            # Created is just a boolean value to check if the user was created or not
+            user, created = User.objects.get_or_create(
+                email=email,
+                defaults={
+                    'username': email,
+                    'first_name': id_info.get('given_name', ''),
+                    'last_name': id_info.get('family_name', ''),
+                }
+            )
+
+            print("USER", user)
+            print("created", created)
+            refresh = RefreshToken.for_user(user)
+            refresh['role'] = user.role
+            refresh['email'] = user.email
+
+            # Create or get token
+            # token, _ = user.objects.get_or_create(user=user)
+
+            return Response({
+                "refresh": str(refresh),
+                'access': str(refresh.access_token),
+                'user': {
+                    'id': user.id,
+                    'email': user.email,
+                    'name': f"{user.first_name} {user.last_name}".strip(),
+                    'role': user.role
+                }
+            })
+        except ValueError:
+            return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# class GoogleAuthView(APIView):
-#     permission_classes = []
-
-#     def post(self, request):
-#         try:
-#             # Verify the Google token
-#             id_info = id_token.verify_oauth2_token(
-#                 request.data.get('id_token'),
-#                 requests.Request(),
-#                 settings.GOOGLE_OAUTH2_CLIENT_ID
-#             )
-
-#             if id_info['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
-#                 return Response({'error': 'Wrong issuer.'}, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Get or create user
-#             email = id_info['email']
-
-#             # Created is just a boolean value to check if the user was created or not
-#             user, created = User.objects.get_or_create(
-#                 email=email,
-#                 defaults={
-#                     'username': email,
-#                     'first_name': id_info.get('given_name', ''),
-#                     'last_name': id_info.get('family_name', ''),
-#                 }
-#             )
-
-#             print("USER", user)
-#             print("created", created)
-#             refresh = RefreshToken.for_user(user)
-#             refresh['role'] = user.role
-#             refresh['email'] = user.email
-
-#             # Create or get token
-#             # token, _ = user.objects.get_or_create(user=user)
-
-#             return Response({
-#                 "refresh": str(refresh),
-#                 'access': str(refresh.access_token),
-#                 'user': {
-#                     'id': user.id,
-#                     'email': user.email,
-#                     'name': f"{user.first_name} {user.last_name}".strip(),
-#                     'role': user.role
-#                 }
-#             })
-#         except ValueError:
-#             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+class CustomTokenRefreshView(TokenRefreshView):
+    permission_classes = [AllowAny]
+    serializer_class = CustomTokenRefreshSerializer

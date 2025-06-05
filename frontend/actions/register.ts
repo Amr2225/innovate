@@ -1,13 +1,29 @@
 'use server'
 import { RegisterSchema, RegisterSchemaType } from '@/schema/registerSchema'
-import { api } from '@/lib/api'
-import { AxiosError } from 'axios'
-import { logout } from '@/lib/session'
+import { api } from '@/apiService/api'
+import axios, { AxiosError } from 'axios'
+import { logout, setSession } from '@/lib/session'
+import { ILogin } from '@/types/auth.type'
 
 export interface RegisterResponse {
     error?: string
     token?: string
 }
+
+interface InstitutionRegisterResponse {
+    error?: string
+    isSuccess: boolean
+}
+
+// interface InstitutionRegisterRequest {
+//     name: string
+//     email: string
+//     password: string
+//     confirm_password: string
+//     credits: number
+//     logo: string
+//     hmac: string
+// }
 
 export async function register(data: RegisterSchemaType): Promise<RegisterResponse | undefined> {
     const validate = RegisterSchema.safeParse(data)
@@ -32,3 +48,23 @@ export async function register(data: RegisterSchemaType): Promise<RegisterRespon
         return { error: "An unexpected error occurred" }
     }
 }
+
+
+export async function institutionRegister(data: FormData): Promise<InstitutionRegisterResponse | undefined> {
+    try {
+        const res = await axios.post<ILogin>(`${process.env.NEXT_PUBLIC_API_URL}/institution/register/`, data, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        })
+        await setSession("innovate-auth", { accessToken: res.data.access, refreshToken: res.data.refresh })
+        return { isSuccess: true }
+    } catch (e) {
+        if (e instanceof AxiosError) {
+            console.log("Reigster error", e.response?.data)
+            return { isSuccess: false, error: "Registration Failed" }
+        }
+    }
+}
+
+

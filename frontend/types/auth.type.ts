@@ -24,6 +24,7 @@ export interface Session {
     accessToken: string
     refreshToken: string
     exp: number
+    credit?: number
 }
 
 export interface ITokens {
@@ -38,5 +39,6 @@ export interface ITokenClaims {
     exp: number
     iat: number
     credits: number
+    profile_picture: string
     user_id: string //TODO: Remove this make the user_id (id)
 }

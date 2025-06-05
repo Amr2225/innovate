@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import UserProfile from "./user-profile";
 import { getSession } from "@/lib/session";
 
-// Used to deffirentiate between the authentication and nont-authentication pages
+// Used to deffirentiate between the authentication and non-authentication pages
 interface NavBarProps {
   isAuth?: boolean;
 }
@@ -36,27 +36,21 @@ export default async function NavBar({ isAuth }: NavBarProps) {
           <NavigationMenu className='hidden md:block'>
             <NavigationMenuList>
               <NavigationMenuItem>
-                <Link href='/about' legacyBehavior passHref>
-                  <NavigationMenuLink className={cn(navigationMenuTriggerStyle())}>
-                    About Us
-                  </NavigationMenuLink>
-                </Link>
+                <NavigationMenuLink className={cn(navigationMenuTriggerStyle())} asChild>
+                  <Link href='/about'>About Us</Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
 
               <NavigationMenuItem>
-                <Link href='/contact' legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                    Contact Us
-                  </NavigationMenuLink>
-                </Link>
+                <NavigationMenuLink className={navigationMenuTriggerStyle()} asChild>
+                  <Link href='/contact'>Contact Us</Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
 
               <NavigationMenuItem>
-                <Link href='/faq' legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                    FAQs
-                  </NavigationMenuLink>
-                </Link>
+                <NavigationMenuLink className={navigationMenuTriggerStyle()} asChild>
+                  <Link href='/faq'>FAQs</Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
@@ -67,6 +61,7 @@ export default async function NavBar({ isAuth }: NavBarProps) {
                 name={session.user.name}
                 email={session.user.email}
                 role={session.user.role}
+                profile_picture={session.user.profile_picture}
               />
             </div>
           ) : (
