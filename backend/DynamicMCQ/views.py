@@ -15,7 +15,6 @@ from rest_framework.parsers import MultiPartParser, JSONParser
 from decimal import Decimal
 from users.permissions import isInstitution, isTeacher, isStudent
 from enrollments.models import Enrollments
-from assessment.filters import DynamicMCQFilterSet, DynamicMCQQuestionsFilterSet
 from django_filters.rest_framework import DjangoFilterBackend
 
 # Create your views here.
@@ -129,8 +128,6 @@ class DynamicMCQListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = DynamicMCQSerializer
     parser_classes = (MultiPartParser, JSONParser)
     permission_classes = [DynamicMCQPermission]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = DynamicMCQFilterSet
 
     def get_queryset(self):
         user = self.request.user
@@ -179,10 +176,7 @@ class DynamicMCQListCreateAPIView(generics.ListCreateAPIView):
         if assessment.due_date < timezone.now():
             raise ValidationError("Cannot add questions to past-due assessments")
             
-        serializer.save(
-            created_by=user,
-            assessment=assessment
-        )
+        serializer.save(assessment=assessment)
 
 class DynamicMCQQuestionsListCreateAPIView(generics.ListCreateAPIView):
     """
@@ -251,8 +245,6 @@ class DynamicMCQQuestionsListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = DynamicMCQQuestionsSerializer
     parser_classes = (MultiPartParser, JSONParser)
     permission_classes = [DynamicMCQPermission]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = DynamicMCQQuestionsFilterSet
 
     def get_queryset(self):
         user = self.request.user

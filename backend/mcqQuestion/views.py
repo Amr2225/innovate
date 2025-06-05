@@ -18,7 +18,6 @@ from enrollments.models import Enrollments
 from MCQQuestionScore.models import MCQQuestionScore
 import logging
 from .models import McqQuestion
-from assessment.filters import McqQuestionFilterSet
 from django_filters.rest_framework import DjangoFilterBackend
 
 logger = logging.getLogger(__name__)
@@ -130,8 +129,6 @@ class McqQuestionListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = McqQuestionSerializer
     parser_classes = (JSONParser,)
     permission_classes = [McqQuestionPermission]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = McqQuestionFilterSet
 
     def get_queryset(self):
         user = self.request.user

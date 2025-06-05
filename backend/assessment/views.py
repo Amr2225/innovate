@@ -3,7 +3,6 @@ from rest_framework.exceptions import PermissionDenied
 from django.db.models import Q
 from .models import Assessment, AssessmentScore
 from .serializers import AssessmentSerializer, AssessmentScoreSerializer, AssessmentListSerializer
-from .filters import AssessmentFilterSet
 from courses.models import Course
 from enrollments.models import Enrollments
 from mcqQuestion.models import McqQuestion
@@ -116,8 +115,6 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
     """
     serializer_class = AssessmentListSerializer
     permission_classes = [permissions.IsAuthenticated, AssessmentPermission]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = AssessmentFilterSet
 
     def get_queryset(self):
         user = self.request.user
