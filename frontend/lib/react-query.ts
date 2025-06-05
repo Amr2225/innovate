@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 
+//TODO: will be deleted
 export const queryClient = new QueryClient({
     defaultOptions: {
         queries: {

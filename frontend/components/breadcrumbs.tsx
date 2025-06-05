@@ -9,6 +9,7 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { usePathname } from "next/navigation";
+import { useBreadcrumb } from "@/context/breadcrumbsContext";
 
 const generateLink = (pathnames: string[], index: number): string => {
   const pathname = pathnames.slice(0, index + 1).join("/");
@@ -16,8 +17,11 @@ const generateLink = (pathnames: string[], index: number): string => {
 };
 
 export function Breadcrumbs() {
+  const { customPathnames, metadata } = useBreadcrumb();
   const pathname = usePathname();
-  const pathnames = pathname.split("/").filter((name) => name);
+  const pathnames = customPathnames
+    ? customPathnames.split("/").filter((path) => path)
+    : pathname.split("/").filter((path) => path);
 
   return (
     <Breadcrumb>
@@ -28,7 +32,9 @@ export function Breadcrumbs() {
               {index + 1 !== pathnames.length ? (
                 <BreadcrumbLink href={generateLink(pathnames, index)}>{pathname}</BreadcrumbLink>
               ) : (
-                <BreadcrumbPage>{pathname}</BreadcrumbPage>
+                <BreadcrumbPage>
+                  {metadata.has(pathname) ? metadata.get(pathname) : pathname}
+                </BreadcrumbPage>
               )}
             </BreadcrumbItem>
             {pathnames.length !== index + 1 && <BreadcrumbSeparator className='hidden md:block' />}

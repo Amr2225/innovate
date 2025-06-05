@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 
     # Third-Party Apps
     "django_extensions",
+    "django_filters",
     "nanoid_field",
     "drf_spectacular",
     'channels',
@@ -62,6 +63,7 @@ INSTALLED_APPS = [
 
     # Apps
     'users',
+    'institution',
     "courses",
     'enrollments',
     'chapter',
@@ -95,22 +97,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.RemoteUserMiddleware',
-]
-
-# To enable non active users to authenticate
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.AllowAllUsersModelBackend',
-
-
-    'corsheaders.middleware.CorsMiddleware',
-    'django.contrib.auth.middleware.RemoteUserMiddleware',
+    # TODO: will be removed in production
+    # 'users.middleware.CustomExceptionMiddleware',
 ]
 
 # To enable non active users to authenticate
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.AllowAllUsersModelBackend',
 ]
-
 
 ROOT_URLCONF = 'main.urls'
 
@@ -186,22 +180,17 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
-MEDIA_URL = '/uploads/'
-MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
-# Assessment Uploads Configuration
+
 ASSESSMENT_UPLOADS_DIR = 'AssessmentUploads'
 ASSESSMENT_UPLOADS_PATH = os.path.join(MEDIA_ROOT, ASSESSMENT_UPLOADS_DIR)
 
 # Create upload directories if they don't exist
-os.makedirs(MEDIA_ROOT, exist_ok=True)
 os.makedirs(ASSESSMENT_UPLOADS_PATH, exist_ok=True)
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# REST FRAMEWORK
 # REST FRAMEWORK
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
@@ -213,8 +202,9 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated"
     ),
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'DEFAULT_PAGINATION_CLASS': 'institution.pagination.Pagination',
+    # 'PAGE_SIZE': 10,
+    # 'PAGE_SIZE_QUERY_PARAM': 'page_size',
     # TODO: Enable this in production
     # 'DEFAULT_RENDERER_CLASSES': [
     #     'rest_framework.renderers.JSONRenderer',
@@ -224,11 +214,11 @@ REST_FRAMEWORK = {
 
 # Simple JWT
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=900),
-    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=60*3),
     "SIGNING_KEY": os.environ.get('JWT_MAIN', SECRET_KEY),
     "ISSUER": None,
-    "USER_ID_FIELD": "id",
+    "USER_ID_FIELD": "id",  # The id field in the model
     "USER_ID_CLAIM": "user_id",
 }
 
@@ -247,6 +237,13 @@ SPECTACULAR_SETTINGS = {
     # "SWAGGER_UI_FAVICON_HREF": settings.STATIC_URL + "your_company_favicon.png", # default is swagger favicon
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
 # Email Config
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
@@ -255,6 +252,12 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
+# Payment Config
+PAYMOB_PK = os.environ.get('PAYMOB_PK')
+PAYMOB_SK = os.environ.get('PAYMOB_SK')
+CLIENT_URL = os.environ.get('CLIENT_URL')
+
+# AI CONFIG
 AI_API_KEY = os.environ.get('AI_API_KEY')
 AI_PROVIDER = os.environ.get('AI_PROVIDER')
 AI_MODEL = os.environ.get('AI_MODEL')

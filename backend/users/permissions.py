@@ -6,7 +6,7 @@ class isInstitution(BasePermission):
         # return bool(request.user and request.user.is_authenticated and request.user.role == "Institution")
         if not request.user.is_authenticated:
             return False
-        return request.user.role == "Institution"
+        return bool(request.user.role == "Institution")
 
 
 class isStudent(BasePermission):
