@@ -871,16 +871,16 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
                 raise PermissionDenied(
                     "This assessment is no longer accepting submissions")
 
-            # Check if assessment has started
-            if assessment.start_date > timezone.now():
-                raise PermissionDenied("This assessment has not started yet")
-
             return assessment
         except Assessment.DoesNotExist:
             raise Http404("Assessment not found")
 
     def retrieve(self, request, *args, **kwargs):
         assessment = self.get_object()
+
+        # Check if assessment has started
+        if assessment.start_date > timezone.now():
+            raise PermissionDenied(f"This assessment has not started yet. It will be available on {assessment.start_date.strftime('%Y-%m-%d %H:%M:%S')}")
 
         try:
             # Get all questions for the student
