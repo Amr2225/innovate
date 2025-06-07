@@ -158,7 +158,8 @@ class Assessment(models.Model):
                             generated_questions = generate_mcqs_from_text(
                                 text=dynamic_mcq.context,
                                 num_questions=dynamic_mcq.number_of_questions,
-                                difficulty=dynamic_mcq.difficulty
+                                difficulty=dynamic_mcq.difficulty,
+                                num_options=dynamic_mcq.num_options  # Pass num_options from model
                             )
                         except Exception as e:
                             print(f"Error generating questions from context: {str(e)}")
@@ -198,7 +199,8 @@ class Assessment(models.Model):
                                     # Distribute questions evenly
                                     num_questions_per_pdf=dynamic_mcq.number_of_questions // len(
                                         pdf_files),
-                                    difficulty=dynamic_mcq.difficulty  # Pass the difficulty from DynamicMCQ model
+                                    difficulty=dynamic_mcq.difficulty,  # Pass the difficulty from DynamicMCQ model
+                                    num_options=dynamic_mcq.num_options  # Pass num_options from model
                                 )
 
                                 # Create questions for this student
@@ -228,7 +230,8 @@ class Assessment(models.Model):
                         generated_questions = generate_mcqs_from_text(
                             text=dynamic_mcq.context,
                             num_questions=dynamic_mcq.number_of_questions,
-                            difficulty=dynamic_mcq.difficulty
+                            difficulty=dynamic_mcq.difficulty,
+                            num_options=dynamic_mcq.num_options  # Pass num_options from model
                         )
 
                         # Create questions for this student

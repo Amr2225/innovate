@@ -48,83 +48,23 @@ class DynamicMCQListCreateAPIView(generics.ListCreateAPIView):
     """
     API endpoint to list and create Dynamic MCQ questions for an assessment.
 
-    This endpoint allows teachers and institutions to manage Dynamic MCQ questions for their assessments.
+    POST /assessments/{assessment_id}/
+    Create a new Dynamic MCQ for an assessment.
 
-    GET /api/assessments/{assessment_id}/dynamic-mcq/
-    List all Dynamic MCQ questions for an assessment with filtering options:
-    - assessment: Filter by assessment ID
-    - title: Filter by title (case-insensitive contains)
-    - created_by: Filter by creator ID
-    - created_at: Filter by creation date
-
-    POST /api/assessments/{assessment_id}/dynamic-mcq/
-    Create a new Dynamic MCQ question for an assessment.
-
-    Parameters:
-    - assessment_id (UUID): The ID of the assessment
-
-    POST Request Body:
-    ```json
+    Request body:
     {
-        "title": "string",
-        "questions": [
-            {
-                "question": "string",
-                "options": ["string"],
-                "answer_key": "string",
-                "question_grade": "decimal",
-                "difficulty": "string"
-            }
-        ]
+        "section_number": 1,  // Required: Section number within the assessment
+        "context": "string",  // Optional: Text context to generate questions from
+        "lecture_ids": ["uuid1", "uuid2"],  // Optional: Array of lecture UUIDs
+        "difficulty": "3",  // Optional: Difficulty level (1-5, default=3)
+        "num_options": 4,  // Optional: Number of options per question (2-6, default=4)
+        "total_grade": 10,  // Required: Total grade for all questions
+        "number_of_questions": 5  // Required: Number of questions to generate
     }
-    ```
-
-    Returns:
-    ```json
-    {
-        "id": "uuid",
-        "assessment": "uuid",
-        "title": "string",
-        "questions": [
-            {
-                "id": "uuid",
-                "question": "string",
-                "options": ["string"],
-                "answer_key": "string",  // Only for teachers/institutions
-                "question_grade": "decimal",
-                "difficulty": "string",
-                "created_by": "uuid",
-                "created_at": "datetime",
-                "updated_at": "datetime"
-            }
-        ],
-        "created_by": "uuid",
-        "created_at": "datetime",
-        "updated_at": "datetime"
-    }
-    ```
-
-    Status Codes:
-    - 200: Successfully retrieved questions
-    - 201: Successfully created question
-    - 400: Invalid input data
-    - 403: Not authorized to manage questions
-    - 404: Assessment not found
-
-    Permissions:
-    - Students: Can view questions for courses they're enrolled in
-    - Teachers: Can manage questions for courses they teach
-    - Institutions: Can manage questions for their courses
-
-    Notes:
-    - Total question grades must not exceed assessment's remaining grade
-    - Answer key must be one of the provided options
-    - Assessment must not be past due date
     """
     serializer_class = DynamicMCQSerializer
     parser_classes = (MultiPartParser, JSONParser)
     permission_classes = [DynamicMCQPermission]
-    # filterset_class = DynamicMCQFilterSet
 
     def get_queryset(self):
         user = self.request.user
@@ -176,9 +116,15 @@ class DynamicMCQListCreateAPIView(generics.ListCreateAPIView):
             raise ValidationError(
                 "Cannot add questions to past-due assessments")
 
+        # Get num_options from request data or use default
+        num_options = self.request.data.get('num_options', 4)
+        if not isinstance(num_options, int) or num_options < 2 or num_options > 6:
+            raise ValidationError("Number of options must be between 2 and 6")
+
         serializer.save(
-            # created_by=user,
-            assessment=assessment
+            created_by=user,
+            assessment=assessment,
+            num_options=num_options
         )
 
 
