@@ -121,7 +121,7 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
         difficulty_desc = difficulty_map.get(difficulty, 'Medium')
 
         # Check if text is too large and truncate if necessary
-        max_text_length = 5000  # Adjust this based on AI model limits
+        max_text_length = 35000  # Increased from 5000 to match the limit in generate_mcqs_from_multiple_pdfs
         if len(text) > max_text_length:
             logger.warning(f"Text length ({len(text)}) exceeds maximum ({max_text_length}). Truncating...")
             text = text[:max_text_length]
@@ -159,6 +159,7 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
         8. Use double quotes for all strings
         9. Do not include any trailing commas
         10. Do not include any comments or markdown formatting
+        11. IMPORTANT: You MUST generate EXACTLY {num_options} options for each question
 
         DIFFICULTY REQUIREMENTS:
         For {difficulty_desc} level questions:
@@ -177,7 +178,7 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
         [
             {{
                 "question": "What is the capital of France?",
-                "options": ["London", "Berlin", "Paris", "Madrid", "Rome", "Vienna"],
+                "options": ["London", "Berlin", "Paris", "Madrid", "Rome", "Vienna"][:num_options],
                 "correct_answer": "Paris"
             }}
         ]

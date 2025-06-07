@@ -558,7 +558,7 @@ class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
             if num < 2:
                 raise ValidationError("Number of options must be at least 2")
             if num > 6:
-                raise ValidationError("Maximum 4 options allowed per question")
+                raise ValidationError("Maximum 6 options allowed per question")
             return num
         except (TypeError, ValueError):
             raise ValidationError("Number of options must be a valid integer")

@@ -17,6 +17,7 @@ class DynamicMCQSerializer(serializers.ModelSerializer):
             'context',
             'lecture_ids',
             'difficulty',
+            'num_options',
             'total_grade',
             'number_of_questions',
         ]
@@ -27,6 +28,13 @@ class DynamicMCQSerializer(serializers.ModelSerializer):
         if not data.get('context') and not data.get('lecture_ids'):
             raise serializers.ValidationError(
                 "Either context or lecture_ids must be provided")
+        
+        # Validate num_options
+        num_options = data.get('num_options', 4)  # Default to 4 if not provided
+        if num_options < 2 or num_options > 6:
+            raise serializers.ValidationError(
+                "Number of options must be between 2 and 6")
+        
         return data
 
 
