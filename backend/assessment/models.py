@@ -69,7 +69,20 @@ class Assessment(models.Model):
 
     @property
     def is_active(self):
-        return self.accepting_submissions and self.due_date > timezone.now()
+        """Check if the assessment is currently active based on start_date and due_date"""
+        now = timezone.now()
+        return self.start_date <= now <= self.due_date
+
+    @property
+    def accepting_submissions(self):
+        """Determine if the assessment is accepting submissions based on start_date and due_date"""
+        now = timezone.now()
+        return self.start_date <= now <= self.due_date
+
+    @accepting_submissions.setter
+    def accepting_submissions(self, value):
+        """Set the accepting_submissions field"""
+        self._accepting_submissions = value
 
     @property
     def total_questions(self):
