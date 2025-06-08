@@ -75,7 +75,7 @@ interface QuestionResponse extends Omit<Question, 'options' | 'questionType'> {
 }
 
 export const getAssessment = async () => {
-    const response = await api.get<{ data: AssessmentResponse[] }>(`/assessment/`);
+    const response = await api.get<{ data: AssessmentResponse[] }>(`/assessment/`, { params: { page_size: 200, type: "Assignment" } });
 
     if (response.status === 200) return response.data;
     throw new Error("Failed to get assessment");

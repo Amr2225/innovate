@@ -19,8 +19,6 @@ export default function AssessmentPage() {
 
   if (isLoading || !assessment) return <Loader />;
 
-  console.log(assessment.questions[0].id);
-
   return (
     <div className='w-full'>
       <NavBar

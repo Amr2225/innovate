@@ -1,15 +1,14 @@
 "use client";
-
 import { useState, useRef, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { io } from "socket.io-client";
+import { useMutation } from "@tanstack/react-query";
+import { addTempHandwrittenImage } from "@/apiService/tempHandwrittenImage";
+import { toast } from "sonner";
 
 export default function UploadPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -18,6 +17,28 @@ export default function UploadPage() {
 
   const assessmentId = searchParams.get("assessmentId") || "";
   const questionId = searchParams.get("questionId") || "";
+  const token = searchParams.get("token") || "";
+
+  console.log("ass", assessmentId);
+  console.log("question", questionId);
+  console.log("token", token);
+
+  const {
+    mutate: addTempHandwrittenImageMutation,
+    isPending,
+    isSuccess: uploadSuccess,
+  } = useMutation({
+    mutationFn: ({ formData }: { formData: FormData }) =>
+      addTempHandwrittenImage({ formData, assessmentId, questionId, token }),
+    onSuccess: () => {
+      toast.success("Upload successful");
+      console.log("Upload successful");
+    },
+    onError: (error) => {
+      toast.error(`Upload failed: ${JSON.stringify(error)}`);
+      console.log("Upload failed", error);
+    },
+  });
 
   // Request camera access when component mounts
   useEffect(() => {
@@ -29,7 +50,8 @@ export default function UploadPage() {
         cameraStream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [cameraStream]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Function to request camera permission
   const requestCameraPermission = async () => {
@@ -37,9 +59,10 @@ export default function UploadPage() {
       setError(null);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "environment", // Use back camera if available
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          facingMode: "environment",
+          width: { min: 1280, max: 1920 },
+          height: { min: 720, max: 1080 },
+          frameRate: { min: 30, max: 60 },
         },
       });
 
@@ -62,7 +85,7 @@ export default function UploadPage() {
   };
 
   // Function to capture photo
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current || !cameraStream) {
       setError("Camera not ready. Please try again.");
       return;
@@ -82,47 +105,17 @@ export default function UploadPage() {
     // Convert canvas to image data
     const imageData = canvas.toDataURL("image/jpeg");
 
+    // Convert data URL to Blob
+    const fetchResponse = await fetch(imageData);
+    const blob = await fetchResponse.blob();
+
+    // Create a File object
+    const imageFile = new File([blob], "image.jpg", { type: "image/jpeg" });
+
     // Upload the image
-    uploadImage(imageData);
-  };
-
-  // Function to upload image via socket
-  const uploadImage = async (imageData: string) => {
-    try {
-      setIsUploading(true);
-
-      // Send via WebSocket
-      const socket = io({
-        path: "/api/socket",
-      });
-
-      socket.emit("uploadImage", {
-        image: imageData,
-        assessmentId,
-        questionId,
-        metadata: {
-          type: "image/jpeg",
-          source: "mobile-capture",
-          timestamp: Date.now(),
-        },
-      });
-
-      socket.on("uploadConfirmed", () => {
-        setUploadSuccess(true);
-        socket.disconnect();
-      });
-
-      // Set timeout to handle case where server doesn't respond
-      setTimeout(() => {
-        setUploadSuccess(true);
-        socket.disconnect();
-      }, 3000);
-    } catch (error) {
-      console.error("Error uploading image:", error);
-      setError("Failed to upload image. Please try again.");
-    } finally {
-      setIsUploading(false);
-    }
+    const formData = new FormData();
+    formData.append("image", imageFile);
+    addTempHandwrittenImageMutation({ formData });
   };
 
   // Retry camera access
@@ -159,6 +152,10 @@ export default function UploadPage() {
               playsInline
               muted
               className={`w-full h-full object-cover ${!cameraStream ? "hidden" : ""}`}
+              style={{
+                transform: "scaleX(1)",
+                willChange: "transform",
+              }}
             />
 
             {!cameraStream && !error && (
@@ -175,10 +172,10 @@ export default function UploadPage() {
           <div className='flex gap-3 w-full'>
             <Button
               onClick={capturePhoto}
-              disabled={isUploading || !cameraStream}
+              disabled={isPending || !cameraStream}
               className='flex-1 h-12 text-lg'
             >
-              {isUploading ? "Uploading..." : "Capture Photo"}
+              {isPending ? "Uploading..." : "Capture Photo"}
             </Button>
 
             <Button

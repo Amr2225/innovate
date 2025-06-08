@@ -1,16 +1,12 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-<<<<<<< HEAD
 import { EncryptedStorage } from './encryptedStorage'
 import { FileData } from '@/types/file.type'
 
-=======
->>>>>>> sherif
 
 type InstitutionStore = {
     name: string
     email: string
-<<<<<<< HEAD
     password: string
     confirm_password: string
     isEmailVerified: boolean
@@ -128,27 +124,3 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
 
 // Run setCurrentStep on initialization
 useInstitutionRegistrationStore.getState().setCurrentStep();
-=======
-    signIn: (name: string, email: string) => void
-    logo?: string
-}
-
-const initialState: InstitutionStore = {
-    name: '',
-    email: '',
-    signIn: () => { },
-}
-
-export const useBearStore = create<InstitutionStore>()(
-    persist(
-        (set) => ({
-            ...initialState,
-            signIn: (name, email) => set({ name: name, email: email }),
-        }),
-        {
-            name: 'institution-registration', // name of the item in the storage (must be unique)
-            storage: createJSONStorage(() => localStorage), // (optional) by default, 'localStorage' is used
-        },
-    ),
-)
->>>>>>> sherif
