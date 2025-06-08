@@ -315,7 +315,7 @@ class HandwrittenQuestionScoreDetailAPIView(generics.RetrieveUpdateDestroyAPIVie
 class HandwrittenQuestionViewSet(viewsets.ModelViewSet):
     serializer_class = HandwrittenQuestionSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = (MultiPartParser, FormParser)
+    parser_classes = (MultiPartParser, FormParser, JSONParser)
 
     def get_queryset(self):
         user = self.request.user

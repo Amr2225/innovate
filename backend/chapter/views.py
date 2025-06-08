@@ -83,13 +83,13 @@ class ChapterListCreateAPIView(generics.ListCreateAPIView):
 
                     if user.role == "Institution" and course.institution != user:
                         return Response(
-                            {"error": f"You do not have permission to add a chapter to course: {course.title}"},
+                            {"error": f"You do not have permission to add a chapter to course: {course.name}"},
                             status=status.HTTP_403_FORBIDDEN
                         )
 
                     elif user.role == "Teacher" and course.institution not in user.institution.all():
                         return Response(
-                            {"error": f"You do not have permission to add a chapter to course: {course.title}"},
+                            {"error": f"You do not have permission to add a chapter to course: {course.name}"},
                             status=status.HTTP_403_FORBIDDEN
                         )
 

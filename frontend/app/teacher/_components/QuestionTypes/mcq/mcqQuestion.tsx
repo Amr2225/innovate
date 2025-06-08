@@ -1,12 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { useAssessmentStore } from "@/store/assessmentStore";
 import { Answer, Question } from "@/types/assessment.type";
 import { AnimatePresence, Reorder, motion, useDragControls } from "framer-motion";
 import { GripVertical, Info, Plus, Trash } from "lucide-react";
 import { CustomEditInput } from "../../questionCard";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { useParams } from "next/navigation";
+import { createAssessmentStore } from "@/store/assessmentStore";
 
 export default function MCQQuestion({ question }: { question: Question }) {
+  const { courseId } = useParams();
+  const useAssessmentStore = createAssessmentStore(courseId as string);
   const { addMCQAnswer, setMCQAnswer } = useAssessmentStore();
 
   return (
@@ -58,6 +61,8 @@ export default function MCQQuestion({ question }: { question: Question }) {
 }
 
 function AnswerItem({ questionId, answer }: { questionId: string; answer: Answer }) {
+  const { courseId } = useParams();
+  const useAssessmentStore = createAssessmentStore(courseId as string);
   const { deleteMCQAnswer, updateMCQAnswer } = useAssessmentStore();
 
   const controls = useDragControls();

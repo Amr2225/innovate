@@ -183,7 +183,9 @@ function ActionsDropdown({ courseId, courseName }: { courseId: string; courseNam
         </DropdownMenuItem>
         <DropdownMenuItem>Add Quiz</DropdownMenuItem>
         <DropdownMenuItem>Add Exam</DropdownMenuItem>
-        <DropdownMenuItem>Add Material</DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/teacher/courses/add-materials/${courseId}`}>Add Material</Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

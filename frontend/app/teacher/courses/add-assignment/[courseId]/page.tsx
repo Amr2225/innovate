@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { useParams } from "next/navigation";
 import { Reorder } from "framer-motion";
 
 // Components
@@ -9,12 +10,15 @@ import AssessmentTabs from "@/app/teacher/_components/assessmentTabs";
 import { TabsContent } from "@/components/ui/tabs";
 
 // Store
-import { useAssessmentStore } from "@/store/assessmentStore";
+import { createAssessmentStore } from "@/store/assessmentStore";
 
 // Icons
 import { Plus } from "lucide-react";
 
 export default function AddAssignmentPage() {
+  const { courseId } = useParams();
+
+  const useAssessmentStore = createAssessmentStore(courseId as string);
   const { questions, setQuestions, addQuestion, currentSection } = useAssessmentStore();
 
   return (

@@ -1,27 +1,14 @@
-import { createChapterService, createCourse } from "@/apiService/courseService";
+import { createChapterService } from "@/apiService/courseService";
 import { getAttachmentForLecture } from "@/store/attachmentStorage";
 import { createCourseStore } from "@/store/courseStore";
 import { getVideo } from "@/store/videoStorage";
 import { Chapter } from "@/types/course.type";
 import { useMutation } from "@tanstack/react-query";
-import { useMemo } from "react";
 import { toast } from "sonner";
 
-export function useUploadCourse(courseId: string) {
+export function useEditCourse(courseId: string) {
     const useCourseStore = createCourseStore(courseId);
-    const { course, chapters } = useCourseStore();
-
-    const { mutate: createCourseMutation, isPending: isCreatingCourse } = useMutation({
-        mutationFn: () => createCourse(course!),
-        onSuccess: (data) => {
-            console.log("COURSE CREATED", data);
-            createChapter(createFormData(chapters!, data.id));
-        },
-        onError: (e) => {
-            toast.error(e.message || "Failed to create course");
-        },
-    })
-
+    const { chapters } = useCourseStore();
 
     const { mutate: createChapter, isPending: isCreatingChapter } = useMutation({
         mutationFn: (chapterData: FormData) => createChapterService(chapterData),
@@ -59,17 +46,12 @@ export function useUploadCourse(courseId: string) {
         return formData;
     }
 
-    const isCreating = useMemo(() => {
-        return isCreatingCourse || isCreatingChapter;
-    }, [isCreatingCourse, isCreatingChapter]);
-
-
     const UploadCourse = () => {
-        createCourseMutation();
+        createChapter(createFormData(chapters!, courseId));
     }
 
     return {
         UploadCourse,
-        isCreating
+        isCreating: isCreatingChapter
     }
 }

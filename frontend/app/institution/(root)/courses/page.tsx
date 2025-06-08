@@ -30,11 +30,6 @@ export default function InstitutionCourses() {
           </div>
 
           <BasInfo />
-          {/* <div className='flex justify-between items-center mt-10'>
-            <Button type='button' variant={"secondary"} onClick={() => setActiveTab("curriculum")}>
-              Next
-            </Button>
-          </div> */}
         </div>
       </TabsContent>
 
