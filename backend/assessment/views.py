@@ -935,7 +935,8 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
                     'type': assessment.type,
                     'due_date': assessment.due_date,
                     'grade': assessment.grade,
-                    'total_grade': assessment.total_grade
+                    'total_grade': assessment.total_grade,
+                    'course_name': assessment.course.name
                 },
                 'questions': formatted_questions
             }
