@@ -28,6 +28,14 @@ from django.core.signing import Signer, BadSignature
 
 from google.oauth2 import id_token
 from google.auth.transport import requests
+from rest_framework_simplejwt.views import TokenRefreshView
+
+from users.serializers import (ErrorResponseSerializer,
+                               FirstLoginSerializer,
+                               UserAddCredentialsSerializer,
+                               UserLoginSeralizer,
+                               LoginResponseSerializer,
+                               CustomTokenRefreshSerializer)
 
 from institution_policy.models import InstitutionPolicy
 
@@ -358,3 +366,7 @@ class GoogleAuthView(APIView):
             })
         except ValueError:
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+        
+class CustomTokenRefreshView(TokenRefreshView):
+    permission_classes = [AllowAny]
+    serializer_class = CustomTokenRefreshSerializer

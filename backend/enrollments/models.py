@@ -16,4 +16,4 @@ class Enrollments(models.Model):
         unique_together = ('user', 'course')
 
     def __str__(self):
-        return self.is_completed
+        return f"{self.user.email} - {self.course.name}"
