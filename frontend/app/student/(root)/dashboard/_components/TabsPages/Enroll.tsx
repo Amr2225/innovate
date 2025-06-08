@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useEnrollment } from "@/queryHooks/useEnrollment";
-import Loader from "../Loader";
+import Loader from "../../../../../../components/Loader";
 import { Loader2 } from "lucide-react";
 
 export default function EnrollSection() {

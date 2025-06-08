@@ -4,6 +4,7 @@ import React from "react";
 import moment from "moment";
 import { Check, X } from "lucide-react";
 import Link from "next/link";
+import { useAssessmentNavbar } from "@/context/assessmentNavbarContext";
 
 export default function AssignmentCard({
   id,
@@ -11,13 +12,17 @@ export default function AssignmentCard({
   dueDate,
   startDate,
   hasSubmitted,
+  courseName,
 }: {
   id: string;
   title: string;
   dueDate: Date;
   startDate: Date;
   hasSubmitted: boolean;
+  courseName: string;
 }) {
+  const { setCourseName, setAssessmentTitle } = useAssessmentNavbar();
+
   return (
     <div className='w-full h-full border border-neutral-200 rounded-md py-2'>
       {/* <span className='w-[200px] block h-[100px] bg-white rounded-full' /> */}
@@ -43,7 +48,15 @@ export default function AssignmentCard({
       <Separator />
       <div className='px-3 p-2'>
         <Button type='button' variant='default' className='w-full' asChild>
-          <Link href={`/student/assessment/${id}`}>View Assignment</Link>
+          <Link
+            href={`/student/assessment/${id}`}
+            onClick={() => {
+              setCourseName(courseName);
+              setAssessmentTitle(title);
+            }}
+          >
+            View Assignment
+          </Link>
         </Button>
       </div>
     </div>

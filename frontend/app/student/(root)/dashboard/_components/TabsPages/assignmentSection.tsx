@@ -16,7 +16,7 @@ import AssignmentCard from "../assignmentCard";
 
 import { useQuery } from "@tanstack/react-query";
 import { getAssessment } from "@/apiService/assessmentService";
-import Loader from "../Loader";
+import Loader from "@/components/Loader";
 
 export default function AssignmentSection() {
   const { data: assignments, isLoading } = useQuery({
@@ -25,8 +25,6 @@ export default function AssignmentSection() {
   });
 
   if (isLoading) return <Loader />;
-
-  console.log(assignments);
 
   return (
     <div>
@@ -89,6 +87,7 @@ export default function AssignmentSection() {
             dueDate={assignment.due_date}
             startDate={assignment.start_date!}
             hasSubmitted={assignment.has_submitted}
+            courseName={assignment.course}
           />
         ))}
       </div>

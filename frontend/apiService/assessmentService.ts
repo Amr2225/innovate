@@ -65,6 +65,13 @@ export const mcqQuestion = async ({ question, assessmentId }: { question: Pick<Q
 // ----------------------------
 interface AssessmentResponse extends Assessment {
     has_submitted: boolean;
+    course: string;
+}
+
+interface QuestionResponse extends Omit<Question, 'options' | 'questionType'> {
+    type: "dynamic_mcq" | "code" | "handwritten" | "mcq"
+    question: string;
+    options: string[];
 }
 
 export const getAssessment = async () => {
@@ -75,7 +82,7 @@ export const getAssessment = async () => {
 }
 
 export const getAssessmentQuestionsForStudent = async (assessmentId: string) => {
-    const response = await api.get<{ questions: Question[] }>(`/assessment/${assessmentId}/student-questions/`);
+    const response = await api.get<{ questions: QuestionResponse[], assessment: AssessmentResponse }>(`/assessment/${assessmentId}/student-questions/`);
     return response.data;
 }
 
