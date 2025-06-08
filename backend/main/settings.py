@@ -14,19 +14,31 @@ DEBUG = os.environ.get("DEBUG", default=0)
 
 SITE_ID = 1
 
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS").split(" ")
 
-WEBSITE_URL = "http://localhost:8000"
+# WEBSITE_URL = "http://192.168.1.2:8000"
+WEBSITE_URL = "https://bb02-156-208-242-179.ngrok-free.app"
 
 AUTH_USER_MODEL = "users.User"
 
 
 # CORS
+# Client URLs
+# Add the backend url only if you want to access the admin panel
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:8000",
+    "http://192.168.1.2:3000",
+    # "https://f659-156-208-242-179.ngrok-free.app",
+    "https://1aa2-154-182-231-59.ngrok-free.app",
 ]
+
+# For development, you can use these more permissive settings
+# Comment them out in production
+# CORS_ALLOW_ALL_ORIGINS = True  # Allow all origins in development
+# # Allow cookies to be included in cross-site HTTP requests
+# CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = (
     "DELETE",
@@ -36,6 +48,25 @@ CORS_ALLOW_METHODS = (
     "POST",
     "PUT",
 )
+
+# Allow all headers in requests
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+    'ngrok-skip-browser-warning'
+]
+
+# Headers that can be exposed to the browser
+# CORS_EXPOSE_HEADERS = [
+#     'content-disposition',
+# ]
 
 # Google OAuth2
 GOOGLE_OAUTH2_CLIENT_ID = os.environ.get('GOOGLE_OAUTH2_CLIENT_ID', "")
@@ -60,6 +91,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     'channels',
     'corsheaders',
+    'drf_sse',
 
     # Apps
     'users',
@@ -90,12 +122,12 @@ CHANNEL_LAYERS = {
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.RemoteUserMiddleware',
     # TODO: will be removed in production
     # 'users.middleware.CustomExceptionMiddleware',

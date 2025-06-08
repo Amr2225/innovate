@@ -9,6 +9,7 @@ from .views import (
     AssessmentAllQuestionsAPIView,
     AssessmentStudentQuestionsAPIView,
 )
+from .sse import MyView, TempUploadImage
 
 urlpatterns = [
     # Assessment endpoints
@@ -33,4 +34,8 @@ urlpatterns = [
     # Student grades endpoint
     path('student-grades/<uuid:pk>/',
          StudentGradesAPIView.as_view(), name='student-grades'),
+    path('sse/<str:token>/<uuid:assessment_id>/<uuid:question_id>/',
+         MyView.as_view(), name='sse'),
+    path('temp-handwritten-image/<uuid:assessment_id>/<uuid:question_id>/',
+         TempUploadImage.as_view(), name='temp-upload-image'),
 ]
