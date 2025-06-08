@@ -168,10 +168,10 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
 
         # Check if user has permission to create assessment for this course
         course = serializer.validated_data['course']
-        if user.role == "Teacher" and course.teacher != user.teacher:
+        if user.role == "Teacher" and not course.instructors.filter(id=user.id).exists():
             raise PermissionDenied(
                 "You can only create assessments for courses you teach")
-        if user.role == "Institution" and course.institution != user.institution:
+        if user.role == "Institution" and course.institution == user.institution:
             raise PermissionDenied(
                 "You can only create assessments for your institution's courses")
 
@@ -935,7 +935,8 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
                     'type': assessment.type,
                     'due_date': assessment.due_date,
                     'grade': assessment.grade,
-                    'total_grade': assessment.total_grade
+                    'total_grade': assessment.total_grade,
+                    'course': assessment.course.name
                 },
                 'questions': formatted_questions
             }

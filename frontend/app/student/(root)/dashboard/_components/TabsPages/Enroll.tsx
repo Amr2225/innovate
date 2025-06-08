@@ -50,7 +50,7 @@ export default function EnrollSection() {
             <TableRow key={course.id}>
               <TableCell>{course.name}</TableCell>
               <TableCell>{course.description}</TableCell>
-              <TableCell>{course.instructors[0]?.full_name || "-"}</TableCell>
+              <TableCell>{course.instructors_detials[0].full_name || "-"}</TableCell>
               <TableCell>{course.credit_hours}</TableCell>
               <TableCell>
                 <EnrollButton courseId={course.id} />

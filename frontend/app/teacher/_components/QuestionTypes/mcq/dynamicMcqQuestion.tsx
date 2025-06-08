@@ -14,10 +14,9 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Info, Loader2 } from "lucide-react";
 
 import CustomDialog from "@/components/CustomDialog";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { DialogClose } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useAssessmentStore } from "@/store/assessmentStore";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -29,17 +28,25 @@ import {
 import { getLectures } from "@/apiService/LectureService";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
+import { createAssessmentStore } from "@/store/assessmentStore";
 
 export default function DynamicMCQQuestion({ question }: { question: Question }) {
   const [dialogOpen, setDialogOpen] = useState<"addContext" | "addLectures" | null>(null);
 
+  const { courseId } = useParams();
+  const useAssessmentStore = createAssessmentStore(courseId as string);
   const { updateQuestion } = useAssessmentStore();
+
+  const storedQuestion = useMemo(
+    () => useAssessmentStore.getState().questions.find((q) => q.id === question.id),
+    [question.id, useAssessmentStore]
+  );
 
   const form = useForm({
     defaultValues: {
-      difficulty: "",
-      totalGrade: "",
-      numberOfQuestions: "",
+      difficulty: storedQuestion?.difficulty || "",
+      totalGrade: storedQuestion?.totalGrade || "",
+      numberOfQuestions: storedQuestion?.numberOfQuestions || "",
     },
   });
   return (
@@ -54,7 +61,10 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
                 <FormItem>
                   <FormLabel>Difficulty</FormLabel>
                   <FormControl>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={(value) => updateQuestion(question.id, "difficulty", value)}
+                      defaultValue={field.value}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder='Select Difficulty' />
                       </SelectTrigger>
@@ -78,7 +88,14 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
                 <FormItem>
                   <FormLabel>Number of Questions</FormLabel>
                   <FormControl>
-                    <Input placeholder='Enter Number of Questions' type='number' {...field} />
+                    <Input
+                      placeholder='Enter Number of Questions'
+                      type='number'
+                      {...field}
+                      onBlur={(e) =>
+                        updateQuestion(question.id, "numberOfQuestions", e.target.value)
+                      }
+                    />
                   </FormControl>
                 </FormItem>
               )}
@@ -112,6 +129,7 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
                       placeholder='Enter Total Grade for all the questions'
                       type='number'
                       {...field}
+                      onBlur={(e) => updateQuestion(question.id, "totalGrade", e.target.value)}
                     />
                   </FormControl>
                 </FormItem>
@@ -135,6 +153,7 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
         </Button>
       </div>
 
+      {/* Add Context */}
       <CustomDialog
         title='Add Context'
         description='Add a context for the question'
@@ -162,6 +181,7 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
         </div>
       </CustomDialog>
 
+      {/* Add Lectures */}
       <CustomDialog
         title='Add Lectures'
         description='Add lectures for the question'
@@ -169,7 +189,7 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
         setOpen={(open) => setDialogOpen(open ? "addLectures" : null)}
       >
         <div>
-          <LectureSelector />
+          <LectureSelector question={question} />
         </div>
         <div className='flex justify-between items-center gap-2'>
           <div className='space-x-2'>
@@ -186,11 +206,12 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
   );
 }
 
-function LectureSelector() {
-  const [selectedLectures, setSelectedLectures] = useState<string[]>([]);
-
+function LectureSelector({ question }: { question: Question }) {
   const params = useParams();
   const courseId = params.courseId as string;
+
+  const useAssessmentStore = createAssessmentStore(courseId as string);
+  const { updateQuestion } = useAssessmentStore();
 
   const { data: lectures, isLoading } = useQuery({
     queryKey: ["lectures"],
@@ -205,8 +226,8 @@ function LectureSelector() {
         <Button variant='outline' className='w-full justify-between'>
           Select Lectures
           <span className='ml-2 opacity-70'>
-            {Array.isArray(selectedLectures) && selectedLectures.length > 0
-              ? `${selectedLectures.length} selected`
+            {Array.isArray(question.lectures) && question.lectures.length > 0
+              ? `${question.lectures.length} selected`
               : "None"}
           </span>
         </Button>
@@ -222,13 +243,19 @@ function LectureSelector() {
           <DropdownMenuCheckboxItem
             key={lecture.id}
             className='hover:bg-neutral-100 cursor-pointer'
-            checked={Array.isArray(selectedLectures) && selectedLectures.includes(lecture.id || "")}
+            checked={
+              Array.isArray(question.lectures) && question.lectures.includes(lecture.id || "")
+            }
             onCheckedChange={(checked) => {
-              const currentValues = Array.isArray(selectedLectures) ? selectedLectures : [];
+              const currentValues = Array.isArray(question.lectures) ? question.lectures : [];
               if (checked) {
-                setSelectedLectures([...currentValues, lecture.id]);
+                updateQuestion(question.id, "lectures", [...currentValues, lecture.id]);
               } else {
-                setSelectedLectures(currentValues.filter((id) => id !== lecture.id));
+                updateQuestion(
+                  question.id,
+                  "lectures",
+                  currentValues.filter((id) => id !== lecture.id)
+                );
               }
             }}
           >

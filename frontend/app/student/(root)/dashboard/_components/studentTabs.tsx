@@ -6,6 +6,7 @@ import DashboardSection from "./TabsPages/dashboard";
 import CousresSection from "./TabsPages/courses";
 import EnrollSection from "./TabsPages/Enroll";
 import SettingsSection from "./TabsPages/settings";
+import AssignmentSection from "./TabsPages/assignmentSection";
 
 export default function StudentTabs({ name }: { name: string }) {
   return (
@@ -28,6 +29,11 @@ export default function StudentTabs({ name }: { name: string }) {
       <TabsContent value='courses'>
         <CousresSection />
       </TabsContent>
+
+      <TabsContent value='assignments'>
+        <AssignmentSection />
+      </TabsContent>
+
       <TabsContent value='enroll'>
         <EnrollSection />
       </TabsContent>

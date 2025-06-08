@@ -1,12 +1,12 @@
 export type Assessment = {
     id: string;
     title: string;
-    type: "assignment" | "quiz" | "exam";
+    type: "Assignment" | "Quiz" | "Exam";
     questions: Question[];
     courseId: string;
     grade: number;
-    dueDate: Date;
-    startDate: Date;
+    due_date: Date;
+    start_date: Date | null;
 }
 
 export type Answer = {
@@ -23,11 +23,11 @@ export type Question = {
     mcqAnswer?: string;
     handWrittenAnswerKey?: string;
     sectionNumber: number;
+    totalGrade?: number;
 
     // For Dynamic MCQ
     context?: string;
     lectures?: string[];
-    difficulty?: number;
-    totalGrade?: number;
+    difficulty?: "1" | "2" | "3" | "4" | "5" | null;
     numberOfQuestions?: number;
 }
