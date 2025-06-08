@@ -9,11 +9,8 @@ class PolicyUpdateOrCreateAPIView(generics.RetrieveUpdateAPIView):
     permission_classes = [isInstitution]
 
     def get_object(self):
-        try:
-            return InstitutionPolicy.objects.get(institution=self.request.user)
-        except InstitutionPolicy.DoesNotExist:
-            raise NotFound("Institution policy not found. You need to create it via admin or setup process.")
-
+        obj, created = InstitutionPolicy.objects.get_or_create(institution=self.request.user)
+        return obj
 
     def get_permissions(self):
         self.permission_classes = [isInstitution]

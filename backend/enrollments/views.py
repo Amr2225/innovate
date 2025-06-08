@@ -5,13 +5,15 @@ from django.db.models import Q
 
 from courses.models import Course
 from enrollments.models import Enrollments
+from users.permissions import isInstitution, isStudent, isTeacher
 from courses.serializers import CourseSerializer
 from enrollments.serializers import EnrollMultipleCoursesSerializer
 from enrollments.serializers import EnrollmentsSerializer
 from lecture.models import Lecture, LectureProgress
+from institution_policy.models import InstitutionPolicy
 
 class EnrolledCoursesAPIView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [isStudent]
     serializer_class = CourseSerializer
 
     def get_queryset(self):
@@ -27,7 +29,7 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
         if self.request.method == 'POST':
             return EnrollMultipleCoursesSerializer
         return CourseSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [isStudent]
 
     def get_queryset(self):
         user = self.request.user
@@ -53,11 +55,23 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
     
     def create(self, request, *args, **kwargs):
         user = request.user
-        print(request.data)
+        print(user.institution.first())
         course_ids = request.data.get("courses", [])
 
         if not isinstance(course_ids, list) or not course_ids:
             return Response({"error": "Please provide a list of course IDs."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            policy = InstitutionPolicy.objects.get(institution=user.institution.first())
+            max_courses = policy.max_allowed_courses_per_semester
+        except InstitutionPolicy.DoesNotExist:
+            return Response({"error": "Institution policy not found."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if len(course_ids) > max_courses:
+            return Response(
+                {"error": f"You can only enroll in up to {max_courses} courses at once."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         completed_course_ids = set(Enrollments.objects.filter(
             user=user,

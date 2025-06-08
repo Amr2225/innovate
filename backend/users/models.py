@@ -1,10 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, UserManager
 from nanoid_field import NanoidField
-from .validation import nationalId_length_validation
-import random
-import uuid
 from django.core.exceptions import ValidationError
+from .validation import nationalId_length_validation
+import uuid
 
 # Create your models here.
 
@@ -32,11 +31,11 @@ class CustomManager(UserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    class Role(models.TextChoices):  # Use TextChoices for better structure
-        INSTITUTION = "Institution", "Institution"
-        STUDENT = "Student", "Student"
-        TEACHER = "Teacher", "Teacher"
-        ADMIN = "Admin", "Admin"
+    class Role(models.Choices):
+        INSTITUTION = "Institution"
+        STUDENT = "Student"
+        TEACHER = "Teacher"
+        ADMIN = "Admin"
 
     # Common Fields
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -45,7 +44,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     otp_created_at = models.DateTimeField(blank=True, null=True)
     otp_expiry_time_minutes = models.PositiveSmallIntegerField(default=5)
     date_joined = models.DateTimeField(auto_now_add=True)
-    role = models.CharField(max_length=15, choices=Role.choices, default=Role.STUDENT)  # Use Role.choices
+    role = models.CharField(max_length=15, choices=Role, default="Student")
     is_email_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_superuser = models.BooleanField(default=False)
@@ -56,18 +55,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     middle_name = models.CharField(max_length=255, blank=True, null=True)
     last_name = models.CharField(max_length=255, blank=True, null=True)
     avatar = models.ImageField(
-        upload_to='uploads/user/avatars', blank=True, null=True)
+        upload_to='user/avatars', blank=True, null=True)
     birth_date = models.DateTimeField(blank=True, null=True)
     age = models.PositiveIntegerField(blank=True, null=True)
     national_id = models.CharField(
         max_length=14, blank=True, null=True, unique=True, validators=[nationalId_length_validation])
-    semester = models.PositiveSmallIntegerField(null=True, blank=True)
-
-    @property
-    def level(self):
-        if self.semester:
-            return (self.semester + 1) // 2
-        return None
+    semester = models.PositiveSmallIntegerField(default=1)
 
     # Institution Fields
     SCHOOL = 'school'
@@ -76,14 +69,17 @@ class User(AbstractBaseUser, PermissionsMixin):
         (SCHOOL, 'School'),
         (FACULTY, 'Faculty'),
     ]
-    institution_type = models.CharField(max_length=10, choices=TYPE_CHOICES, null=True)
+    institution_type = models.CharField(
+        max_length=10, choices=TYPE_CHOICES, null=True, blank=True,
+        help_text="This field is required")
+
     access_code = NanoidField(max_length=8, blank=True,
                               null=True, unique=True, editable=True)
     name = models.CharField(max_length=255, blank=True,
                             null=True, unique=True)
     credits = models.PositiveIntegerField(blank=True, null=True)
     logo = models.ImageField(
-        upload_to='uploads/institution/logo/', null=True, blank=True)
+        upload_to='institution/logo/', null=True, blank=True)
 
     # Relation
     institution = models.ManyToManyField(
@@ -99,51 +95,26 @@ class User(AbstractBaseUser, PermissionsMixin):
     def full_name(self):
         return f"{self.first_name} {self.middle_name} {self.last_name}"
 
+    @property
+    def level(self):
+        if self.semester:
+            return (self.semester + 1) // 2
+        return None
+
+    # def clean(self):
+    #     super().clean()
+    #     if self.role == "Institution" and not self.institution_type:
+    #         raise ValidationError(
+    #             "Institution type is required for institutions")
+
     def __str__(self):
         if self.role == "Institution":
             return f"{self.name} - {self.credits}"
         return f"{self.full_name} ({self.role})"
-    
+
     def clean(self):
         super().clean()
         if self.role == self.Role.INSTITUTION and not self.institution_type:
             raise ValidationError({
-                'institution_type': 'This field is required when the role is Institution.'
+                'institution_type': 'This field is required'
             })
-
-
-# class UserInstitutions(models.Model):
-#     user = models.ForeignKey(
-#         User, on_delete=models.CASCADE, limit_choices_to={"role__in": ["Student", "Teacher"]})
-#     institution = models.ForeignKey(
-#         User, on_delete=models.CASCADE, limit_choices_to={"role": "Institution"})
-#     is_active = models.BooleanField(default=True)
-
-#     class Meta:
-#         constraints = [
-#             models.UniqueConstraint(
-#                 fields=['user', 'is_active'],
-#                 condition=models.Q(is_active=True),
-#                 name='unique_active_institution_per_user'
-#             )
-#         ]
-
-#     def clean(self):
-#         if self.is_active and self.user.role == "Student":
-#             # Check if user already has an active institution
-#             active_institutions = UserInstitutions.objects.filter(
-#                 user=self.user,
-#                 is_active=True
-#             ).exclude(pk=self.pk if self.pk else None)
-
-#             if active_institutions.exists():
-#                 raise ValidationError(
-#                     "A student can only be associated with one active institution at a time."
-#                 )
-
-#     def save(self, *args, **kwargs):
-#         self.full_clean()
-#         super().save(*args, **kwargs)
-
-#     def __str__(self):
-#         return f"{self.user.full_name} - {self.institution.name if self.institution.name else None}"

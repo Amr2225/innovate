@@ -54,6 +54,13 @@ class CourseSerializer(serializers.ModelSerializer):
             self.fields['prerequisite_course'].queryset = Course.objects.filter(institution_id=institution_id)
             self.fields['instructors'].queryset = User.objects.filter(role="Teacher", institution=institution_id)
     
+    def validate_prerequisite_course(self, value):
+        request = self.context.get('request')
+        if value and request and request.user.role == "Institution":
+            if value.institution != request.user:
+                raise ValidationError("Prerequisite course must belong to the same institution.")
+        return value
+    
     def to_representation(self, instance):
         rep = super().to_representation(instance)
         rep.pop('instructors', None)
