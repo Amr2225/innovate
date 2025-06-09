@@ -13,73 +13,173 @@ from django.db.models import Q
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 import logging
+from rest_framework.exceptions import PermissionDenied
+from django.conf import settings
+from django.apps import apps
+# from assessment.filters import HandwrittenQuestionFilterSet
+from decimal import Decimal
+from users.permissions import isInstitution, isTeacher, isStudent
 
 logger = logging.getLogger(__name__)
 
+
+def get_assessment_model():
+    return apps.get_model('assessment', 'Assessment')
+
+
 class HandwrittenQuestionPermission(permissions.BasePermission):
-    """Custom permission class for handwritten questions"""
-    
+    """Custom permission class for Handwritten questions"""
+
     def has_permission(self, request, view):
-        # Anyone authenticated can view
-        if request.method in permissions.SAFE_METHODS:
-            return request.user.is_authenticated
-        # Teachers and institutions can create/update/delete
-        return request.user.role in ["Teacher", "Institution"]
-    
-    def has_object_permission(self, request, view, obj):
-        user = request.user
-        # For read operations
-        if request.method in permissions.SAFE_METHODS:
-            if user.role == "Student":
-                # Students can only view questions for courses they're enrolled in
-                is_completed = request.query_params.get('is_completed', 'false').lower() == 'true'
-                return Enrollments.objects.filter(
-                    user=user,
-                    course=obj.assessment.course,
-                    is_completed=is_completed
-                ).exists()
-            elif user.role == "Teacher":
-                # Teachers can view questions for courses they teach
-                return obj.assessment.course.instructors.filter(id=user.id).exists()
-            elif user.role == "Institution":
-                # Institution can view any question in their courses
-                return obj.assessment.course.institution == user
+        if not request.user.is_authenticated:
             return False
 
-        # For write operations (create/update/delete)
-        if user.role == "Teacher":
-            # Teachers can modify questions for courses they teach
-            return obj.assessment.course.instructors.filter(id=user.id).exists()
-        elif user.role == "Institution":
-            # Institution can modify any question in their courses
-            return obj.assessment.course.institution == user
-        return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+
+        return request.user.role in ["Teacher", "Institution"]
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+
+        if request.method in permissions.SAFE_METHODS:
+            # Students can only view questions for their enrolled courses
+            if user.role == "Student":
+                return obj.assessment.course.enrollments.filter(user=user).exists()
+            return True
+
+        # Only creator or course instructor/institution can modify
+        return (obj.created_by == user or
+                obj.assessment.course.instructors.filter(id=user.id).exists() or
+                obj.assessment.course.institution == user)
+
 
 class HandwrittenQuestionListCreateAPIView(generics.ListCreateAPIView):
+    """
+    API endpoint to list and create Handwritten questions for an assessment.
+
+    This endpoint allows teachers and institutions to manage Handwritten questions for their assessments.
+
+    GET /api/assessments/{assessment_id}/handwritten-questions/
+    List all Handwritten questions for an assessment with filtering options:
+    - assessment: Filter by assessment ID
+    - question: Filter by question text (case-insensitive contains)
+    - max_grade: Filter by maximum grade
+    - section_number: Filter by section number
+    - created_by: Filter by creator ID
+    - created_at: Filter by creation date
+
+    POST /api/assessments/{assessment_id}/handwritten-questions/
+    Create a new Handwritten question for an assessment.
+
+    Parameters:
+    - assessment_id (UUID): The ID of the assessment
+
+    POST Request Body:
+    ```json
+    {
+        "question": "string",
+        "max_grade": "decimal",
+        "section_number": "integer"
+    }
+    ```
+
+    Returns:
+    ```json
+    {
+        "id": "uuid",
+        "assessment": "uuid",
+        "question": "string",
+        "max_grade": "decimal",
+        "section_number": "integer",
+        "created_by": "uuid",
+        "created_at": "datetime",
+        "updated_at": "datetime"
+    }
+    ```
+
+    Status Codes:
+    - 200: Successfully retrieved questions
+    - 201: Successfully created question
+    - 400: Invalid input data
+    - 403: Not authorized to manage questions
+    - 404: Assessment not found
+
+    Permissions:
+    - Students: Can view questions for courses they're enrolled in
+    - Teachers: Can manage questions for courses they teach
+    - Institutions: Can manage questions for their courses
+
+    Notes:
+    - Question grade must not exceed assessment's remaining grade
+    - Assessment must not be past due date
+    """
     serializer_class = HandwrittenQuestionSerializer
+    parser_classes = (MultiPartParser, JSONParser)
     permission_classes = [HandwrittenQuestionPermission]
-    parser_classes = [MultiPartParser, FormParser]
+    filter_backends = [DjangoFilterBackend]
+    # filterset_class = HandwrittenQuestionFilterSet
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == "Institution":
-            # Institution can see all questions in their courses
-            return HandwrittenQuestion.objects.filter(assessment__course__institution=user)
-        elif user.role == "Teacher":
-            # Teachers can see questions for courses they teach
-            return HandwrittenQuestion.objects.filter(assessment__course__instructors=user)
-        elif user.role == "Student":
-            # Students can only see questions for courses they're enrolled in
-            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
-            enrolled_courses = Enrollments.objects.filter(
-                user=user,
-                is_completed=is_completed
-            ).values_list('course', flat=True)
-            return HandwrittenQuestion.objects.filter(assessment__course__id__in=enrolled_courses)
+        assessment_id = self.kwargs.get('assessment_id')
+
+        try:
+            Assessment = get_assessment_model()
+            assessment = Assessment.objects.get(id=assessment_id)
+        except Assessment.DoesNotExist:
+            raise ValidationError({"assessment": "Assessment not found"})
+
+        base_queryset = HandwrittenQuestion.objects.filter(
+            assessment=assessment)
+
+        if user.role == "Student":
+            # Students can only see questions for their enrolled courses
+            return base_queryset.filter(
+                assessment__course__enrollments__user=user
+            ).select_related('assessment', 'created_by')
+
+        elif user.role in ["Teacher", "Institution"]:
+            # Teachers/Institutions can see questions they created or for their courses
+            return base_queryset.filter(
+                Q(created_by=user) |
+                Q(assessment__course__instructors=user) |
+                Q(assessment__course__institution=user)
+            ).select_related('assessment', 'created_by')
+
         return HandwrittenQuestion.objects.none()
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user)
+        assessment_id = self.kwargs.get('assessment_id')
+        try:
+            Assessment = get_assessment_model()
+            assessment = Assessment.objects.get(id=assessment_id)
+        except Assessment.DoesNotExist:
+            raise ValidationError({"assessment": "Assessment not found"})
+
+        # Validate course ownership
+        user = self.request.user
+        if user.role == "Institution" and assessment.course.institution != user:
+            raise PermissionDenied(
+                "You don't have permission to add questions to this assessment")
+        elif user.role == "Teacher" and not assessment.course.instructors.filter(id=user.id).exists():
+            raise PermissionDenied(
+                "You don't have permission to add questions to this assessment")
+
+        # Validate assessment status
+        if assessment.due_date < timezone.now():
+            raise ValidationError(
+                "Cannot add questions to past-due assessments")
+
+        # Set default grade if not provided
+        if 'max_grade' not in self.request.data:
+            serializer.validated_data['max_grade'] = Decimal('0.00')
+
+        serializer.save(
+            created_by=user,
+            assessment=assessment
+        )
+
 
 class HandwrittenQuestionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = HandwrittenQuestionSerializer
@@ -93,13 +193,15 @@ class HandwrittenQuestionDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         elif user.role == "Teacher":
             return HandwrittenQuestion.objects.filter(assessment__course__instructors=user)
         elif user.role == "Student":
-            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
+            is_completed = self.request.query_params.get(
+                'is_completed', 'false').lower() == 'true'
             enrolled_courses = Enrollments.objects.filter(
                 user=user,
                 is_completed=is_completed
             ).values_list('course', flat=True)
             return HandwrittenQuestion.objects.filter(assessment__course__id__in=enrolled_courses)
         return HandwrittenQuestion.objects.none()
+
 
 class HandwrittenQuestionScoreListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = HandwrittenQuestionScoreSerializer
@@ -126,7 +228,8 @@ class HandwrittenQuestionScoreListCreateAPIView(generics.ListCreateAPIView):
             return queryset.filter(question__assessment__course__instructors=user)
         elif user.role == "Student":
             # Students can only see their own scores for enrolled courses
-            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
+            is_completed = self.request.query_params.get(
+                'is_completed', 'false').lower() == 'true'
             enrolled_courses = Enrollments.objects.filter(
                 user=user,
                 is_completed=is_completed
@@ -140,16 +243,19 @@ class HandwrittenQuestionScoreListCreateAPIView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user
         if user.role != "Student":
-            raise permissions.PermissionDenied("Only students can submit answers")
+            raise permissions.PermissionDenied(
+                "Only students can submit answers")
 
         question = serializer.validated_data['question']
-        
+
         # Check if the assessment is still accepting submissions
         if not question.assessment.accepting_submissions:
-            raise permissions.PermissionDenied("This assessment is no longer accepting submissions")
-        
+            raise permissions.PermissionDenied(
+                "This assessment is no longer accepting submissions")
+
         # Get the enrollment
-        is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
+        is_completed = self.request.query_params.get(
+            'is_completed', 'false').lower() == 'true'
         try:
             enrollment = Enrollments.objects.get(
                 user=user,
@@ -157,13 +263,16 @@ class HandwrittenQuestionScoreListCreateAPIView(generics.ListCreateAPIView):
                 is_completed=is_completed
             )
         except Enrollments.DoesNotExist:
-            raise permissions.PermissionDenied("You are not enrolled in this course")
-        
+            raise permissions.PermissionDenied(
+                "You are not enrolled in this course")
+
         # Check if student has already submitted
         if HandwrittenQuestionScore.objects.filter(question=question, enrollment=enrollment).exists():
-            raise permissions.PermissionDenied("You have already submitted an answer for this question")
-        
+            raise permissions.PermissionDenied(
+                "You have already submitted an answer for this question")
+
         serializer.save(enrollment=enrollment)
+
 
 class HandwrittenQuestionScoreDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = HandwrittenQuestionScoreSerializer
@@ -190,7 +299,8 @@ class HandwrittenQuestionScoreDetailAPIView(generics.RetrieveUpdateDestroyAPIVie
             return queryset.filter(question__assessment__course__instructors=user)
         elif user.role == "Student":
             # Students can only access their own scores for enrolled courses
-            is_completed = self.request.query_params.get('is_completed', 'false').lower() == 'true'
+            is_completed = self.request.query_params.get(
+                'is_completed', 'false').lower() == 'true'
             enrolled_courses = Enrollments.objects.filter(
                 user=user,
                 is_completed=is_completed
@@ -200,6 +310,7 @@ class HandwrittenQuestionScoreDetailAPIView(generics.RetrieveUpdateDestroyAPIVie
                 enrollment__user=user
             )
         return HandwrittenQuestionScore.objects.none()
+
 
 class HandwrittenQuestionViewSet(viewsets.ModelViewSet):
     serializer_class = HandwrittenQuestionSerializer
@@ -331,6 +442,7 @@ class HandwrittenQuestionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
 class HandwrittenQuestionScoreViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = HandwrittenQuestionScoreSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -343,6 +455,7 @@ class HandwrittenQuestionScoreViewSet(viewsets.ReadOnlyModelViewSet):
             enrollment__user=user,
             enrollment__is_active=True
         )
+
 
 class ExtractTextFromImageAPIView(generics.CreateAPIView):
     """
@@ -360,19 +473,20 @@ class ExtractTextFromImageAPIView(generics.CreateAPIView):
                 )
 
             image_file = request.FILES['image']
-            
+
             # Extract text from the image
             extracted_text = extract_text_from_image(image_file)
-            
+
             return Response({
                 'text': extracted_text
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
 
 class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
     """
@@ -387,9 +501,10 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
             logger.info("Received request for image evaluation")
             logger.info(f"Request content type: {request.content_type}")
             logger.info(f"Request FILES keys: {list(request.FILES.keys())}")
-            
+
             # Check for image in both possible field names
-            image_file = request.FILES.get('image') or request.FILES.get('answer_image')
+            image_file = request.FILES.get(
+                'image') or request.FILES.get('answer_image')
             if not image_file:
                 logger.error("No image file found in request")
                 return Response(
@@ -415,7 +530,8 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
 
             try:
                 question = HandwrittenQuestion.objects.get(id=question_id)
-                logger.info(f"Found question: {question.id} for course: {question.assessment.course.id}")
+                logger.info(
+                    f"Found question: {question.id} for course: {question.assessment.course.id}")
             except HandwrittenQuestion.DoesNotExist:
                 return Response(
                     {'error': 'Question not found'},
@@ -428,7 +544,8 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
                     user=request.user,
                     is_completed=False
                 )
-                logger.info(f"Found enrollment: {enrollment.id} for course: {enrollment.course.id}")
+                logger.info(
+                    f"Found enrollment: {enrollment.id} for course: {enrollment.course.id}")
             except Enrollments.DoesNotExist:
                 return Response(
                     {'error': 'Enrollment not found or you do not have permission to submit for this enrollment'},
@@ -437,7 +554,8 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
 
             # Verify enrollment is for the correct course
             if enrollment.course != question.assessment.course:
-                logger.error(f"Course mismatch - Question course: {question.assessment.course.id}, Enrollment course: {enrollment.course.id}")
+                logger.error(
+                    f"Course mismatch - Question course: {question.assessment.course.id}, Enrollment course: {enrollment.course.id}")
                 return Response(
                     {
                         'error': 'This enrollment is not for the course containing this question',
@@ -455,7 +573,7 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
                     {'error': 'You have already submitted an answer for this question'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             # Get combined OCR and evaluation
             try:
                 score, feedback, extracted_text = evaluate_handwritten_answer(
@@ -464,14 +582,15 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
                     student_answer_image=image_file,
                     max_grade=float(question.max_grade)
                 )
-                logger.info(f"AI evaluation completed - Score: {score}, Extracted text length: {len(extracted_text)}")
+                logger.info(
+                    f"AI evaluation completed - Score: {score}, Extracted text length: {len(extracted_text)}")
             except Exception as e:
                 logger.error(f"AI evaluation error: {str(e)}")
                 return Response(
                     {'error': f'Failed to process image: {str(e)}. Please ensure the image is clear and readable.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             # Create the score record
             score_data = {
                 'question': question.id,
@@ -483,11 +602,13 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
             }
 
             # Create the score record
-            serializer = HandwrittenQuestionScoreSerializer(data=score_data, context={'request': request})
+            serializer = HandwrittenQuestionScoreSerializer(
+                data=score_data, context={'request': request})
             if serializer.is_valid():
                 score_instance = serializer.save()
-                logger.info(f"Score record created - ID: {score_instance.id}, Score: {score_instance.score}")
-                
+                logger.info(
+                    f"Score record created - ID: {score_instance.id}, Score: {score_instance.score}")
+
                 # Return response based on user role
                 if request.user.role == 'Student':
                     return Response({
@@ -511,11 +632,11 @@ class ExtractAndEvaluateAnswerAPIView(generics.CreateAPIView):
                             'submitted_at': score_instance.submitted_at
                         }
                     }, status=status.HTTP_201_CREATED)
-            
+
             # Log validation errors for debugging
             logger.error(f"Serializer validation errors: {serializer.errors}")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
+
         except Exception as e:
             logger.error(f"Error in extract and evaluate: {str(e)}")
             return Response(

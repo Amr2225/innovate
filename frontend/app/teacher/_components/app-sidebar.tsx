@@ -2,11 +2,12 @@
 import {
   Home,
   Inbox,
-  Search,
   Settings,
   UserRoundPlus,
   NotebookPen,
-  ChevronRight,
+  Newspaper,
+  BookOpen,
+  SquarePen,
 } from "lucide-react";
 
 import {
@@ -14,26 +15,18 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  // SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import UserProfile from "../../../components/user-profile";
 import { redirect, usePathname } from "next/navigation";
 import Image from "next/image";
 import { Session } from "@/types/auth.type";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "../../../components/ui/collapsible";
 
 // Menu items.
 const items = [
@@ -53,24 +46,29 @@ const items = [
     icon: UserRoundPlus,
   },
   {
-    title: "Add Students",
-    url: "/students/add",
-    icon: UserRoundPlus,
+    title: "Courses",
+    url: "/courses",
+    icon: NotebookPen,
   },
   {
-    title: "Search",
-    url: "/dashboard/search",
-    icon: Search,
+    title: "Assignments",
+    url: "/assignments",
+    icon: SquarePen,
+  },
+  {
+    title: "Quizzes",
+    url: "/quizzes",
+    icon: Newspaper,
+  },
+  {
+    title: "Exams",
+    url: "/exams",
+    icon: BookOpen,
   },
   {
     title: "Settings",
     url: "/settings",
     icon: Settings,
-  },
-  {
-    title: "Courses",
-    url: "/courses",
-    icon: NotebookPen,
   },
 ];
 
@@ -118,7 +116,7 @@ export function AppSidebar({ session }: { session: Session }) {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
+        {/* <SidebarGroup>
           <SidebarGroupLabel>Students</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -140,9 +138,9 @@ export function AppSidebar({ session }: { session: Session }) {
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
-        </SidebarGroup>
+        </SidebarGroup> */}
 
-        <Collapsible defaultOpen className='group/collapsible'>
+        {/* <Collapsible defaultOpen className='group/collapsible'>
           <SidebarGroup>
             <SidebarGroupLabel
               asChild
@@ -164,18 +162,18 @@ export function AppSidebar({ session }: { session: Session }) {
                         <span>{item.title}</span>
                       </SidebarMenuButton>
 
-                      {/* <SidebarMenuSub>
+                      <SidebarMenuSub>
                         <SidebarMenuSubItem>
                           <SidebarMenuButton>Button</SidebarMenuButton>
                         </SidebarMenuSubItem>
-                      </SidebarMenuSub> */}
+                      </SidebarMenuSub>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>
             </CollapsibleContent>
           </SidebarGroup>
-        </Collapsible>
+        </Collapsible> */}
       </SidebarContent>
       <SidebarFooter>
         <UserProfile

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { getSession, setSession, logout } from "@/lib/session";
 import moment from "moment";
+import { toast } from "sonner";
 
 export const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 export const api = axios.create({
@@ -12,10 +13,10 @@ export const api = axios.create({
 })
 
 
-const refreshToken = async () => {
+export const refreshToken = async () => {
     try {
         const session = await getSession();
-        if (!session || session?.refreshToken) throw new Error("No refresh token");
+        if (!session?.refreshToken) throw new Error("No refresh token");
 
         const response = await axios.post(`${BASE_URL}/auth/token/refresh/`, {
             refresh: session.refreshToken,
@@ -25,13 +26,11 @@ const refreshToken = async () => {
             accessToken: response.data.access,
             refreshToken: session.refreshToken
         });
-
-
-        return response.data.access;
-    } catch {
+    } catch (e) {
+        console.log(e);
         await logout();
+        toast.error("Session expired, please login again");
         throw new Error("Failed to refresh token");
-        // redirect("/login");
     }
 };
 

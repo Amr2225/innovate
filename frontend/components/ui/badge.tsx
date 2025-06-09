@@ -13,10 +13,10 @@ const badgeVariants = cva(
           "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive:
           "border-transparent bg-destructive text-destructive-foreground shadow hover:bg-destructive/80",
-        gold: "bg-gradient-to-r from-[#cca12b] via-[#f4d480] to-[#eab630] text-white rounded-full px-4 py-0.3 capitalize shadow-md border-none",
-        diamond:
+        Gold: "bg-gradient-to-r from-[#cca12b] via-[#f4d480] to-[#eab630] text-white rounded-full px-4 py-0.3 capitalize shadow-md border-none",
+        Diamond:
           "bg-gradient-to-r from-[#4190db] via-[#7bb9f3] to-[#46a2ff] text-white rounded-full px-4 py-0.3 capitalize shadow-md border-none",
-        silver:
+        Silver:
           "bg-gradient-to-r from-[#a8a9ad] via-[#d7d7d8] to-[#cbcccd] text-white rounded-full px-4 py-0.3 capitalize shadow-md border-none",
         outline: "text-foreground",
       },

@@ -22,6 +22,7 @@ class DynamicMCQ(models.Model):
         choices=DIFFICULTY_CHOICES,
         default='3'
     )
+    num_options = models.PositiveSmallIntegerField(default=4, help_text="Number of options per question (2-6)")
     total_grade = models.PositiveSmallIntegerField()
     number_of_questions = models.PositiveSmallIntegerField()
 
@@ -33,6 +34,10 @@ class DynamicMCQ(models.Model):
         verbose_name = "Dynamic MCQ"
         verbose_name_plural = "Dynamic MCQs"
         ordering = ['assessment__due_date', 'section_number']
+
+    def clean(self):
+        if self.num_options < 2 or self.num_options > 6:
+            raise models.ValidationError("Number of options must be between 2 and 6")
 
 class DynamicMCQQuestions(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

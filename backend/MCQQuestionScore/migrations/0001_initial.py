@@ -10,8 +10,6 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('enrollments', '0001_initial'),
-        ('mcqQuestion', '0001_initial'),
     ]
 
     operations = [
@@ -24,8 +22,6 @@ class Migration(migrations.Migration):
                 ('score', models.DecimalField(decimal_places=2, default=0, max_digits=5)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('enrollment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='mcq_scores', to='enrollments.enrollments')),
-                ('question', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='scores', to='mcqQuestion.mcqquestion')),
             ],
             options={
                 'ordering': ['-created_at'],

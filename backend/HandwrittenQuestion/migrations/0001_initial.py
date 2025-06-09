@@ -2,9 +2,7 @@
 
 import HandwrittenQuestion.models
 from django.conf import settings
-import django.core.validators
 from django.db import migrations, models
-import django.db.models.deletion
 import uuid
 
 
@@ -13,9 +11,9 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ('enrollments', '0002_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('assessment', '0001_initial'),
-        ('enrollments', '0001_initial'),
+        ('assessment', '0002_initial'),
     ]
 
     operations = [
@@ -23,14 +21,13 @@ class Migration(migrations.Migration):
             name='HandwrittenQuestion',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('question_text', models.TextField()),
-                ('section_number', models.PositiveSmallIntegerField(help_text='Section number within the assessment')),
-                ('answer_key', models.TextField(blank=True, help_text='The correct answer or key points for evaluation', null=True)),
-                ('max_grade', models.PositiveSmallIntegerField(help_text='Maximum grade for this question', validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(100)])),
+                ('question', models.CharField(max_length=1000)),
+                ('answer_key', models.TextField(blank=True, null=True)),
+                ('question_grade', models.DecimalField(decimal_places=2, default=0.0, max_digits=5)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('assessment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='handwritten_questions', to='assessment.assessment')),
-                ('created_by', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='created_handwritten_questions', to=settings.AUTH_USER_MODEL)),
+                ('created_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='handwritten_questions_created', to=settings.AUTH_USER_MODEL)),
             ],
             options={
                 'ordering': ['created_at'],
@@ -42,16 +39,14 @@ class Migration(migrations.Migration):
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('score', models.DecimalField(decimal_places=2, default=0, max_digits=5, validators=[django.core.validators.MinValueValidator(0)])),
                 ('feedback', models.TextField(blank=True, null=True)),
-                ('answer_image', models.ImageField(blank=True, help_text='Upload a JPEG, PNG, GIF, or BMP image file (max 5MB)', null=True, upload_to=HandwrittenQuestion.models.get_handwritten_answer_path, validators=[django.core.validators.FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'bmp'])])),
-                ('extracted_text', models.TextField(blank=True, help_text='Text extracted from the handwritten answer image', null=True)),
-                ('submitted_at', models.DateTimeField(auto_now_add=True)),
-                ('evaluated_at', models.DateTimeField(auto_now=True)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
                 ('enrollment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='handwritten_scores', to='enrollments.enrollments')),
                 ('question', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='scores', to='HandwrittenQuestion.handwrittenquestion')),
             ],
             options={
-                'ordering': ['-submitted_at'],
-                'indexes': [models.Index(fields=['question', 'enrollment'], name='Handwritten_questio_66c38e_idx'), models.Index(fields=['submitted_at'], name='Handwritten_submitt_aca187_idx')],
+                'ordering': ['-created_at'],
+                'indexes': [models.Index(fields=['question', 'enrollment'], name='Handwritten_questio_66c38e_idx'), models.Index(fields=['created_at'], name='Handwritten_created_5276a9_idx')],
                 'unique_together': {('question', 'enrollment')},
             },
         ),
