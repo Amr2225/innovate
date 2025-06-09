@@ -13,7 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import StatusDialog from "@/app/institution/students/_components/status-dialog";
+import StatusDialog from "../_components/status-dialog";
 import { Input } from "@/components/ui/input";
 
 import { zodResolver } from "@hookform/resolvers/zod";

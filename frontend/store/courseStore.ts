@@ -30,8 +30,10 @@ const initialState: Pick<CourseStore, 'course' | 'chapters'> = {
 
 const storeCache: Record<string, UseBoundStore<StoreApi<CourseStore>>> = {};
 
-export const createCourseStore = (courseId: string) => {
-    if (storeCache[courseId]) return storeCache[courseId];
+export const createCourseStore = (courseId?: string) => {
+    if (courseId) {
+        if (storeCache[courseId]) return storeCache[courseId];
+    }
 
     const courseStore = create<CourseStore>()(
         persist(
@@ -226,7 +228,9 @@ export const createCourseStore = (courseId: string) => {
         )
     )
 
-    storeCache[courseId] = courseStore;
+    if (courseId) {
+        storeCache[courseId] = courseStore;
+    }
     return courseStore;
 }
 

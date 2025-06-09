@@ -14,8 +14,6 @@ export default function MCQQuestion({
       <div className='pl-3'>
         <RadioGroup defaultValue='comfortable'>
           {options.map((option, index) => (
-            // <div key={index}>{option}</div>
-
             <div key={index} className='flex items-center gap-3'>
               <RadioGroupItem value={option} id={`${option}-${index}`} />
               <Label htmlFor={`${option}-${index}`} className='text-base cursor-pointer'>

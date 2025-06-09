@@ -43,9 +43,10 @@ import { Loader2 } from "lucide-react";
 
 // Types
 import { Course } from "@/types/course.type";
+import { createCourseStore } from "@/store/courseStore";
 
 // Store
-import { useCourseStore } from "@/store/courseStore";
+// importcreateCourseStore,  { useCourseStore } from "@/store/courseStore";
 
 const formSchema = z.object({
   name: z.string().min(1, "Course name is required"),
@@ -62,6 +63,7 @@ const formSchema = z.object({
 });
 
 export default function BasInfoForm() {
+  const useCourseStore = createCourseStore(undefined);
   const { addCourse } = useCourseStore();
 
   const form = useForm({

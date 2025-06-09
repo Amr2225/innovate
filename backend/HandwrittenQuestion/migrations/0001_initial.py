@@ -17,11 +17,15 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='HandwrittenQuestion',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
                 ('question_text', models.TextField()),
-                ('section_number', models.PositiveSmallIntegerField(help_text='Section number within the assessment')),
-                ('answer_key', models.TextField(blank=True, help_text='The correct answer or key points for evaluation', null=True)),
-                ('max_grade', models.PositiveSmallIntegerField(help_text='Maximum grade for this question', validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(100)])),
+                ('section_number', models.PositiveSmallIntegerField(
+                    help_text='Section number within the assessment')),
+                ('answer_key', models.TextField(
+                    blank=True, help_text='The correct answer or key points for evaluation', null=True)),
+                ('max_grade', models.PositiveSmallIntegerField(help_text='Maximum grade for this question', validators=[
+                 django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(100)])),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
             ],
@@ -32,11 +36,15 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='HandwrittenQuestionScore',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('score', models.DecimalField(decimal_places=2, default=0, max_digits=5, validators=[django.core.validators.MinValueValidator(0)])),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
+                ('score', models.DecimalField(decimal_places=2, default=0, max_digits=5,
+                 validators=[django.core.validators.MinValueValidator(0)])),
                 ('feedback', models.TextField(blank=True, null=True)),
-                ('answer_image', models.ImageField(blank=True, help_text='Upload a JPEG, PNG, GIF, or BMP image file (max 5MB)', null=True, upload_to=HandwrittenQuestion.models.get_handwritten_answer_path, validators=[django.core.validators.FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'bmp'])])),
-                ('extracted_text', models.TextField(blank=True, help_text='Text extracted from the handwritten answer image', null=True)),
+                ('answer_image', models.ImageField(blank=True, help_text='Upload a JPEG, PNG, GIF, or BMP image file (max 5MB)', null=True,
+                 upload_to=HandwrittenQuestion.models.get_handwritten_answer_path, validators=[django.core.validators.FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'bmp'])])),
+                ('extracted_text', models.TextField(
+                    blank=True, help_text='Text extracted from the handwritten answer image', null=True)),
                 ('submitted_at', models.DateTimeField(auto_now_add=True)),
                 ('evaluated_at', models.DateTimeField(auto_now=True)),
             ],

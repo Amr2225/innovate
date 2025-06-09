@@ -14,52 +14,59 @@ from mcqQuestion.models import McqQuestion
 from HandwrittenQuestion.models import HandwrittenQuestion, HandwrittenQuestionScore
 from DynamicMCQ.models import DynamicMCQQuestions
 from MCQQuestionScore.models import MCQQuestionScore
+from users.permissions import isStudent
 from django.conf import settings
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 import os
+
 
 class AssessmentSubmissionPermission(permissions.BasePermission):
     def has_permission(self, request, view):
-        print(f"Checking permission for user: {request.user.email}, role: {request.user.role}")
+        print(
+            f"Checking permission for user: {request.user.email}, role: {request.user.role}")
         if not request.user.is_authenticated:
             print("User is not authenticated")
             return False
-        
+
         # Allow all authenticated users to view
         if request.method in permissions.SAFE_METHODS:
             print("Safe method, allowing access")
             return True
-        
+
         # Only students can submit
         is_student = request.user.role == "Student"
         print(f"Is student: {is_student}")
         return is_student
-    
+
     def has_object_permission(self, request, view, obj):
-        print(f"Checking object permission for user: {request.user.email}, role: {request.user.role}")
+        print(
+            f"Checking object permission for user: {request.user.email}, role: {request.user.role}")
         if not request.user.is_authenticated:
             print("User is not authenticated")
             return False
-        
+
         # Students can only access their own submissions
         if request.user.role == "Student":
             is_owner = obj.enrollment.user == request.user
             print(f"Is owner: {is_owner}")
             return is_owner
-        
+
         # Teachers can access submissions for their courses
         if request.user.role == "Teacher":
             is_teacher = obj.assessment.course.teacher == request.user.teacher
             print(f"Is teacher: {is_teacher}")
             return is_teacher
-        
+
         # Institutions can access submissions for their courses
         if request.user.role == "Institution":
             is_institution = obj.assessment.course.institution == request.user.institution
             print(f"Is institution: {is_institution}")
             return is_institution
-        
+
         print("No matching role found")
         return False
+
 
 class AssessmentSubmissionAPIView(generics.CreateAPIView):
     """
@@ -68,7 +75,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
     This endpoint allows students to submit their answers for an assessment,
     including MCQ answers and handwritten answer images.
 
-    POST /api/assessments/{assessment_id}/submit/
+    POST /assessmentSubmission/{assessment_id}/
 
     Parameters:
     - assessment_id (UUID): The ID of the assessment
@@ -128,7 +135,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
     - Student must be enrolled in the course
     """
     serializer_class = AssessmentSubmissionSerializer
-    permission_classes = [AssessmentSubmissionPermission]
+    permission_classes = [isStudent, AssessmentSubmissionPermission]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get(self, request, *args, **kwargs):
@@ -151,7 +158,8 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             # Check permissions
             if user.role == "Student":
                 # Students can only view their own submissions
-                is_completed = request.query_params.get('is_completed', 'false').lower() == 'true'
+                is_completed = request.query_params.get(
+                    'is_completed', 'false').lower() == 'true'
                 try:
                     enrollment = Enrollments.objects.get(
                         user=user,
@@ -174,7 +182,8 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                         {"detail": "You don't have permission to view these submissions"},
                         status=status.HTTP_403_FORBIDDEN
                     )
-                submissions = AssessmentSubmission.objects.filter(assessment=assessment)
+                submissions = AssessmentSubmission.objects.filter(
+                    assessment=assessment)
             elif user.role == "Institution":
                 # Institution can view all submissions for their courses
                 if assessment.course.institution != user.institution:
@@ -182,7 +191,8 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                         {"detail": "You don't have permission to view these submissions"},
                         status=status.HTTP_403_FORBIDDEN
                     )
-                submissions = AssessmentSubmission.objects.filter(assessment=assessment)
+                submissions = AssessmentSubmission.objects.filter(
+                    assessment=assessment)
             else:
                 return Response(
                     {"detail": "You don't have permission to view these submissions"},
@@ -192,17 +202,22 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             # Get all questions based on user role
             if user.role == "Student":
                 # For students, get their own MCQ questions and all handwritten questions
-                mcq_questions = assessment.mcq_questions.filter(assessment=assessment)
+                mcq_questions = assessment.mcq_questions.filter(
+                    assessment=assessment)
                 dynamic_mcq_questions = DynamicMCQQuestions.objects.filter(
                     dynamic_mcq__assessment=assessment,
                     created_by=user
                 )
-                handwritten_questions = assessment.handwritten_questions.filter(assessment=assessment)
+                handwritten_questions = assessment.handwritten_questions.filter(
+                    assessment=assessment)
             else:
                 # For teachers and institutions, get all questions
-                mcq_questions = assessment.mcq_questions.filter(assessment=assessment)
-                dynamic_mcq_questions = DynamicMCQQuestions.objects.filter(dynamic_mcq__assessment=assessment)
-                handwritten_questions = assessment.handwritten_questions.filter(assessment=assessment)
+                mcq_questions = assessment.mcq_questions.filter(
+                    assessment=assessment)
+                dynamic_mcq_questions = DynamicMCQQuestions.objects.filter(
+                    dynamic_mcq__assessment=assessment)
+                handwritten_questions = assessment.handwritten_questions.filter(
+                    assessment=assessment)
 
             # Prepare response data
             response_data = {
@@ -218,7 +233,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             for submission in submissions:
                 # Get MCQ answers for this submission
                 mcq_answers = submission.mcq_answers
-                
+
                 # Add MCQ questions with their answers
                 for question in mcq_questions:
                     question_data = {
@@ -228,7 +243,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                         'answer_key': question.answer_key,
                         'question_grade': str(question.question_grade)
                     }
-                    
+
                     # Add student's answer if available
                     if str(question.id) in mcq_answers:
                         answer = mcq_answers[str(question.id)]
@@ -252,8 +267,9 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                                 'score': '0',
                                 'max_score': str(question.question_grade)
                             })
-                    
-                    response_data['max_score'] += float(question.question_grade)
+
+                    response_data['max_score'] += float(
+                        question.question_grade)
                     response_data['questions'].append(question_data)
 
                 # Add Dynamic MCQ questions with their answers
@@ -265,7 +281,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                         'answer_key': question.answer_key,
                         'question_grade': str(question.question_grade)
                     }
-                    
+
                     # Add student's answer if available
                     if str(question.id) in mcq_answers:
                         answer = mcq_answers[str(question.id)]
@@ -289,8 +305,9 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                                 'score': '0',
                                 'max_score': str(question.question_grade)
                             })
-                    
-                    response_data['max_score'] += float(question.question_grade)
+
+                    response_data['max_score'] += float(
+                        question.question_grade)
                     response_data['questions'].append(question_data)
 
                 # Add Handwritten questions with their answers
@@ -301,7 +318,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                         'answer_key': question.answer_key,
                         'max_grade': str(question.max_grade)
                     }
-                    
+
                     # Add student's answer if available
                     if str(question.id) in submission.handwritten_answers:
                         try:
@@ -319,7 +336,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                             response_data['total_score'] += float(score.score)
                         except HandwrittenQuestionScore.DoesNotExist:
                             pass
-                    
+
                     response_data['max_score'] += float(question.max_grade)
                     response_data['questions'].append(question_data)
 
@@ -364,7 +381,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
         """
         try:
             # Get assessment ID from URL
-            assessment_id = kwargs.get('pk')
+            assessment_id = kwargs.get('assessmentId')
             if not assessment_id:
                 return Response(
                     {"detail": "Assessment ID is required"},
@@ -374,7 +391,8 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             try:
                 assessment = Assessment.objects.get(id=assessment_id)
                 print(f"Found assessment: {assessment.title}")
-                print(f"Assessment accepting submissions: {assessment.accepting_submissions}")
+                print(
+                    f"Assessment accepting submissions: {assessment.accepting_submissions}")
                 print(f"Assessment due date: {assessment.due_date}")
             except Assessment.DoesNotExist:
                 return Response(
@@ -386,19 +404,23 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             try:
                 enrollment = Enrollments.objects.get(
                     user=request.user,
-                    course=assessment.course
+                    course=assessment.course,
+                    is_completed=False
                 )
                 print(f"Found enrollment for user: {request.user.email}")
-                print(f"Enrollment details: user={enrollment.user.email}, course={enrollment.course.name}, is_completed={enrollment.is_completed}")
+                print(
+                    f"Enrollment details: user={enrollment.user.email}, course={enrollment.course.name}, is_completed={enrollment.is_completed}")
             except Enrollments.DoesNotExist:
-                print(f"No enrollment found for user {request.user.email} in course {assessment.course.name}")
+                print(
+                    f"No enrollment found for user {request.user.email} in course {assessment.course.name}")
                 return Response(
                     {"detail": "You are not enrolled in this course"},
                     status=status.HTTP_403_FORBIDDEN
                 )
 
             # Get or create submission
-            submission = AssessmentSubmission.get_or_create_submission(assessment, enrollment)
+            submission = AssessmentSubmission.get_or_create_submission(
+                assessment, enrollment)
             print(f"Got/Created submission: {submission.id}")
 
             # Check if already submitted
@@ -418,7 +440,8 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                 dynamic_mcq__assessment=assessment,
                 created_by=request.user
             )
-            handwritten_questions = HandwrittenQuestion.objects.filter(assessment=assessment)
+            handwritten_questions = HandwrittenQuestion.objects.filter(
+                assessment=assessment)
 
             # Log the number of questions found
             print(f"Found {mcq_questions.count()} MCQ questions, {dynamic_mcq_questions.count()} dynamic MCQ questions, and {handwritten_questions.count()} handwritten questions")
@@ -438,7 +461,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                 print(f"Processing MCQ answers: {mcq_data}")
                 # Get question details for better error messages
                 question_details = {}
-                
+
                 # Add regular MCQ questions
                 for q in mcq_questions:
                     question_details[str(q.id)] = {
@@ -447,7 +470,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                         'answer_key': q.answer_key,
                         'question_grade': str(q.question_grade)
                     }
-                
+
                 # Add dynamic MCQ questions
                 for q in dynamic_mcq_questions:
                     question_details[str(q.id)] = {
@@ -479,21 +502,21 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                         return Response(
                             {
                                 "detail": f"Invalid question ID: {question_id}",
-                                "valid_questions": question_details
+                                # "valid_questions": question_details
                             },
                             status=status.HTTP_400_BAD_REQUEST
                         )
-                    
+
                     if answer not in question_details[question_id]['options']:
                         return Response(
                             {
                                 "detail": f"Invalid answer for question {question_id}",
-                                "question": question_details[question_id],
+                                # "question": question_details[question_id],
                                 "provided_answer": answer
                             },
                             status=status.HTTP_400_BAD_REQUEST
                         )
-                    
+
                     mcq_answers[question_id] = answer
 
             # Process Handwritten answers
@@ -501,9 +524,15 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             for question_id, file in request.FILES.items():
                 if question_id.startswith('handwritten_'):
                     question_id = question_id.replace('handwritten_', '')
+                    handwritten_score, _ = HandwrittenQuestionScore.objects.get_or_create(
+                        question_id=question_id,
+                        enrollment=enrollment
+                    )
                     try:
-                        question = handwritten_questions.get(id=question_id)
-                        handwritten_answers[question_id] = file
+                        handwritten_score.answer_image = file
+                        handwritten_score.save()
+                        handwritten_answers[question_id] = str(
+                            handwritten_score.id)
                     except HandwrittenQuestion.DoesNotExist:
                         return Response(
                             {"detail": f"Invalid handwritten question ID: {question_id}"},
@@ -527,7 +556,8 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     submission.handwritten_answers = handwritten_answers
                 submission.is_submitted = True
                 submission.save()
-                print(f"Updated submission with answers. MCQ: {len(mcq_answers)}, Handwritten: {len(handwritten_answers)}")
+                print(
+                    f"Updated submission with answers. MCQ: {len(mcq_answers)}, Handwritten: {len(handwritten_answers)}")
 
                 # Update assessment score
                 submission.update_assessment_score()

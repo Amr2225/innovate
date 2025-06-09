@@ -12,7 +12,7 @@ interface PlanDetails {
 
 export const getPlans = async (): Promise<Plan[]> => {
     try {
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/institution/plans/`);
+        const res = await axios.get(`${process.env.API_URL}/institution/plans/`);
         return res.data;
     } catch {
         return [];

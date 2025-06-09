@@ -43,6 +43,11 @@ export const bulkUserInsert = async (formData: FormData): Promise<SubmissionData
 
 
 export const generatePaymentLink = async (data: IGeneratePayment): Promise<string> => {
-    const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/institution/payment/`, data);
+    const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/institution/payment/`, data, {
+        headers: {
+            // 'Content-Type': 'application/json',
+            "ngrok-skip-browser-warning": true
+        }
+    });
     return res.data.url;
 };

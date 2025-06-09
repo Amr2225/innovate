@@ -19,10 +19,6 @@ export default function UploadPage() {
   const questionId = searchParams.get("questionId") || "";
   const token = searchParams.get("token") || "";
 
-  console.log("ass", assessmentId);
-  console.log("question", questionId);
-  console.log("token", token);
-
   const {
     mutate: addTempHandwrittenImageMutation,
     isPending,
