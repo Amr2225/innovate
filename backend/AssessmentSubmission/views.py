@@ -503,7 +503,14 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     question_id = question_id.replace('handwritten_', '')
                     try:
                         question = handwritten_questions.get(id=question_id)
-                        handwritten_answers[question_id] = file
+                        # Save the file and get its path
+                        file_path = f'handwritten_answers/{submission.id}/{question_id}_{file.name}'
+                        full_path = os.path.join(settings.MEDIA_ROOT, file_path)
+                        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                        with open(full_path, 'wb+') as destination:
+                            for chunk in file.chunks():
+                                destination.write(chunk)
+                        handwritten_answers[question_id] = file_path
                     except HandwrittenQuestion.DoesNotExist:
                         return Response(
                             {"detail": f"Invalid handwritten question ID: {question_id}"},
