@@ -168,7 +168,7 @@ export default function BasInfoForm() {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value='null'>None</SelectItem>
-                      {courses?.map((course) => (
+                      {courses?.data.map((course) => (
                         <SelectItem key={course.id} value={course.id}>
                           {course.name}
                         </SelectItem>

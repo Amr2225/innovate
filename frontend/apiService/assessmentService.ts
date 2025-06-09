@@ -31,8 +31,7 @@ export const handwrittenQuestion = async ({ question, assessmentId }: { question
 // Dynamic MCQ
 export const dynamicMcqQuestion = async ({ question, assessmentId }: { question: Pick<Question, "totalGrade" | "sectionNumber" | "context" | "lectures" | "difficulty" | "numberOfQuestions">, assessmentId: string }) => {
     const response = await api.post<Question>(`/dynamicMCQ/assessments/${assessmentId}/`, {
-        section_number: "1",
-        context: question.context,
+        section_number: question.sectionNumber,
         lecture_ids: question.lectures,
         difficulty: question.difficulty,
         total_grade: question.totalGrade,
@@ -40,6 +39,27 @@ export const dynamicMcqQuestion = async ({ question, assessmentId }: { question:
     });
 
     if (response.status === 201) return response.data;
+    throw new Error("Failed to create dynamic mcq question");
+}
+
+interface AIGeneratedMcqQuestionResponse {
+    question: string
+    options: string[]
+    correct_answer: string
+}
+
+// AI Generated MCQ
+export const aiGeneratedMcqQuestion = async ({ question }: { question: Pick<Question, "title" | "numberOfChoices" | "difficulty" | "lectures"> }) => {
+    const response = await api.post<{ mcqs: AIGeneratedMcqQuestionResponse[] }>(`/mcqQuestion/generate-from-lectures/`, {
+        question: question.title,
+        num_options: question.numberOfChoices,
+        difficulty: question.difficulty,
+        num_questions_per_lecture: 4,
+        lecture_ids: question.lectures
+    });
+    console.log("data", response.data, response.status);
+
+    if (response.status === 200) return response.data.mcqs;
     throw new Error("Failed to create dynamic mcq question");
 }
 
@@ -58,6 +78,7 @@ export const mcqQuestion = async ({ question, assessmentId }: { question: Pick<Q
     if (response.status === 201) return response.data;
     throw new Error("Failed to create mcq question");
 }
+
 
 
 // ----------------------------

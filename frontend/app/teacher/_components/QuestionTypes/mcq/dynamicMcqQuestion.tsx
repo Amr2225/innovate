@@ -14,7 +14,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Info, Loader2 } from "lucide-react";
 
 import CustomDialog from "@/components/CustomDialog";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { DialogClose } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -37,16 +37,12 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
   const useAssessmentStore = createAssessmentStore(courseId as string);
   const { updateQuestion } = useAssessmentStore();
 
-  const storedQuestion = useMemo(
-    () => useAssessmentStore.getState().questions.find((q) => q.id === question.id),
-    [question.id, useAssessmentStore]
-  );
-
   const form = useForm({
     defaultValues: {
-      difficulty: storedQuestion?.difficulty || "",
-      totalGrade: storedQuestion?.totalGrade || "",
-      numberOfQuestions: storedQuestion?.numberOfQuestions || "",
+      difficulty: question.difficulty,
+      totalGrade: question.totalGrade,
+      numberOfQuestions: question.numberOfQuestions,
+      numberOfChoices: question.numberOfChoices,
     },
   });
   return (
@@ -63,7 +59,7 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
                   <FormControl>
                     <Select
                       onValueChange={(value) => updateQuestion(question.id, "difficulty", value)}
-                      defaultValue={field.value}
+                      defaultValue={field.value!}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder='Select Difficulty' />
@@ -90,6 +86,26 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
                   <FormControl>
                     <Input
                       placeholder='Enter Number of Questions'
+                      type='number'
+                      {...field}
+                      onBlur={(e) =>
+                        updateQuestion(question.id, "numberOfQuestions", e.target.value)
+                      }
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='numberOfQuestions'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Number of Choices Per Question</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder='Enter Number of Choices'
                       type='number'
                       {...field}
                       onBlur={(e) =>

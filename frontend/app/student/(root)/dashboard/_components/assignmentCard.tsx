@@ -49,13 +49,17 @@ export default function AssignmentCard({
       <div className='px-3 p-2'>
         <Button type='button' variant='default' className='w-full' asChild>
           <Link
-            href={`/student/assessment/${id}`}
+            href={
+              hasSubmitted
+                ? `/student/assessment/${id}/submissionView`
+                : `/student/assessment/${id}`
+            }
             onClick={() => {
               setCourseName(courseName);
               setAssessmentTitle(title);
             }}
           >
-            View Assignment
+            {hasSubmitted ? "View Submission" : "View Assignment"}
           </Link>
         </Button>
       </div>

@@ -34,6 +34,8 @@ urlpatterns = [
     # Student grades endpoint
     path('student-grades/<uuid:pk>/',
          StudentGradesAPIView.as_view(), name='student-grades'),
+
+    # SSE
     path('sse/<str:token>/<uuid:assessment_id>/<uuid:question_id>/',
          MyView.as_view(), name='sse'),
     path('temp-handwritten-image/<uuid:assessment_id>/<uuid:question_id>/',

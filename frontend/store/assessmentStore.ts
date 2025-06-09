@@ -26,6 +26,10 @@ export type AssessmentStore = Assessment & {
     updateMCQAnswer: (questionId: string, answerId: string, key: keyof Answer, value: string) => void;
     deleteMCQAnswer: (questionId: string, answerId: string) => void;
 
+
+    // AI Generated MCQ
+    setAIGenerateMCQ: (questionId: string, title: string, options: string[], mcqAnswer: string) => void;
+
     // Sections
     setCurrentSection: (sectionNumber: number) => void;
     addSection: () => void;
@@ -68,13 +72,14 @@ export const createAssessmentStore = (courseId: string) => {
                             id: Math.random().toString(),
                             title: "New Question",
                             questionType: "",
-                            sectionNumber: state.currentSection
+                            sectionNumber: state.currentSection,
                         }]
                     }))
                 },
                 setQuestions: (questions) => set((state) => ({
                     questions: typeof questions === 'function' ? questions(state.questions) : questions
                 })),
+
                 updateQuestion: (questionId: string, key: keyof Question, value: string | string[]) => {
                     set((state) => ({
                         questions: state.questions.map((question) => question.id === questionId ? {
@@ -86,6 +91,18 @@ export const createAssessmentStore = (courseId: string) => {
                 deleteQuestion: (questionId: string) => {
                     set((state) => ({
                         questions: state.questions.filter((question) => question.id !== questionId)
+                    }))
+                },
+                setAIGenerateMCQ: (questionId: string, title: string, options: string[], mcqAnswer: string) => {
+                    set((state) => ({
+                        questions: state.questions.map((question) => question.id === questionId ? {
+                            ...question,
+                            questions: [{
+                                question: title,
+                                options: options,
+                                correct_answer: mcqAnswer
+                            }]
+                        } : question)
                     }))
                 },
                 addMCQAnswer: (questionId: string) => {
