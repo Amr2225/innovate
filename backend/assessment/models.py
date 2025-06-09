@@ -86,7 +86,7 @@ class Assessment(models.Model):
 
     @property
     def total_questions(self):
-        return self.mcq_questions.count() + self.handwritten_questions.count()
+        return self.mcq_questions.count() + self.handwritten_questions.count() + self.coding_questions.count()
 
     @property
     def total_grade(self):
@@ -108,7 +108,10 @@ class Assessment(models.Model):
         handwritten_total = self.handwritten_questions.aggregate(
             total=Sum('max_grade'))['total'] or 0
 
-        return mcq_total + dynamic_mcq_total + handwritten_total
+        coding_total = self.coding_questions.aggregate(
+            total=Sum('max_grade'))['total'] or 0
+            
+        return mcq_total + dynamic_mcq_total + handwritten_total + coding_total
 
     def get_student_score(self, student):
         """
