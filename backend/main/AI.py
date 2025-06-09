@@ -8,7 +8,6 @@ import PyPDF2
 import io
 import base64
 from PIL import Image
-from django.core.exceptions import ValidationError
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -37,64 +36,6 @@ def get_mcq_prompt():
     ]
 
 
-def generate_mcqs_from_pdf(pdf_file, num_questions=10, seed=None, difficulty='3'):
-    """
-    Extract text from PDF and generate MCQs using AI
-    Args:
-        pdf_file: InMemoryUploadedFile or path to PDF file
-        num_questions (int): Number of questions to generate
-        seed (int): Optional seed for randomization
-        difficulty (str): Difficulty level ('1'=Very Easy, '2'=Easy, '3'=Medium, '4'=Hard, '5'=Very Hard)
-    Returns:
-        list: List of MCQ dictionaries
-    """
-    try:
-        # First extract text from the PDF
-        text = extract_text_from_pdf(pdf_file)
-
-        # Then generate MCQs from the extracted text
-        return generate_mcqs_from_text(text, num_questions, seed, difficulty)
-
-    except Exception as e:
-        logger.error(f"Failed to generate MCQs from PDF: {str(e)}")
-        raise ValueError(f"Failed to generate MCQs from PDF: {str(e)}")
-
-
-def extract_text_from_pdf(pdf_file):
-    """
-    Extract text from a PDF file
-    Args:
-        pdf_file: InMemoryUploadedFile or path to PDF file
-    Returns:
-        str: Extracted text from PDF
-    """
-    try:
-        # If pdf_file is a file object (from request.FILES)
-        if hasattr(pdf_file, 'read'):
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(pdf_file.read()))
-        else:
-            # If pdf_file is a file path
-            pdf_reader = PyPDF2.PdfReader(pdf_file)
-
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text() + "\n"
-
-        # Clean up the extracted text
-        # Replace multiple spaces with single space
-        text = re.sub(r'\s+', ' ', text)
-        text = text.strip()  # Remove leading/trailing whitespace
-
-        if not text:
-            raise ValueError("No text could be extracted from the PDF")
-
-        return text
-
-    except Exception as e:
-        logger.error(f"PDF extraction error: {str(e)}")
-        raise ValueError(f"Failed to extract text from PDF: {str(e)}")
-
-
 def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', num_options=4):
     """
     Generate MCQs from text using AI
@@ -108,7 +49,8 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
         list: List of MCQ dictionaries
     """
     try:
-        logger.info(f"Generating {num_questions} MCQs from text with difficulty level {difficulty} and {num_options} options per question")
+        logger.info(
+            f"Generating {num_questions} MCQs from text with difficulty level {difficulty} and {num_options} options per question")
 
         # Map difficulty level to description
         difficulty_map = {
@@ -121,9 +63,11 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
         difficulty_desc = difficulty_map.get(difficulty, 'Medium')
 
         # Check if text is too large and truncate if necessary
-        max_text_length = 35000  # Increased from 5000 to match the limit in generate_mcqs_from_multiple_pdfs
+        # Increased from 5000 to match the limit in generate_mcqs_from_multiple_pdfs
+        max_text_length = 35000
         if len(text) > max_text_length:
-            logger.warning(f"Text length ({len(text)}) exceeds maximum ({max_text_length}). Truncating...")
+            logger.warning(
+                f"Text length ({len(text)}) exceeds maximum ({max_text_length}). Truncating...")
             text = text[:max_text_length]
 
         # Prepare difficulty requirements based on level
@@ -195,7 +139,8 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
         temperature = temperature_map.get(difficulty, 0.8)
 
         # Make API call to generate MCQs with difficulty-adjusted parameters
-        logger.debug(f"Making API call to generate MCQs with difficulty {difficulty_desc} and {num_options} options")
+        logger.debug(
+            f"Making API call to generate MCQs with difficulty {difficulty_desc} and {num_options} options")
 
         try:
             # Add timeout and retry logic for API calls
@@ -213,9 +158,11 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
                 except Exception as api_error:
                     if "Bad request" in str(api_error) and attempt < max_retries - 1:
                         # If it's a "Bad request" error and not the last attempt, try with shorter context
-                        logger.warning(f"Bad request error on attempt {attempt+1}, truncating context and retrying...")
+                        logger.warning(
+                            f"Bad request error on attempt {attempt+1}, truncating context and retrying...")
                         text = text[:len(text)//2]  # Cut text in half
-                        prompt[1]['content'] = prompt[1]['content'].replace(f"context: {text}", f"context: {text}")
+                        prompt[1]['content'] = prompt[1]['content'].replace(
+                            f"context: {text}", f"context: {text}")
                         continue
                     else:
                         # On last attempt or different error, re-raise
@@ -236,7 +183,8 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
         try:
             mcq_data = extract_json(completion.choices[0].message.content)
         except Exception as json_error:
-            logger.error(f"Error extracting JSON from response: {str(json_error)}")
+            logger.error(
+                f"Error extracting JSON from response: {str(json_error)}")
             # Return default questions as fallback for JSON parsing errors
             return [
                 {
@@ -260,15 +208,18 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
         # Validate number of options in each question
         for mcq in mcq_data:
             if len(mcq['options']) != num_options:
-                logger.warning(f"Question has {len(mcq['options'])} options instead of {num_options}, adjusting...")
+                logger.warning(
+                    f"Question has {len(mcq['options'])} options instead of {num_options}, adjusting...")
                 # If too many options, truncate
                 if len(mcq['options']) > num_options:
                     mcq['options'] = mcq['options'][:num_options]
                 # If too few options, add more
                 while len(mcq['options']) < num_options:
-                    mcq['options'].append(f"Option {chr(65 + len(mcq['options']))}")
+                    mcq['options'].append(
+                        f"Option {chr(65 + len(mcq['options']))}")
 
-        logger.info(f"Successfully generated {len(mcq_data)} MCQs at {difficulty_desc} difficulty with {num_options} options each")
+        logger.info(
+            f"Successfully generated {len(mcq_data)} MCQs at {difficulty_desc} difficulty with {num_options} options each")
         return mcq_data[:num_questions]
 
     except Exception as e:
@@ -435,10 +386,12 @@ def evaluate_handwritten_answer(question, answer_key, student_answer_image, max_
                 "role": "system",
                 "content": """You are an expert teacher evaluating a student's handwritten answer. 
                 Your task is to:
-                1. Read and understand the handwritten answer even if the student writing is not clear
-                2. Compare it with the answer key
-                3. Provide a score based on accuracy, completeness, and clarity
-                4. Give detailed feedback explaining:
+                1. First, determine if there is actually any handwritten text in the image
+                2. If no text is present, explicitly state this and assign a score of 0
+                3. If text is present, read and understand the handwritten answer even if the student writing is not clear
+                4. Compare it with the answer key
+                5. Provide a score based on accuracy, completeness, and clarity
+                6. Give detailed feedback explaining:
                    - What was done well
                    - What could be improved
                    - Specific suggestions for better understanding
@@ -465,14 +418,17 @@ def evaluate_handwritten_answer(question, answer_key, student_answer_image, max_
                         "type": "text",
                         "text": f"""I have an image containing a student's handwritten answer to this question: "{question}"
 
-The image shows the student's answer written by hand. Please:
-1. Read and transcribe the student's handwritten answer from the image
-2. Compare it with this answer key: {answer_key if answer_key else 'No answer key provided. Please solve the question first.'}
-3. Evaluate the answer and provide feedback
+                        The image shows the student's answer written by hand. Please:
+                        1. Read and transcribe the student's handwritten answer from the image
+                        2. Just read the image text don't make any assumptions.
+                        3. If the extracted text is not clear, just say "The text is not clear" and assign a score of 0
+                        4. Compare it with this answer key: {answer_key if answer_key else 'No answer key provided. Please solve the question first.'}
+                        5. Evaluate the answer and provide feedback
 
-The maximum grade for this question is {max_grade}.
+                        The maximum grade for this question is {max_grade}.
 
-Please transcribe exactly what the student has written in their answer."""
+                        Please transcribe exactly what the student has written in their answer.
+                        """
                     },
                     {
                         "type": "image_url",
@@ -511,200 +467,6 @@ Please transcribe exactly what the student has written in their answer."""
         raise ValueError(f"Failed to evaluate handwritten answer: {str(e)}")
 
 
-def extract_text_from_image(image_file):
-    """
-    Extract text from an image using Hugging Face's OCR model
-    Args:
-        image_file: The image file (can be file object or path)
-    Returns:
-        str: Extracted text from the image
-    """
-    try:
-        # Open and preprocess the image
-        if hasattr(image_file, 'read'):
-            image = Image.open(image_file)
-        else:
-            image = Image.open(image_file.path)
-
-        # Convert to RGB if needed
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-
-        # Resize if too large (optional)
-        max_size = (1200, 1200)
-        image.thumbnail(max_size, Image.Resampling.LANCZOS)
-
-        # Convert to base64
-        buffered = io.BytesIO()
-        image.save(buffered, format="JPEG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-
-        # Prepare the prompt for OCR
-        ocr_prompt = [
-            {
-                "role": "system",
-                "content": """You are an expert at reading and transcribing text from images. 
-                Your task is to:
-                1. Read all text in the image
-                2. Return ONLY the text content, nothing else
-                3. Do not include any base64 data or image information
-                4. If there are mathematical equations or symbols, transcribe them accurately
-                5. Preserve the original formatting and structure of the text"""
-            },
-            {
-                "role": "user",
-                "content": f"Read and transcribe all text from this image. Return ONLY the text content: {img_str}"
-            }
-        ]
-
-        # Get OCR result from AI
-        ocr_completion = client.chat.completions.create(
-            model=settings.AI_MODEL,
-            messages=ocr_prompt,
-            temperature=0.3,  # Lower temperature for more accurate transcription
-            max_tokens=1000
-        )
-
-        # Get the extracted text directly from the response
-        extracted_text = ocr_completion.choices[0].message.content.strip()
-
-        # Remove any potential base64 data that might have been included
-        if "base64" in extracted_text.lower():
-            # Try to extract only the actual text content
-            lines = extracted_text.split('\n')
-            text_lines = [line for line in lines if not any(
-                x in line.lower() for x in ['base64', 'data:', 'image', 'jpeg', 'png'])]
-            extracted_text = '\n'.join(text_lines)
-
-        if not extracted_text:
-            raise ValueError("No text could be extracted from the image")
-
-        # Clean up the extracted text
-        # Replace multiple spaces with single space
-        text = re.sub(r'\s+', ' ', extracted_text)
-        text = text.strip()  # Remove leading/trailing whitespace
-
-        return text
-
-    except Exception as e:
-        logger.error(f"Image text extraction error: {str(e)}")
-        raise ValueError(f"Failed to extract text from image: {str(e)}")
-
-
-def generate_mcq_questions(context, num_questions, difficulty='3'):
-    """
-    Generate MCQ questions from the given context using AI
-
-    Args:
-        context (str): The text context to generate questions from
-        num_questions (int): Number of questions to generate
-        difficulty (str): Difficulty level ('1'=Very Easy, '2'=Easy, '3'=Medium, '4'=Hard, '5'=Very Hard)
-
-    Returns:
-        list: List of dictionaries containing questions, options, and correct answers
-    """
-    try:
-        # Map difficulty level to description
-        difficulty_map = {
-            '1': 'Very Easy',
-            '2': 'Easy',
-            '3': 'Medium',
-            '4': 'Hard',
-            '5': 'Very Hard'
-        }
-        difficulty_desc = difficulty_map.get(difficulty, 'Medium')
-
-        # Prepare the prompt for the AI
-        messages = [
-            {
-                "role": "system",
-                "content": """You are an expert at generating multiple-choice questions. Your task is to create clear, relevant, and well-structured questions based on the given context.
-                You must respond with a valid JSON array containing the questions. Do not include any other text or explanation."""
-            },
-            {
-                "role": "user",
-                "content": f"""
-                Generate {num_questions} multiple-choice questions from the following context.
-                Difficulty level: {difficulty_desc}
-                
-                Context:
-                {context}
-                
-                For each question, provide:
-                1. A clear and concise question
-                2. Four options (A, B, C, D)
-                3. The correct answer
-                
-                Your response must be a valid JSON array with this exact structure:
-                [
-                    {{
-                        "question": "Question text",
-                        "options": ["Option A", "Option B", "Option C", "Option D"],
-                        "correct_answer": "Option A"
-                    }}
-                ]
-                
-                Make sure the questions:
-                - Are relevant to the context
-                - Have one and only one correct answer
-                - Have plausible distractors
-                - Match the specified difficulty level ({difficulty_desc})
-                
-                Return ONLY the JSON array, nothing else.
-                """
-            }
-        ]
-
-        # Call the AI model
-        completion = client.chat.completions.create(
-            model=settings.AI_MODEL,
-            messages=messages,
-            temperature=0.7,
-            max_tokens=1000,
-        )
-
-        # Get the response and clean it
-        response_text = completion.choices[0].message.content.strip()
-
-        # Try to extract JSON from the response
-        try:
-            # First try direct JSON parsing
-            questions = json.loads(response_text)
-        except json.JSONDecodeError:
-            # If that fails, try to extract JSON using regex
-            json_match = re.search(r'(\[.*\])', response_text, re.DOTALL)
-            if not json_match:
-                raise ValueError("Could not find valid JSON in the response")
-            questions = json.loads(json_match.group(1))
-
-        # Validate the response
-        if not isinstance(questions, list):
-            raise ValueError("Response is not a list")
-
-        if len(questions) != num_questions:
-            raise ValueError(
-                f"Expected {num_questions} questions, got {len(questions)}")
-
-        for q in questions:
-            if not isinstance(q, dict):
-                raise ValueError("Question is not a dictionary")
-
-            if not all(k in q for k in ['question', 'options', 'correct_answer']):
-                raise ValueError("Question missing required fields")
-
-            if not isinstance(q['options'], list) or len(q['options']) != 4:
-                raise ValueError("Question must have exactly 4 options")
-
-            if q['correct_answer'] not in q['options']:
-                raise ValueError("Correct answer must be one of the options")
-
-        return questions
-
-    except Exception as e:
-        logger.error(f"Error generating MCQ questions: {str(e)}")
-        raise ValidationError(f"Error generating questions: {str(e)}")
-
-
 def generate_mcqs_from_multiple_pdfs(pdf_files, num_questions_per_pdf=10, difficulty='3', num_options=4):
     """
     Generate MCQs from multiple PDF files.
@@ -724,7 +486,8 @@ def generate_mcqs_from_multiple_pdfs(pdf_files, num_questions_per_pdf=10, diffic
     for pdf_file in pdf_files:
         try:
             # Get PDF name for logging
-            pdf_name = pdf_file.name if hasattr(pdf_file, 'name') else str(pdf_file)
+            pdf_name = pdf_file.name if hasattr(
+                pdf_file, 'name') else str(pdf_file)
             logger.info(f"Processing PDF: {pdf_name}")
 
             # Extract text from PDF
@@ -742,22 +505,27 @@ def generate_mcqs_from_multiple_pdfs(pdf_files, num_questions_per_pdf=10, diffic
 
             # Limit text size to prevent API errors (some APIs have token limits)
             if len(text) > 35000:
-                logger.warning(f"Text too long from PDF {pdf_name}, truncating...")
+                logger.warning(
+                    f"Text too long from PDF {pdf_name}, truncating...")
                 text = text[:35000]
 
             # Generate MCQs from text with specified difficulty and number of options
             try:
-                logger.info(f"Generating {num_questions_per_pdf} questions from PDF: {pdf_name}")
-                mcqs = generate_mcqs_from_text(text, num_questions_per_pdf, difficulty=difficulty, num_options=num_options)
+                logger.info(
+                    f"Generating {num_questions_per_pdf} questions from PDF: {pdf_name}")
+                mcqs = generate_mcqs_from_text(
+                    text, num_questions_per_pdf, difficulty=difficulty, num_options=num_options)
                 if mcqs:
                     all_mcqs.extend(mcqs)
             except Exception as e:
-                logger.error(f"Error generating MCQs from PDF {pdf_name}: {str(e)}")
+                logger.error(
+                    f"Error generating MCQs from PDF {pdf_name}: {str(e)}")
                 error_pdfs.append(f"{pdf_name} ({str(e)})")
                 continue
 
         except Exception as e:
-            pdf_name = pdf_file.name if hasattr(pdf_file, 'name') else str(pdf_file)
+            pdf_name = pdf_file.name if hasattr(
+                pdf_file, 'name') else str(pdf_file)
             logger.error(f"Error processing PDF {pdf_name}: {str(e)}")
             error_pdfs.append(f"{pdf_name} ({str(e)})")
             continue

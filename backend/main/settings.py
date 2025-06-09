@@ -14,7 +14,7 @@ DEBUG = os.environ.get("DEBUG", default=0)
 
 SITE_ID = 1
 
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS").split(" ")
 
 WEBSITE_URL = "http://localhost:8000"
 
