@@ -3,4 +3,3 @@ from .models import DynamicMCQ, DynamicMCQQuestions
 
 admin.site.register(DynamicMCQ)
 admin.site.register(DynamicMCQQuestions)
-# Register your models here.

@@ -1,13 +1,11 @@
 from django.db import models
-import uuid
 from assessment.models import Assessment
 from enrollments.models import Enrollments
 from django.core.exceptions import ValidationError
-from django.db.models import Sum
-from decimal import Decimal
 from django.conf import settings
-from django.core.files.storage import default_storage
+from django.core.files import File
 import os
+import uuid
 
 
 class AssessmentSubmission(models.Model):
@@ -156,52 +154,54 @@ class AssessmentSubmission(models.Model):
         from HandwrittenQuestion.models import HandwrittenQuestionScore, HandwrittenQuestion
         from main.AI import evaluate_handwritten_answer
 
-        for question_id, relative_path in self.handwritten_answers.items():
+        for question_id, file_path in self.handwritten_answers.items():
+            question = HandwrittenQuestion.objects.get(id=question_id)
 
             try:
-                question = HandwrittenQuestion.objects.get(id=question_id)
-                handwrittenSubmission = HandwrittenQuestionScore.objects.get(
-                    question=question,
-                    enrollment=self.enrollment
-                )
+                # Get the full path to the file
+                full_path = os.path.join(settings.MEDIA_ROOT, file_path)
 
-                if handwrittenSubmission.answer_image and hasattr(handwrittenSubmission.answer_image, 'path'):
-                    absolute_path = handwrittenSubmission.answer_image.path
+                # Open the file
+                with open(full_path, 'rb') as file_obj:
+                    # Evaluate the answer using AI
+                    print("Evaluating answer using AI")
+                    score, feedback, extracted_text = evaluate_handwritten_answer(
+                        question=question.question_text,
+                        answer_key=question.answer_key,
+                        student_answer_image=file_obj,
+                        max_grade=float(question.max_grade)
+                    )
 
-                    print(f"Image ID: {question_id}")
-                    # URL path (for web)
-                    print(
-                        f"Image URL: {handwrittenSubmission.answer_image.url}")
-                    # Absolute filesystem path
-                    print(f"Image path: {absolute_path}")
+                    print("Creating or updating score")
+                    # Create or update score
+                    score_obj, _ = HandwrittenQuestionScore.objects.update_or_create(
+                        question=question,
+                        enrollment=self.enrollment,
+                        defaults={
+                            'score': score,
+                            'feedback': feedback,
+                            'extracted_text': extracted_text
+                        }
+                    )
 
-                    # Open the file using the absolute path
-                    with handwrittenSubmission.answer_image.open('rb') as file_obj:
-                        # Evaluate the answer using AI
-                        score, feedback, extracted_text = evaluate_handwritten_answer(
-                            question=question.question_text,
-                            answer_key=question.answer_key,
-                            student_answer_image=file_obj,
-                            max_grade=float(question.max_grade)
+                    print("Saving the file using Django's file handling")
+                    # Save the file using Django's file handling
+                    with open(full_path, 'rb') as f:
+                        score_obj.answer_image.save(
+                            os.path.basename(file_path),
+                            File(f),
+                            save=True
                         )
+                if os.path.exists(full_path):
+                    os.remove(full_path)
+                    print(f"Deleted temporary file: {full_path}")
 
-                    # Update the score with AI results
-                    handwrittenSubmission.score = score
-                    handwrittenSubmission.feedback = feedback
-                    handwrittenSubmission.extracted_text = extracted_text
-                    handwrittenSubmission.save()
+                    # Delete empty parent directory
+                    dir_path = os.path.dirname(full_path)
+                    if os.path.exists(dir_path) and not os.listdir(dir_path):
+                        os.rmdir(dir_path)
+                        print(f"Deleted empty directory: {dir_path}")
 
-                # Create or update score
-                HandwrittenQuestionScore.objects.update_or_create(
-                    question=question,
-                    enrollment=self.enrollment,
-                    defaults={
-                        'score': score,
-                        'feedback': feedback,
-                        'answer_image': relative_path,
-                        'extracted_text': extracted_text
-                    }
-                )
             except Exception as e:
                 raise ValidationError(
                     f"Error evaluating handwritten answer: {str(e)}")
