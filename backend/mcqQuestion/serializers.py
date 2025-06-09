@@ -38,8 +38,8 @@ class McqQuestionSerializer(serializers.ModelSerializer):
             if 'options' in data:
                 if len(data['options']) < 2:
                     raise serializers.ValidationError("At least 2 options are required")
-                if len(data['options']) > 4:
-                    raise serializers.ValidationError("Maximum 4 options allowed")
+                if len(data['options']) > 6:
+                    raise serializers.ValidationError("Maximum 6 options allowed")
                 
                 # Validate that answer_key matches one of the options
                 if 'answer_key' in data and data['answer_key'] not in data['options']:

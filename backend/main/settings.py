@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 
     # Third-Party Apps
     "django_extensions",
+    "django_filters",
     "nanoid_field",
     "drf_spectacular",
     'channels',
@@ -96,6 +97,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.auth.middleware.RemoteUserMiddleware',
+    # TODO: will be removed in production
+    # 'users.middleware.CustomExceptionMiddleware',
 ]
 
 # To enable non active users to authenticate
@@ -184,8 +187,8 @@ ASSESSMENT_UPLOADS_DIR = 'AssessmentUploads'
 ASSESSMENT_UPLOADS_PATH = os.path.join(MEDIA_ROOT, ASSESSMENT_UPLOADS_DIR)
 
 # Create upload directories if they don't exist
-os.makedirs(MEDIA_ROOT, exist_ok=True)
 os.makedirs(ASSESSMENT_UPLOADS_PATH, exist_ok=True)
+>>>>>>>>> Temporary merge branch 2
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -203,8 +206,9 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated"
     ),
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'DEFAULT_PAGINATION_CLASS': 'institution.pagination.Pagination',
+    # 'PAGE_SIZE': 10,
+    # 'PAGE_SIZE_QUERY_PARAM': 'page_size',
     # TODO: Enable this in production
     # 'DEFAULT_RENDERER_CLASSES': [
     #     'rest_framework.renderers.JSONRenderer',
@@ -214,11 +218,11 @@ REST_FRAMEWORK = {
 
 # Simple JWT
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=900),
-    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(minutes=60*3),
     "SIGNING_KEY": os.environ.get('JWT_MAIN', SECRET_KEY),
     "ISSUER": None,
-    "USER_ID_FIELD": "id",
+    "USER_ID_FIELD": "id",  # The id field in the model
     "USER_ID_CLAIM": "user_id",
 }
 

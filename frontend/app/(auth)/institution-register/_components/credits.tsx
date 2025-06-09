@@ -4,44 +4,111 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Label } from "@radix-ui/react-label";
 import { Input } from "@/components/ui/input";
 // import { Button } from "@/components/ui/button";
-import { useMutation } from "@tanstack/react-query";
-import axios from "axios";
-import { BASE_URL } from "@/apiService/api";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { AxiosError } from "axios";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-// import { useInstitutionRegistrationStore } from "@/store/institutionRegistrationStore";
+import { paymentService } from "@/apiService/services";
+import { useInstitutionRegistrationStore } from "@/store/institutionRegistrationStore";
+import { getPlanDetails } from "@/apiService/planService";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { z } from "zod";
 
-export default function Credits({ setIsPending }: { setIsPending: (isPending: boolean) => void }) {
-  const [credits, setCredits] = useState<number>(0);
+export default function Credits({
+  setIsPending,
+  planId,
+}: {
+  setIsPending: (isPending: boolean) => void;
+  planId: string;
+}) {
+  const [newCredits, setNewCredits] = useState<number>(0);
+  const { email, name, setCredits, reset } = useInstitutionRegistrationStore();
+  const router = useRouter();
 
   const { mutate: purchaseCredits } = useMutation({
-    mutationFn: async () => {
-      const response = await axios.post(`${BASE_URL}/institution/payment/`, {});
-      return response.data;
-    },
+    mutationFn: () =>
+      paymentService.generatePaymentLink({
+        credits: newCredits,
+        plan_id: planId,
+        name: name,
+        email: email,
+      }),
     onSuccess: (url) => {
+      setCredits(newCredits);
       window.location.href = url;
+    },
+    onError: (error) => {
+      setIsPending(false);
+      if (error instanceof AxiosError) {
+        toast.error(error.response?.data.errors || "Something went wrong, please try again");
+      }
     },
     onSettled: () => {
       setIsPending(false);
     },
-    onError: () => {
-      toast.error("Something went wrong, please try again");
-    },
+  });
+
+  const {
+    data: plan,
+    isLoading: isPlanLoading,
+    isError,
+  } = useQuery({
+    queryKey: [`plan-${planId}`],
+    queryFn: () => getPlanDetails(planId),
+    enabled: !!planId,
   });
 
   const totalCredits = useMemo(() => {
-    return credits * 2;
-  }, [credits]);
+    if (plan) {
+      return newCredits * +plan.credit_price;
+    }
+    return 0;
+  }, [newCredits, plan]);
 
   const handlePurchaseCredits = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (credits === 0) {
+    if (newCredits === 0) {
       toast.error("Please Enter Credits Amount");
       return;
     }
+    if (!validateCredits(newCredits)) return;
     setIsPending(true);
     purchaseCredits();
+  };
+
+  if (isPlanLoading)
+    return (
+      <div className='flex justify-center items-center h-full'>
+        <Loader2 className='w-10 h-10 animate-spin text-primary' />
+      </div>
+    );
+
+  if (isError || !plan) {
+    toast.error("Invalid Plan");
+    reset();
+    router.push("/");
+    return null;
+  }
+
+  const createCreditsSchema = (planType: "Silver" | "Gold" | "Diamond") => {
+    return z
+      .number()
+      .min(1, "Credits must be at least 1")
+      .min(plan.minimum_credits, {
+        message: `Minimum credits for ${planType} plan is ${plan.minimum_credits.toLocaleString()}`,
+      })
+      .refine((value) => !isNaN(value) && value > 0, "Please enter a valid number of credits");
+  };
+
+  const validateCredits = (credits: number) => {
+    const schema = createCreditsSchema(plan.type);
+    const result = schema.safeParse(credits);
+    if (!result.success) {
+      toast.error(result.error.errors[0].message);
+      return false;
+    }
+    return true;
   };
 
   return (
@@ -57,8 +124,8 @@ export default function Credits({ setIsPending }: { setIsPending: (isPending: bo
             <Input
               type='text'
               id='credits'
-              value={credits || ""}
-              onChange={(e) => setCredits(+e.target.value)}
+              value={newCredits || ""}
+              onChange={(e) => setNewCredits(+e.target.value)}
               className='[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
             />
           </CardContent>
@@ -72,25 +139,27 @@ export default function Credits({ setIsPending }: { setIsPending: (isPending: bo
           <CardContent className='space-y-2 text-sm'>
             <div className='flex justify-between items-center'>
               <h2 className='font-semibold '>Plan</h2>
-              <Badge className='py-1' variant='gold'>
-                Gold
+              <Badge className='py-1' variant={plan.type}>
+                {plan.type}
               </Badge>
             </div>
 
             <div className='flex justify-between items-center'>
-              <h2 className='font-semibold '>Credit Value</h2>
-              <p>2.00 EGP</p>
+              <h2 className='font-semibold '>Credit Price</h2>
+              <p>
+                {plan.credit_price} {plan.currency}
+              </p>
             </div>
 
             <div className='flex justify-between items-center'>
               <h2 className='font-semibold'>Credits</h2>
-              <p>{credits}</p>
+              <p>{newCredits.toLocaleString()}</p>
             </div>
 
             <span className='w-full border border-dashed border-neutral-400 block' />
             <div className='flex justify-between items-center'>
               <h2 className='font-semibold'>Total</h2>
-              <p>{totalCredits} EGP</p>
+              <p>{totalCredits.toLocaleString()} EGP</p>
             </div>
           </CardContent>
         </Card>

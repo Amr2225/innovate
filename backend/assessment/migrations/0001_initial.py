@@ -11,8 +11,10 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+<<<<<<<<< Temporary merge branch 1
         ('courses', '0001_initial'),
-        ('enrollments', '0001_initial'),
+=========
+>>>>>>>>> Temporary merge branch 2
     ]
 
     operations = [
@@ -26,7 +28,7 @@ class Migration(migrations.Migration):
                 ('grade', models.PositiveSmallIntegerField()),
                 ('start_date', models.DateTimeField(default=django.utils.timezone.now)),
                 ('accepting_submissions', models.BooleanField(default=True)),
-                ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assessments', to='courses.course')),
+>>>>>>>>> Temporary merge branch 2
             ],
         ),
         migrations.CreateModel(
@@ -40,8 +42,7 @@ class Migration(migrations.Migration):
                 ('enrollment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assessment_scores', to='enrollments.enrollments')),
             ],
             options={
-                'ordering': ['-created_at'],
-                'unique_together': {('assessment', 'enrollment')},
+                'ordering': ['-submitted_at'],
             },
         ),
     ]
