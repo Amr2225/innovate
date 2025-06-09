@@ -188,7 +188,6 @@ ASSESSMENT_UPLOADS_PATH = os.path.join(MEDIA_ROOT, ASSESSMENT_UPLOADS_DIR)
 
 # Create upload directories if they don't exist
 os.makedirs(ASSESSMENT_UPLOADS_PATH, exist_ok=True)
->>>>>>>>> Temporary merge branch 2
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

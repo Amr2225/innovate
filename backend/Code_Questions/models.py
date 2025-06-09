@@ -32,6 +32,7 @@ class CodingQuestion(models.Model):
     function_signature = models.CharField(max_length=255)
     language_id = models.IntegerField(choices=LANGUAGE_CHOICES, default=71)  # 71 = Python 3
     difficulty = models.CharField(max_length=1, choices=DIFFICULTY_CHOICES, default='3')
+    max_grade = models.IntegerField(default=5)
 
     def __str__(self):
         return self.title
