@@ -1,10 +1,8 @@
 from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
-from django.db.models import Q
 from .models import Assessment, AssessmentScore
 from .serializers import AssessmentSerializer, AssessmentScoreSerializer, AssessmentListSerializer
 from .filters import AssessmentFilterSet
-from courses.models import Course
 from enrollments.models import Enrollments
 from mcqQuestion.models import McqQuestion
 from mcqQuestion.serializers import McqQuestionSerializer
@@ -12,16 +10,11 @@ from MCQQuestionScore.models import MCQQuestionScore
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Sum
-from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
-from django.db import transaction
-from django.shortcuts import get_object_or_404
 from django.http import Http404
-from django.shortcuts import render
-from HandwrittenQuestion.models import HandwrittenQuestion, HandwrittenQuestionScore
+from HandwrittenQuestion.models import HandwrittenQuestionScore
 from django.utils import timezone
 from AssessmentSubmission.models import AssessmentSubmission
 from django.apps import apps
-from django_filters.rest_framework import DjangoFilterBackend
 
 # ----------------------
 # Assessment Views
@@ -871,16 +864,17 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
                 raise PermissionDenied(
                     "This assessment is no longer accepting submissions")
 
-            # Check if assessment has started
-            if assessment.start_date > timezone.now():
-                raise PermissionDenied("This assessment has not started yet")
-
             return assessment
         except Assessment.DoesNotExist:
             raise Http404("Assessment not found")
 
     def retrieve(self, request, *args, **kwargs):
         assessment = self.get_object()
+
+        # Check if assessment has started
+        if assessment.start_date > timezone.now():
+            raise PermissionDenied(
+                f"This assessment has not started yet. It will be available on {assessment.start_date.strftime('%Y-%m-%d %H:%M:%S')}")
 
         try:
             # Get all questions for the student

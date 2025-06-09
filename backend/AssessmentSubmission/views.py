@@ -1,11 +1,8 @@
-from django.shortcuts import render
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from django.db import transaction
-from django.shortcuts import get_object_or_404
-from django.http import Http404
 from .models import AssessmentSubmission
 from .serializers import AssessmentSubmissionSerializer
 from assessment.models import Assessment
@@ -16,13 +13,13 @@ from DynamicMCQ.models import DynamicMCQQuestions
 from MCQQuestionScore.models import MCQQuestionScore
 from users.permissions import isStudent
 from django.conf import settings
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
 import os
 
 
 class AssessmentSubmissionPermission(permissions.BasePermission):
     def has_permission(self, request, view):
+        print(
+            f"Checking permission for user: {request.user.email}, role: {request.user.role}")
         print(
             f"Checking permission for user: {request.user.email}, role: {request.user.role}")
         if not request.user.is_authenticated:
@@ -524,15 +521,17 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             for question_id, file in request.FILES.items():
                 if question_id.startswith('handwritten_'):
                     question_id = question_id.replace('handwritten_', '')
-                    handwritten_score, _ = HandwrittenQuestionScore.objects.get_or_create(
-                        question_id=question_id,
-                        enrollment=enrollment
-                    )
                     try:
-                        handwritten_score.answer_image = file
-                        handwritten_score.save()
-                        handwritten_answers[question_id] = str(
-                            handwritten_score.id)
+                        handwritten_questions.get(id=question_id)
+                        # Save the file and get its path
+                        file_path = f'handwritten_answers/{submission.id}/{question_id}_{file.name}'
+                        full_path = os.path.join(
+                            settings.MEDIA_ROOT, file_path)
+                        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                        with open(full_path, 'wb+') as destination:
+                            for chunk in file.chunks():
+                                destination.write(chunk)
+                        handwritten_answers[question_id] = file_path
                     except HandwrittenQuestion.DoesNotExist:
                         return Response(
                             {"detail": f"Invalid handwritten question ID: {question_id}"},

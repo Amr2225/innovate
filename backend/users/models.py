@@ -31,11 +31,12 @@ class CustomManager(UserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-    class Role(models.Choices):
-        INSTITUTION = "Institution"
-        STUDENT = "Student"
-        TEACHER = "Teacher"
-        ADMIN = "Admin"
+    Role = [
+        ("Institution", "Institution"),
+        ("Student", "Student"),
+        ("Teacher", "Teacher"),
+        ("Admin", "Admin"),
+    ]
 
     # Common Fields
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

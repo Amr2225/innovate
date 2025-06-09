@@ -31,7 +31,7 @@ class AssessmentFilterSet(filters.FilterSet):
     class Meta:
         model = Assessment
         fields = ['course', 'title', 'type', 'due_date',
-                  'accepting_submissions', 'created_at']
+                  'created_at']
 
 
 class McqQuestionFilterSet(filters.FilterSet):
