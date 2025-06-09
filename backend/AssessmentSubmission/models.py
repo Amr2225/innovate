@@ -7,6 +7,7 @@ from django.db.models import Sum
 from decimal import Decimal
 from django.conf import settings
 import os
+from django.core.files import File
 
 class AssessmentSubmission(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -143,26 +144,15 @@ class AssessmentSubmission(models.Model):
         from HandwrittenQuestion.models import HandwrittenQuestionScore, HandwrittenQuestion
         from main.AI import evaluate_handwritten_answer, extract_text_from_image
 
-        for question_id, relative_path in self.handwritten_answers.items():
+        for question_id, file_path in self.handwritten_answers.items():
             question = HandwrittenQuestion.objects.get(id=question_id)
             
             try:
-                # Convert relative path to absolute path
-                image_path = os.path.join(settings.MEDIA_ROOT, relative_path)
+                # Get the full path to the file
+                full_path = os.path.join(settings.MEDIA_ROOT, file_path)
                 
-                # Open the file as a file object with a path
-                class FileWithPath:
-                    def __init__(self, path):
-                        self.path = path
-                        self._file = open(path, 'rb')
-                    def read(self, size=-1):
-                        return self._file.read(size)
-                    def seek(self, pos):
-                        self._file.seek(pos)
-                    def close(self):
-                        self._file.close()
-                file_obj = FileWithPath(image_path)
-                try:
+                # Open the file
+                with open(full_path, 'rb') as file_obj:
                     # Evaluate the answer using AI
                     score, feedback, extracted_text = evaluate_handwritten_answer(
                         question=question.question_text,
@@ -170,20 +160,26 @@ class AssessmentSubmission(models.Model):
                         student_answer_image=file_obj,
                         max_grade=float(question.max_grade)
                     )
-                finally:
-                    file_obj.close()
 
-                # Create or update score
-                HandwrittenQuestionScore.objects.update_or_create(
-                    question=question,
-                    enrollment=self.enrollment,
-                    defaults={
-                        'score': score,
-                        'feedback': feedback,
-                        'answer_image': relative_path,
-                        'extracted_text': extracted_text
-                    }
-                )
+                    # Create or update score
+                    score_obj, created = HandwrittenQuestionScore.objects.update_or_create(
+                        question=question,
+                        enrollment=self.enrollment,
+                        defaults={
+                            'score': score,
+                            'feedback': feedback,
+                            'extracted_text': extracted_text
+                        }
+                    )
+
+                    # Save the file using Django's file handling
+                    with open(full_path, 'rb') as f:
+                        score_obj.answer_image.save(
+                            os.path.basename(file_path),
+                            File(f),
+                            save=True
+                        )
+
             except Exception as e:
                 raise ValidationError(f"Error evaluating handwritten answer: {str(e)}")
 
