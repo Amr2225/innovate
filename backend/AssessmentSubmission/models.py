@@ -2,6 +2,7 @@ from django.db import models
 import uuid
 from assessment.models import Assessment
 from enrollments.models import Enrollments
+from Code_Questions.models import CodingQuestion
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
 from decimal import Decimal
@@ -14,6 +15,7 @@ class AssessmentSubmission(models.Model):
     enrollment = models.ForeignKey(Enrollments, on_delete=models.CASCADE, related_name='assessment_submissions')
     mcq_answers = models.JSONField(default=dict, help_text="Dictionary of question_id: selected_answer")
     handwritten_answers = models.JSONField(default=dict, help_text="Dictionary of question_id: image_path")
+    codequestions_answers = models.JSONField(default=dict, help_text="Dictionary of question_id: code_answer")
     submitted_at = models.DateTimeField(auto_now_add=True)
     is_submitted = models.BooleanField(default=False)
 
@@ -40,6 +42,9 @@ class AssessmentSubmission(models.Model):
                 # Create Handwritten scores
                 self.create_handwritten_scores()
                 
+                # Create Code scores
+                self.create_code_scores()
+                
                 # Update assessment score
                 self.update_assessment_score()
             except Exception as e:
@@ -53,6 +58,7 @@ class AssessmentSubmission(models.Model):
         """Validate that all questions have been answered"""
         from mcqQuestion.models import McqQuestion
         from HandwrittenQuestion.models import HandwrittenQuestion
+        from Code_Questions.models import CodingQuestion
 
         # Get all questions for the assessment
         mcq_questions = McqQuestion.objects.filter(
@@ -62,9 +68,13 @@ class AssessmentSubmission(models.Model):
         handwritten_questions = HandwrittenQuestion.objects.filter(
             assessment=self.assessment
         )
+        
+        code_questions = CodingQuestion.objects.filter(
+            Assessment=self.assessment
+        )
 
         # Check if there are any questions
-        if not mcq_questions.exists() and not handwritten_questions.exists():
+        if not mcq_questions.exists() and not handwritten_questions.exists() and not code_questions.exists():
             raise ValidationError("No questions found for this assessment")
 
         # Check MCQ answers
@@ -80,6 +90,12 @@ class AssessmentSubmission(models.Model):
                 raise ValidationError(f"Missing answer for Handwritten question {question.id}")
             if not self.handwritten_answers[str(question.id)]:
                 raise ValidationError(f"Invalid answer for Handwritten question {question.id}")
+            
+        for question in code_questions:
+            if str(question.id) not in self.codequestions_answers:
+                raise ValidationError(f"Missing answer for Code question {question.id}")
+            if not self.codequestions_answers[str(question.id)]:
+                raise ValidationError(f"Invalid answer for Code question {question.id}")
 
     def create_mcq_scores(self):
         """Create MCQQuestionScore records for each answer"""
@@ -154,6 +170,60 @@ class AssessmentSubmission(models.Model):
             except Exception as e:
                 raise ValidationError(f"Error evaluating handwritten answer: {str(e)}")
 
+    def create_code_scores(self):
+        """Create CodingQuestionScore records for each code answer"""
+        from Code_Questions.models import CodingQuestion, CodingQuestionScore
+        from Code_Questions.utils.judge0 import run_code
+        from enrollments.models import Enrollments
+
+        for question_id, code_answer in self.codequestions_answers.items():
+            try:
+                question = CodingQuestion.objects.get(id=question_id)
+                
+                results = []
+                total_cases = question.test_cases.count()
+                passed_cases = 0
+
+                for case in question.test_cases.all():
+                    result = run_code(
+                        source_code=code_answer,
+                        stdin=case.input_data,
+                        language_id=question.language_id
+                    )
+
+                    output = (result.get("stdout") or "").strip()
+                    expected = case.expected_output.strip()
+
+                    passed = output == expected
+                    if passed:
+                        passed_cases += 1
+
+                    results.append({
+                        "input": case.input_data,
+                        "expected_output": expected,
+                        "actual_output": output,
+                        "passed": passed,
+                        "error": result.get("stderr")
+                    })
+
+                # Calculate proportional score
+                if total_cases > 0:
+                    score = int((passed_cases / total_cases) * question.score)
+                else:
+                    score = 0
+
+                # Save or update the score in CodingQuestionScore
+                CodingQuestionScore.objects.update_or_create(
+                    question=question,
+                    enrollment=self.enrollment,
+                    defaults={"score": score}
+                )
+
+            except CodingQuestion.DoesNotExist:
+                raise ValidationError(f"Invalid coding question ID: {question_id}")
+            except Exception as e:
+                raise ValidationError(f"Error evaluating code answer: {str(e)}")
+
     def update_assessment_score(self):
         """Update the AssessmentScore with total score"""
         from assessment.models import AssessmentScore
@@ -176,6 +246,7 @@ class AssessmentSubmission(models.Model):
             defaults={
                 'mcq_answers': {},
                 'handwritten_answers': {},
+                'codequestions_answers': {},
                 'is_submitted': False
             }
         )

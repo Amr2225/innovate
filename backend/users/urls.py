@@ -3,37 +3,37 @@ from django.urls import path
 
 from users import verificatonViews, views
 from rest_framework_simplejwt.views import (
-    TokenRefreshView,
+TokenRefreshView,
 )
 
 urlpatterns = [
-    # Auth
-    path('login/', views.UserLoginView.as_view(), name='user_login'),
-    path("login-access/", views.LoginAccessView.as_view(), name="first_login"),
-    path('add-credentials/', views.UserAddCredentialsView.as_view(), name="add_creds"),
+# Auth
+path('login/', views.UserLoginView.as_view(), name='user_login'),
+path("login-access/", views.LoginAccessView.as_view(), name="first_login"),
+path('add-credentials/', views.UserAddCredentialsView.as_view(), name="add_creds"),
 
-    # Google Auth TODO: Implement this
-    path("google-auth/", views.GoogleAuthView.as_view(), name="google_auth"),
+# Google Auth TODO: Implement this
+path("google-auth/", views.GoogleAuthView.as_view(), name="google_auth"),
 
-    # Token
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+# Token
+path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
-    # Email Verification
-    path('verify-email/<str:token>/',
-         verificatonViews.VerifyEmailView.as_view(), name="verify_email"),
+# Email Verification
+path('verify-email/<str:token>/',
+     verificatonViews.VerifyEmailView.as_view(), name="verify_email"),
 
-    path('resend-verification-email/', verificatonViews.ResendVerificationEmailView.as_view(),
-         name="resend-verification-email"),
+path('resend-verification-email/', verificatonViews.ResendVerificationEmailView.as_view(),
+     name="resend-verification-email"),
 
-    path('resend-verification-email/<str:token>/', verificatonViews.ResendVerificationEmailView.as_view(),
-         name="resend-verification-email-with-token"),
+path('resend-verification-email/<str:token>/', verificatonViews.ResendVerificationEmailView.as_view(),
+     name="resend-verification-email-with-token"),
 
-    path('institution-resend-verification-email/', verificatonViews.InstitutionResendVerificationEmailView.as_view(),
-         name="institution-resend-verification-email"),
+path('institution-resend-verification-email/', verificatonViews.InstitutionResendVerificationEmailView.as_view(),
+     name="institution-resend-verification-email"),
 
-    path("institution-verify-email/", verificatonViews.InstitutionVerifyEmail.as_view(),
-         name="institution-verify-email"),
+path("institution-verify-email/", verificatonViews.InstitutionVerifyEmail.as_view(),
+     name="institution-verify-email"),
 
-    path("institution-verify-email/<str:email>/", verificatonViews.InstitutionVerifyEmail.as_view(),
-         name="institution-verify-email-with-email"),
+path("institution-verify-email/<str:email>/", verificatonViews.InstitutionVerifyEmail.as_view(),
+     name="institution-verify-email-with-email"),
 ]
