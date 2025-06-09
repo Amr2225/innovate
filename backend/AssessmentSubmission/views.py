@@ -521,6 +521,9 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             for question_id, file in request.FILES.items():
                 if question_id.startswith('handwritten_'):
                     question_id = question_id.replace('handwritten_', '')
+                    # Because the frontend formdata cannot send the id like this c343-da it must be underscore
+                    question_id = question_id.replace('_', '-')
+                    print(question_id)
                     try:
                         handwritten_questions.get(id=question_id)
                         # Save the file and get its path

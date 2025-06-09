@@ -5,9 +5,18 @@ import { EncryptedStorage } from "./encryptedStorage";
 type SolveAssessmentType = {
     id: string
     setId: (id: string) => void
+    mcqAnswers: Record<string, string>
+    setMcqAnswer: (questionId: string, answer: string) => void
+    handWrittenAnswers: Record<`handwritten_${string}`, string>
+    setHandWrittenAnswer: (questionIdKey: string, handWrittenAnswerKey: string) => void
 }
 
 const storeCache: Record<string, UseBoundStore<StoreApi<SolveAssessmentType>>> = {};
+
+export const deleteSolveAssessmentStore = (assessmentId: string) => {
+    delete storeCache[assessmentId];
+    localStorage.removeItem(`innovate-solve-${assessmentId}`);
+}
 
 
 export const createSolveAssessmentStore = (assessmentId: string) => {
@@ -17,7 +26,11 @@ export const createSolveAssessmentStore = (assessmentId: string) => {
         persist(
             (set) => ({
                 id: assessmentId,
-                setId: (id: string) => set({ id })
+                mcqAnswers: {},
+                handWrittenAnswers: {},
+                setId: (id: string) => set({ id }),
+                setMcqAnswer: (questionId: string, answer: string) => set((state) => ({ mcqAnswers: { ...state.mcqAnswers, [questionId]: answer } })),
+                setHandWrittenAnswer: (questionIdKey: string, handWrittenAnswerKey: string) => set((state) => ({ handWrittenAnswers: { ...state.handWrittenAnswers, [questionIdKey]: handWrittenAnswerKey } })),
             }),
             {
                 name: `innovate-solve-${assessmentId}`,
@@ -28,5 +41,5 @@ export const createSolveAssessmentStore = (assessmentId: string) => {
 
 
     storeCache[assessmentId] = solveAssessmentStore;
-    return assessmentId;
+    return solveAssessmentStore;
 }

@@ -575,9 +575,11 @@ class StudentGradesAPIView(generics.GenericAPIView):
                 'DynamicMCQ', 'DynamicMCQQuestions')
 
             # Get all Dynamic MCQ questions for this assessment
-            dynamic_mcqs = DynamicMCQ.objects.filter(assessment=assessment)
+            dynamic_mcq = DynamicMCQ.objects.get(assessment=assessment)
             dynamic_mcq_questions = DynamicMCQQuestions.objects.filter(
-                dynamic_mcq__in=dynamic_mcqs)
+                dynamic_mcq=dynamic_mcq,
+                created_by=request.user
+            )
 
             # Calculate total score of answered questions
             mcq_total = float(mcq_scores.aggregate(
@@ -668,6 +670,7 @@ class StudentGradesAPIView(generics.GenericAPIView):
             response_data = {
                 'assessment_id': str(assessment_score.assessment.id),
                 'assessment_title': assessment_score.assessment.title,
+                'course': assessment_score.assessment.course.name,
                 'questions': questions_data,
                 'total_score': total_answered_score,
                 'total_max_score': float(assessment_score.assessment.grade)

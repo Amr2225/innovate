@@ -31,9 +31,7 @@ const initialState: Pick<CourseStore, 'course' | 'chapters'> = {
 const storeCache: Record<string, UseBoundStore<StoreApi<CourseStore>>> = {};
 
 export const createCourseStore = (courseId?: string) => {
-    if (courseId) {
-        if (storeCache[courseId]) return storeCache[courseId];
-    }
+    if (courseId && storeCache[courseId]) return storeCache[courseId];
 
     const courseStore = create<CourseStore>()(
         persist(
@@ -111,8 +109,6 @@ export const createCourseStore = (courseId?: string) => {
                             // To get the video duration 
                             tempVideo.onloadedmetadata = async () => {
                                 const duration = Math.round(tempVideo.duration);
-
-
 
                                 // Store the file in IndexedDB
                                 const storageKey = `video_${chapterId}_${lectureId}`;

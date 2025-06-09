@@ -36,12 +36,12 @@ urlpatterns = [
         name='mcq-generate-from-pdf'
     ),
     path(
-        'assessments/<str:assessment_id>/generate-from-lectures/',
+        'generate-from-lectures/',
         GenerateMCQsFromMultiplePDFsView.as_view(),
         name='mcq-generate-from-lectures'
     ),
     path(
-        'assessments/<uuid:assessment_id>/save-generated-mcqs/',
+        'save-generated-mcqs/',
         SaveGeneratedMCQsView.as_view(),
         name='save-generated-mcqs'
     ),

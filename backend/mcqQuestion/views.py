@@ -521,7 +521,7 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
 class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
     """
     View for generating MCQ questions from multiple lecture attachments.
-    POST /mcqQuestion/assessments/{assessment_id}/generate-from-lectures/
+    POST /mcqQuestion/generate-from-lectures/
 
     Request body (JSON):
     {
@@ -549,12 +549,14 @@ class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
         if difficulty is None:
             return '3'  # Default to Medium
         if difficulty not in [choice[0] for choice in self.DIFFICULTY_CHOICES]:
-            raise ValidationError("Invalid difficulty level. Must be one of: 1, 2, 3, 4, 5")
+            raise ValidationError(
+                "Invalid difficulty level. Must be one of: 1, 2, 3, 4, 5")
         return difficulty
 
     def validate_num_options(self, num_options):
         try:
-            num = int(num_options) if num_options is not None else 4  # Default to 4 options
+            # Default to 4 options
+            num = int(num_options) if num_options is not None else 4
             if num < 2:
                 raise ValidationError("Number of options must be at least 2")
             if num > 6:
@@ -665,28 +667,33 @@ class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
 
             # Validate input
             if 'lecture_ids' not in request.data:
-                raise ValidationError({"lecture_ids": "Lecture IDs are required"})
+                raise ValidationError(
+                    {"lecture_ids": "Lecture IDs are required"})
 
             lecture_ids = request.data['lecture_ids']
             if not isinstance(lecture_ids, list) or not lecture_ids:
-                raise ValidationError({"lecture_ids": "At least one lecture ID is required"})
+                raise ValidationError(
+                    {"lecture_ids": "At least one lecture ID is required"})
 
             # Get lectures and validate attachments
             from lecture.models import Lecture
             lectures = Lecture.objects.filter(id__in=lecture_ids)
 
             if lectures.count() != len(lecture_ids):
-                raise ValidationError({"lecture_ids": "One or more lecture IDs are invalid"})
+                raise ValidationError(
+                    {"lecture_ids": "One or more lecture IDs are invalid"})
 
             logger.info(f"Processing {len(lectures)} lectures")
             num_questions_per_lecture = self.validate_num_questions(
                 request.data.get('num_questions_per_lecture'))
-            
+
             # Validate and get difficulty
-            difficulty = self.validate_difficulty(request.data.get('difficulty'))
+            difficulty = self.validate_difficulty(
+                request.data.get('difficulty'))
 
             # Validate and get number of options
-            num_options = self.validate_num_options(request.data.get('num_options'))
+            num_options = self.validate_num_options(
+                request.data.get('num_options'))
 
             # Generate MCQs (no save)
             mcq_data = generate_mcqs_from_multiple_pdfs(
@@ -895,29 +902,32 @@ class SaveGeneratedMCQsView(generics.GenericAPIView):
 
     def validate_question_grade(self, question_grade):
         try:
-            grade = Decimal(str(question_grade)) if question_grade is not None else Decimal('0.00')
+            grade = Decimal(str(question_grade)
+                            ) if question_grade is not None else Decimal('0.00')
             if grade < Decimal('0.00'):
                 raise ValidationError("Question grade cannot be negative")
             if grade > Decimal('100.00'):
                 raise ValidationError("Question grade cannot exceed 100")
             return grade
         except (TypeError, ValueError):
-            raise ValidationError("Question grade must be a valid decimal number")
+            raise ValidationError(
+                "Question grade must be a valid decimal number")
 
     def validate_mcq_structure(self, mcq):
         """Validate the structure of a single MCQ"""
         if not all(key in mcq for key in ['question', 'options', 'correct_answer']):
-            raise ValidationError("Each MCQ must have question, options, and correct_answer")
-        
+            raise ValidationError(
+                "Each MCQ must have question, options, and correct_answer")
+
         if not isinstance(mcq['options'], list):
             raise ValidationError("Options must be a list")
-        
+
         if len(mcq['options']) < 2:
             raise ValidationError("At least 2 options are required")
-        
+
         if len(mcq['options']) > 6:
             raise ValidationError("Maximum 6 options allowed")
-        
+
         if mcq['correct_answer'] not in mcq['options']:
             raise ValidationError("Correct answer must be one of the options")
 
@@ -929,7 +939,8 @@ class SaveGeneratedMCQsView(generics.GenericAPIView):
 
             mcqs = request.data['mcqs']
             if not isinstance(mcqs, list) or not mcqs:
-                raise ValidationError({"mcqs": "At least one MCQ question is required"})
+                raise ValidationError(
+                    {"mcqs": "At least one MCQ question is required"})
 
             # Validate assessment exists and user has permission
             assessment_id = self.kwargs.get('assessment_id')
@@ -942,16 +953,20 @@ class SaveGeneratedMCQsView(generics.GenericAPIView):
             # Validate course ownership
             user = request.user
             if user.role == "Institution" and assessment.course.institution != user:
-                raise PermissionDenied("You don't have permission to add questions to this assessment")
+                raise PermissionDenied(
+                    "You don't have permission to add questions to this assessment")
             elif user.role == "Teacher" and not assessment.course.instructors.filter(id=user.id).exists():
-                raise PermissionDenied("You don't have permission to add questions to this assessment")
+                raise PermissionDenied(
+                    "You don't have permission to add questions to this assessment")
 
             # Validate assessment status
             if assessment.due_date < timezone.now():
-                raise ValidationError("Cannot add questions to past-due assessments")
+                raise ValidationError(
+                    "Cannot add questions to past-due assessments")
 
             # Get question grade and section number
-            question_grade = self.validate_question_grade(request.data.get('question_grade'))
+            question_grade = self.validate_question_grade(
+                request.data.get('question_grade'))
             section_number = request.data.get('section_number', 1)
 
             # Save questions
@@ -989,10 +1004,12 @@ class SaveGeneratedMCQsView(generics.GenericAPIView):
                     if saved_questions:
                         for saved_q in saved_questions:
                             try:
-                                instance = McqQuestion.objects.get(id=saved_q['id'])
+                                instance = McqQuestion.objects.get(
+                                    id=saved_q['id'])
                                 instance.delete()
                             except Exception as delete_error:
-                                logger.error(f"Error deleting question {saved_q['id']}: {str(delete_error)}")
+                                logger.error(
+                                    f"Error deleting question {saved_q['id']}: {str(delete_error)}")
                     raise ValidationError(f"Error saving question: {str(e)}")
 
             return Response({
