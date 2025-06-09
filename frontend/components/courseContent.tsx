@@ -12,7 +12,7 @@ import { Clock, Video, CheckCheck, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "./ui/progress";
 import { Lecture } from "@/types/course.type";
-import { useCourseStore } from "@/store/courseStore";
+import { createCourseStore } from "@/store/courseStore";
 
 interface CourseContentProps {
   activeLecture: Lecture | null;
@@ -20,6 +20,7 @@ interface CourseContentProps {
 }
 
 export default function CourseContent({ activeLecture, setActiveLecture }: CourseContentProps) {
+  const useCourseStore = createCourseStore(undefined);
   const { chapters } = useCourseStore();
   if (!activeLecture) return null;
 

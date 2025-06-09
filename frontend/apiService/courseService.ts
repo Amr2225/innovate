@@ -2,7 +2,7 @@ import { api } from "@/apiService/api"
 import { Chapter, Course, Lecture, CreateLecture } from "@/types/course.type"
 
 interface GetCoursesResponse<T> {
-    data: T
+    data: T[]
     message?: string
 }
 
@@ -11,14 +11,14 @@ interface GetCoursesResponse<T> {
 // }
 
 // Get all courses for institution and student and teacher each based on their roles
-export const getCourses = async <T = Course>({ page_size, pageParam }: { page_size?: number, pageParam?: number }): Promise<T> => {
+export const getCourses = async <T = Course>({ page_size, pageParam }: { page_size?: number, pageParam?: number }): Promise<T[]> => {
     const res = await api.get<GetCoursesResponse<T>>("/courses/", {
         params: { page_size, page: pageParam },
     });
 
     // console.log(res);
 
-    if (res.status === 200) return res.data
+    if (res.status === 200) return res.data.data
     throw new Error(res.data.message || "Failed to get courses")
 }
 

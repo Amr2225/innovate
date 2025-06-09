@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 // Store
-import { useCourseStore } from "@/store/courseStore";
+import { createCourseStore } from "@/store/courseStore";
 
 // Components
 import CourseContent from "@/components/courseContent";
@@ -17,6 +17,7 @@ import { Loader2 } from "lucide-react";
 export default function CoursePreviewPage() {
   const [activeLecture, setActiveLecture] = useState<Lecture | null>(null);
 
+  const useCourseStore = createCourseStore(undefined);
   const { chapters } = useCourseStore();
 
   useEffect(() => {

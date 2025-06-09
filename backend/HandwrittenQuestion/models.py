@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 
 def get_handwritten_answer_path(instance, filename):
-    logger = logging.getLogger(__name__)
 
     try:
         # Get the assessment ID from the question
@@ -97,7 +96,7 @@ class HandwrittenQuestionScore(models.Model):
     )
     feedback = models.TextField(blank=True, null=True)
     answer_image = models.ImageField(
-        upload_to=get_handwritten_answer_path,
+        upload_to='handwritten_answers/',
         null=True,
         blank=True,
         help_text="Upload a JPEG, PNG, GIF, or BMP image file (max 5MB)",
@@ -133,13 +132,13 @@ class HandwrittenQuestionScore(models.Model):
         self.clean()
 
         # Create the upload directory if it doesn't exist
-        if self.answer_image:
-            upload_path = os.path.join(
-                settings.MEDIA_ROOT,
-                settings.ASSESSMENT_UPLOADS_DIR,
-                str(self.question.assessment.id)
-            )
-            os.makedirs(upload_path, exist_ok=True)
+        # if self.answer_image:
+        #     upload_path = os.path.join(
+        #         settings.MEDIA_ROOT,
+        #         settings.ASSESSMENT_UPLOADS_DIR,
+        #         str(self.question.assessment.id)
+        #     )
+        #     os.makedirs(upload_path, exist_ok=True)
 
         super().save(*args, **kwargs)
 

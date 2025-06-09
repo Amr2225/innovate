@@ -9,6 +9,7 @@ import Loader from "@/components/Loader";
 import { NavBar } from "../_components/Navbar";
 import MCQQuestion from "../_components/mcqQuestion";
 import HandWrittenQuestion from "../_components/handWrittenQuestion";
+import { Button } from "@/components/ui/button";
 export default function AssessmentPage() {
   const { assessmentId } = useParams();
 
@@ -40,6 +41,11 @@ export default function AssessmentPage() {
               )}
             </div>
           ))}
+          <div className='w-full flex justify-end items-center'>
+            <Button size='lg' className='text-base font-semibold w-[20%]'>
+              Submit
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -8,13 +8,15 @@ import {
 import { CirclePlay, Paperclip, Clock, Loader2 } from "lucide-react";
 
 // Store
-import { useCourseStore } from "@/store/courseStore";
+// import { useCourseStore } from "@/store/courseStore";
 import { Button } from "@/components/ui/button";
 import { useUploadCourse } from "@/queryHooks/useUploadCourse";
+import { createCourseStore } from "@/store/courseStore";
 
 export default function PublishCoursePage() {
+  const useCourseStore = createCourseStore(undefined);
   const { course, chapters } = useCourseStore();
-  const { UploadCourse, isCreating } = useUploadCourse();
+  const { UploadCourse, isCreating } = useUploadCourse("");
 
   return (
     <div className='mt-5'>
