@@ -141,13 +141,15 @@ class Assessment(models.Model):
         McqQuestion = apps.get_model('mcqQuestion', 'McqQuestion')
         HandwrittenQuestion = apps.get_model(
             'HandwrittenQuestion', 'HandwrittenQuestion')
+        CodingQuestion = apps.get_model('Code_Questions', 'CodingQuestion')
         Lecture = apps.get_model('lecture', 'Lecture')
         from main.AI import generate_mcqs_from_multiple_pdfs, generate_mcqs_from_text
 
         questions = {
             'dynamic_mcq': [],
             'mcq': [],
-            'handwritten': []
+            'handwritten': [],
+            'coding': []
         }
 
         print("self", self)
@@ -311,6 +313,30 @@ class Assessment(models.Model):
         except Exception as e:
             print(f"Error getting handwritten questions: {str(e)}")
 
+        # 4. Get Coding Questions
+
+        try:
+            coding_questions = CodingQuestion.objects.filter(
+                assessment_Id=self)
+            for question in coding_questions:
+                # Get only public test cases for this question
+                public_test_cases = question.test_cases.filter(is_public=True)
+                questions['coding'].append({
+                    'id': str(question.id),
+                    'question': question.description,
+                    'max_grade': question.max_grade,
+                    'section_number': question.section_number,
+                    'test_cases': [
+                        {
+                            'id': str(test_case.id),
+                            'input_data': test_case.input_data,
+                            'expected_output': test_case.expected_output
+                        } for test_case in public_test_cases
+                    ]
+                })
+        except Exception as e:
+            print(f"Error getting coding questions: {str(e)}")
+
         return questions
 
     def generate_dynamic_questions(self, student):
@@ -408,6 +434,11 @@ class Assessment(models.Model):
             total=Sum('max_grade'))['total'] or 0
         current_total += handwritten_total
 
+        # Get coding questions total
+        coding_total = self.coding_questions.aggregate(
+            total=Sum('max_grade'))['total'] or 0
+        current_total += coding_total
+
         # If updating an existing question, subtract its grade from the total
         if existing_question_id:
             try:
@@ -429,6 +460,12 @@ class Assessment(models.Model):
                                 id=existing_question_id)
                             current_total -= existing_question.max_grade
                         except self.handwritten_questions.model.DoesNotExist:
+                            pass
+                        try:
+                            existing_question = self.coding_questions.get(
+                                id=existing_question_id)
+                            current_total -= existing_question.max_grade
+                        except self.coding_questions.model.DoesNotExist:
                             pass
             except Exception as e:
                 print(f"Error finding existing question: {str(e)}")
@@ -467,7 +504,8 @@ class AssessmentScore(models.Model):
             'HandwrittenQuestion', 'HandwrittenQuestionScore')
         DynamicMCQQuestions = apps.get_model(
             'DynamicMCQ', 'DynamicMCQQuestions')
-
+        CodingQuestionScore = apps.get_model(
+            'Code_Questions', 'CodingQuestionScore')
         # Get regular MCQ scores
         mcq_score = MCQQuestionScore.objects.filter(
             question__assessment=self.assessment,
@@ -486,6 +524,12 @@ class AssessmentScore(models.Model):
             enrollment=self.enrollment
         ).aggregate(total=Sum('score'))['total'] or 0
 
+        # Get coding scores
+        coding_score = CodingQuestionScore.objects.filter(
+            question__assessment_Id=self.assessment,
+            enrollment_id=self.enrollment
+        ).aggregate(total=Sum('score'))['total'] or 0
+
         # Calculate total score
-        self.total_score = mcq_score + dynamic_mcq_score + handwritten_score
+        self.total_score = mcq_score + dynamic_mcq_score + handwritten_score + coding_score
         super().save(*args, **kwargs)

@@ -8,6 +8,7 @@ from django.db.models import Sum
 from decimal import Decimal
 from django.conf import settings
 import os
+import json
 
 class AssessmentSubmission(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -75,11 +76,11 @@ class AssessmentSubmission(models.Model):
         )
         
         code_questions = CodingQuestion.objects.filter(
-            Assessment=self.assessment
+            assessment_Id=self.assessment
         )
 
         # Check if there are any questions
-        if not mcq_questions.exists() and not handwritten_questions.exists():
+        if not mcq_questions.exists() and not handwritten_questions.exists() and not code_questions.exists():
             raise ValidationError("No questions found for this assessment")
 
         # Check MCQ answers
@@ -104,10 +105,8 @@ class AssessmentSubmission(models.Model):
                 raise ValidationError(f"Invalid answer for Handwritten question {question.id}")
             
         for question in code_questions:
-            if str(question.id) not in self.codequestions_answers:
-                raise ValidationError(f"Missing answer for Code question {question.id}")
-            if not self.codequestions_answers[str(question.id)]:
-                raise ValidationError(f"Invalid answer for Code question {question.id}")
+            answer = self.codequestions_answers.get(str(question.id), "")
+            # process answer (may be blank)
 
     def create_mcq_scores(self):
         """Create MCQQuestionScore records for each answer"""
@@ -205,7 +204,7 @@ class AssessmentSubmission(models.Model):
 
     def create_code_scores(self):
         """Create CodingQuestionScore records for each code answer"""
-        from Code_Questions.models import CodingQuestion, CodingQuestionScore
+        from Code_Questions.models import CodingQuestion, CodingQuestionScore, CodingScoreTestInteractions
         from Code_Questions.utils.judge0 import run_code
         from enrollments.models import Enrollments
 
@@ -227,11 +226,36 @@ class AssessmentSubmission(models.Model):
                     output = (result.get("stdout") or "").strip()
                     expected = case.expected_output.strip()
 
-                    passed = output == expected
+                    # Handle any JSON structure
+                    try:
+                        # Try to parse the output and expected as JSON
+                        output_data = json.loads(output)
+                        expected_data = json.loads(expected)
+                        
+                        # Deep comparison of JSON structures
+                        def compare_json_structures(data1, data2):
+                            if type(data1) != type(data2):
+                                return False
+                            
+                            if isinstance(data1, dict):
+                                if set(data1.keys()) != set(data2.keys()):
+                                    return False
+                                return all(compare_json_structures(data1[k], data2[k]) for k in data1)
+                            
+                            if isinstance(data1, list):
+                                if len(data1) != len(data2):
+                                    return False
+                                return all(compare_json_structures(x, y) for x, y in zip(data1, data2))
+                            
+                            return data1 == data2
+
+                    passed = compare_json_structures(output_data, expected_data)
+
                     if passed:
                         passed_cases += 1
 
                     results.append({
+                        "test_case_id": str(case.id),
                         "input": case.input_data,
                         "expected_output": expected,
                         "actual_output": output,
@@ -241,16 +265,24 @@ class AssessmentSubmission(models.Model):
 
                 # Calculate proportional score
                 if total_cases > 0:
-                    score = int((passed_cases / total_cases) * question.score)
+                    score = int((passed_cases / total_cases) * question.max_grade)
                 else:
                     score = 0
 
                 # Save or update the score in CodingQuestionScore
-                CodingQuestionScore.objects.update_or_create(
+                score, created = CodingQuestionScore.objects.update_or_create(
                     question=question,
-                    enrollment=self.enrollment,
+                    enrollment_id=self.enrollment,
                     defaults={"score": score}
                 )
+
+                # Record individual test case results
+                for result in results:
+                    CodingScoreTestInteractions.objects.create(
+                        questionScore=score,
+                        testCase=case,
+                        passed=result["passed"]
+                    )
 
             except CodingQuestion.DoesNotExist:
                 raise ValidationError(f"Invalid coding question ID: {question_id}")

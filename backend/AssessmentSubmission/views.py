@@ -14,8 +14,10 @@ from mcqQuestion.models import McqQuestion
 from HandwrittenQuestion.models import HandwrittenQuestion, HandwrittenQuestionScore
 from DynamicMCQ.models import DynamicMCQQuestions
 from MCQQuestionScore.models import MCQQuestionScore
+from Code_Questions.models import CodingQuestion
 from django.conf import settings
 import os
+import json
 
 class AssessmentSubmissionPermission(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -198,11 +200,13 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     created_by=user
                 )
                 handwritten_questions = assessment.handwritten_questions.filter(assessment=assessment)
+                coding_questions = assessment.coding_questions.filter(assessment_Id=assessment)
             else:
                 # For teachers and institutions, get all questions
                 mcq_questions = assessment.mcq_questions.filter(assessment=assessment)
                 dynamic_mcq_questions = DynamicMCQQuestions.objects.filter(dynamic_mcq__assessment=assessment)
                 handwritten_questions = assessment.handwritten_questions.filter(assessment=assessment)
+                coding_questions = assessment.coding_questions.filter(assessment_Id=assessment)
 
             # Prepare response data
             response_data = {
@@ -323,6 +327,24 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     response_data['max_score'] += float(question.max_grade)
                     response_data['questions'].append(question_data)
 
+                # Add Coding questions with their answers
+                for question in coding_questions:
+                    question_data = {
+                        'id': str(question.id),
+                        'question': question.description,
+                        'max_grade': str(question.max_grade),
+                        'test_cases_expected_output': question.test_cases_expected_output,
+                        'test_cases_input_data': question.test_cases_input_data
+                    }
+                    
+                    # Add student's answer if available
+                    if str(question.id) in submission.codequestions_answers:
+                        question_data.update({
+                            'code_answer': submission.codequestions_answers[str(question.id)]
+                        })
+                    response_data['total_score'] += float(question.max_grade)
+                    response_data['questions'].append(question_data)
+
             # Calculate percentage score
             if response_data['max_score'] > 0:
                 response_data['percentage_score'] = f"{(response_data['total_score'] / response_data['max_score']) * 100:.2f} %"
@@ -411,7 +433,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             # Initialize answers dictionaries
             mcq_answers = {}
             handwritten_answers = {}
-
+            coding_answers = {}
             # Get all questions for the assessment
             mcq_questions = McqQuestion.objects.filter(assessment=assessment)
             dynamic_mcq_questions = DynamicMCQQuestions.objects.filter(
@@ -419,12 +441,22 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                 created_by=request.user
             )
             handwritten_questions = HandwrittenQuestion.objects.filter(assessment=assessment)
+            coding_questions = CodingQuestion.objects.filter(assessment_Id=assessment)
 
             # Log the number of questions found
-            print(f"Found {mcq_questions.count()} MCQ questions, {dynamic_mcq_questions.count()} dynamic MCQ questions, and {handwritten_questions.count()} handwritten questions")
-
+            print(f"Found {mcq_questions.count()} MCQ questions, {dynamic_mcq_questions.count()} dynamic MCQ questions, {handwritten_questions.count()} handwritten questions, and {coding_questions.count()} coding questions")
+            print("Type mcq_questions:", type(mcq_questions))
+            print("Type dynamic_mcq_questions:", type(dynamic_mcq_questions))
+            print("Type handwritten_questions:", type(handwritten_questions))
+            print("Type coding_questions:", type(coding_questions))
             # Check if there are any questions at all
-            if not mcq_questions.exists() and not dynamic_mcq_questions.exists() and not handwritten_questions.exists():
+            print("Final counts before error:",
+                  mcq_questions.count(),
+                  dynamic_mcq_questions.count(),
+                  handwritten_questions.count(),
+                  coding_questions.count())
+
+            if not (mcq_questions.exists() or dynamic_mcq_questions.exists() or handwritten_questions.exists() or coding_questions.exists()):
                 print("No questions found for assessment")
                 return Response(
                     {"detail": "No questions found for this assessment"},
@@ -458,7 +490,6 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     }
 
                 if isinstance(mcq_data, str):
-                    import json
                     try:
                         mcq_data = json.loads(mcq_data)
                     except json.JSONDecodeError:
@@ -496,6 +527,30 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     
                     mcq_answers[question_id] = answer
 
+            # Process Coding answers
+            coding_data = request.data.get('codequestions_answers')
+            print(f"Received Coding data: {coding_data}")
+            if isinstance(coding_data, str):
+                try:
+                    coding_data = json.loads(coding_data)
+                except Exception:
+                    return Response(
+                        {"detail": "codequestions_answers must be a valid JSON object"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            if coding_data is not None and coding_questions.exists():
+                print(f"Processing Coding answers: {coding_data}")
+                coding_question_ids = set(str(q.id) for q in coding_questions)
+                for question_id, code_answer in coding_data.items():
+                    if question_id not in coding_question_ids:
+                        print(f"coding question ID: {question_id}")
+                        return Response(
+                            {"detail": f"Invalid coding question ID: {question_id}"},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    # Save the answer if valid
+                    coding_answers[question_id] = code_answer
+
             # Process Handwritten answers
             print(f"Processing files: {list(request.FILES.keys())}")
             for question_id, file in request.FILES.items():
@@ -511,10 +566,10 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                         )
 
             # Check if at least one type of answer is provided
-            if not mcq_answers and not handwritten_answers:
+            if not mcq_answers and not handwritten_answers and not coding_answers:
                 print("No answers provided")
                 return Response(
-                    {"detail": "At least one answer (MCQ or handwritten) must be provided"},
+                    {"detail": "At least one answer (MCQ or handwritten or coding) must be provided"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -525,9 +580,11 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     submission.mcq_answers = mcq_answers
                 if handwritten_answers:
                     submission.handwritten_answers = handwritten_answers
+                if coding_answers:
+                    submission.codequestions_answers = coding_answers
                 submission.is_submitted = True
                 submission.save()
-                print(f"Updated submission with answers. MCQ: {len(mcq_answers)}, Handwritten: {len(handwritten_answers)}")
+                print(f"Updated submission with answers. MCQ: {len(mcq_answers)}, Handwritten: {len(handwritten_answers)}, Coding: {len(coding_answers)}")
 
                 # Update assessment score
                 submission.update_assessment_score()
@@ -538,7 +595,8 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                 "message": "Assessment submitted successfully",
                 "submission_details": {
                     "mcq_answers_count": len(mcq_answers) if mcq_answers else 0,
-                    "handwritten_answers_count": len(handwritten_answers) if handwritten_answers else 0
+                    "handwritten_answers_count": len(handwritten_answers) if handwritten_answers else 0,
+                    "coding_answers_count": len(coding_answers) if coding_answers else 0
                 }
             }
 

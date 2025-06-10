@@ -345,7 +345,7 @@ class GenerateMCQsFromTextView(generics.GenericAPIView):
                     'id': str(question.id),
                     'question': question.question,
                     'options': question.options,
-                    'answer': question.answer_key,
+                    'answer_key': question.answer_key,
                     'question_grade': str(question.question_grade),
                     'section_number': question.section_number
                 })
@@ -461,7 +461,7 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
                     'id': str(question.id),
                     'question': question.question,
                     'options': question.options,
-                    'answer': question.answer_key,
+                    'answer_key': question.answer_key,
                     'question_grade': str(question.question_grade),
                     'section_number': question.section_number  # Include section number in response
                 })
@@ -639,7 +639,7 @@ class GenerateMCQsFromMultiplePDFsView(generics.GenericAPIView):
                     'id': str(question.id),
                     'question': question.question,
                     'options': question.options,
-                    'answer': question.answer_key,
+                    'answer_key': question.answer_key,
                     'question_grade': str(question.question_grade),
                     'section_number': question.section_number
                 })
@@ -980,7 +980,7 @@ class SaveGeneratedMCQsView(generics.GenericAPIView):
                         'id': str(question.id),
                         'question': question.question,
                         'options': question.options,
-                        'answer': question.answer_key,
+                        'answer_key': question.answer_key,
                         'question_grade': str(question.question_grade),
                         'section_number': question.section_number
                     })
