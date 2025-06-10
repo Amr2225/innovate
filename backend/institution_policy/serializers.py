@@ -7,7 +7,7 @@ class InstitutionPolicySerializer(serializers.ModelSerializer):
         model = InstitutionPolicy
         fields = (
             'id',
-            'min_passing_grade',
+            'min_passing_percentage',
             'max_allowed_failures',
             'min_gpa_required',
             'min_attendance_percent',
