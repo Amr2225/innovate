@@ -22,6 +22,7 @@ from django.utils import timezone
 from AssessmentSubmission.models import AssessmentSubmission
 from django.apps import apps
 from django_filters.rest_framework import DjangoFilterBackend
+from Code_Questions.models import TestCase
 
 # ----------------------
 # Assessment Views
@@ -570,16 +571,27 @@ class StudentGradesAPIView(generics.GenericAPIView):
                 enrollment=assessment_score.enrollment
             ).select_related('question')
 
+            # Get all Coding questions and scores
+            coding_scores = CodingQuestionScore.objects.filter(
+                question__assessment_Id=assessment_score.assessment,
+                enrollment_id=assessment_score.enrollment
+            ).select_related('question')
+
             # Get all handwritten questions and scores
             handwritten_scores = HandwrittenQuestionScore.objects.filter(
                 question__assessment=assessment_score.assessment,
                 enrollment=assessment_score.enrollment
             ).select_related('question')
-
+            
             # Get all Dynamic MCQ questions
             DynamicMCQ = apps.get_model('DynamicMCQ', 'DynamicMCQ')
             DynamicMCQQuestions = apps.get_model(
                 'DynamicMCQ', 'DynamicMCQQuestions')
+
+            # Get all Coding questions
+            CodingQuestion = apps.get_model('CodingQuestion', 'CodingQuestion')
+            CodingQuestionScore = apps.get_model(
+                'CodingQuestion', 'CodingQuestionScore')
 
             # Get all Dynamic MCQ questions for this assessment
             dynamic_mcqs = DynamicMCQ.objects.filter(assessment=assessment)
@@ -590,6 +602,8 @@ class StudentGradesAPIView(generics.GenericAPIView):
             mcq_total = float(mcq_scores.aggregate(
                 total=Sum('score'))['total'] or 0)
             handwritten_total = float(handwritten_scores.aggregate(
+                total=Sum('score'))['total'] or 0)
+            coding_total = float(coding_scores.aggregate(
                 total=Sum('score'))['total'] or 0)
 
             # Build questions data with student scores
@@ -634,6 +648,44 @@ class StudentGradesAPIView(generics.GenericAPIView):
                     })
 
                 questions_data.append(question_data)
+                
+            # Add Coding questions
+            coding_total = 0
+            for coding_score in coding_scores:
+                question_data = {
+                    'question_id': str(coding_score.question.id),
+                    'question_text': coding_score.question.description,
+                    'type': 'coding',
+                    'score': str(coding_score.score),
+                    'max_score': str(coding_score.question.max_grade),
+                    'student_answer': coding_score.student_answer,
+                    #'feedback': coding_score.feedback,
+                    'test_cases': [
+                        {
+                            'input_data': test_case.input_data,
+                            'expected_output': test_case.expected_output,
+                            'is_public': test_case.is_public
+                        } for test_case in TestCase.objects.filter(question_id=coding_score.question.id)
+                    ]
+                }
+                
+                # coding_total += float(coding_score.score)
+                
+                # # Get the student's submitted code from the assessment submission
+                # try:
+                #     submission = AssessmentSubmission.objects.get(
+                #         assessment=assessment,
+                #         enrollment=enrollment
+                #     )
+                #     student_answer = submission.codequestions_answers.get(str(coding_score.question.id))
+                # except (AssessmentSubmission.DoesNotExist, KeyError):
+                #     student_answer = None
+                
+                # question_data.update({
+                #     'student_answer': student_answer
+                # })
+                
+                questions_data.append(question_data)
 
             # Add Dynamic MCQ questions
             dynamic_mcq_total = 0
@@ -669,8 +721,9 @@ class StudentGradesAPIView(generics.GenericAPIView):
                     })
 
                 questions_data.append(question_data)
+                
 
-            total_answered_score = mcq_total + handwritten_total + dynamic_mcq_total
+            total_answered_score = mcq_total + handwritten_total + dynamic_mcq_total + coding_total
 
             response_data = {
                 'assessment_id': str(assessment_score.assessment.id),
@@ -807,6 +860,22 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
                     'created_by': str(question.created_by.id) if question.created_by else None
                 }
                 response_data['questions'].append(question_data)
+            
+            # Add Coding questions
+            for question in coding_questions:
+                question_data = {
+                    'id': str(question.id),
+                    'type': 'coding',
+                    'question': question.description,
+                    'max_grade': str(question.max_grade),
+                    'test_cases': [
+                        {
+                            'input_data': test_case.input_data,
+                            'expected_output': test_case.expected_output,
+                        } for test_case in TestCase.objects.filter(question_id=question.id, is_public=True)
+                    ]
+                }
+                response_data['questions'].append(question_data)
 
             return Response(response_data, status=status.HTTP_200_OK)
 
@@ -922,6 +991,24 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
                     'max_grade': q.get('max_grade', 0),
                     'section_number': q.get('section_number', 1)
                 } for q in questions.get('handwritten', [])
+            ])
+
+            # Add coding questions
+            formatted_questions.extend([
+                {
+                    'type': 'coding',
+                    'id': str(q['id']),
+                    'question': q['question'],
+                    'max_grade': q.get('max_grade', 0),
+                    'section_number': q.get('section_number', 1),
+                    'test_cases': [
+                        {
+                            'input_data': test_case.input_data,
+                            'expected_output': test_case.expected_output,
+                            'is_public': test_case.is_public
+                        } for test_case in TestCase.objects.filter(question_id=q['id'], is_public=True)
+                    ]
+                } for q in questions.get('coding', [])
             ])
 
             # Sort questions by section number

@@ -164,10 +164,11 @@ def create_mcq_questions(assessments, teachers):
             question = McqQuestion.objects.create(
                 assessment=assessment,
                 question=f'Question {i+1} for {assessment.title}',
-                answer=options,
+                options=options,
                 answer_key=options[0],  # First option is correct
                 created_by=random.choice(teachers),
-                question_grade=Decimal('2.00')
+                question_grade=Decimal('2.00'),
+                section_number=i+1  # Add section number based on question index
             )
             questions.append(question)
     return questions
@@ -195,7 +196,7 @@ def create_mcq_scores(questions, enrollments):
                 MCQQuestionScore.objects.create(
                     question=question,
                     enrollment=enrollment,
-                    selected_answer=random.choice(question.answer)
+                    selected_answer=random.choice(question.options)
                 )
 
 def create_handwritten_scores(questions, enrollments):

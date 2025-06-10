@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CodingQuestion, TestCase, CodingQuestionScore
+from .models import CodingQuestion, TestCase, CodingQuestionScore, CodingScoreTestInteractions
 
 class TestCaseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,6 +19,12 @@ class TestCaseSerializer(serializers.ModelSerializer):
         # validated_data['Teacher'] = request.user
         # return super().create(validated_data)
 
+class CodingScoreTestInteractionsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CodingScoreTestInteractions
+        fields = ('id', 'questionScore', 'testCase', 'passed')
+        read_only_fields = ('id',)
+
 class CodingQuestionSerializer(serializers.ModelSerializer):
     test_cases = TestCaseSerializer(many=True, read_only=True)
     class Meta:
@@ -31,25 +37,33 @@ class CodingQuestionSerializer(serializers.ModelSerializer):
             'description',
             'function_signature',
             'language_id',
+            'difficulty',
+            'max_grade',
+            'section_number',
             'test_cases'
         )
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'created_date',)
     # def create(self, validated_data):
         # request = self.context.get('request', 'created_date')
         # validated_data['Teacher'] = request.user
         # return super().create(validated_data)
 
 class CodingQuestionScoreSerializer(serializers.ModelSerializer):
+    test_interactions = CodingScoreTestInteractionsSerializer(many=True, read_only=True)
     class Meta:
         model = CodingQuestionScore
         fields = (
             'id',
             'question',
             'enrollment_id',
-            'questionScore',
-            'score'
+            # 'questionScore',
+            'score',
+            'test_interactions',
+            'student_answer',
+            'feedback'
         )
         read_only_fields = ('id',)
+        
 
 class GenerateCodingQuestionsSerializer(serializers.Serializer):
     pdf_file = serializers.FileField()

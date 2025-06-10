@@ -13,7 +13,7 @@ class AssessmentSubmissionSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'assessment', 'enrollment', 'student_email', 
             'assessment_title', 'course_name', 'mcq_answers', 
-            'handwritten_answers', 'submitted_at', 'is_submitted'
+            'handwritten_answers', 'codequestions_answers', 'submitted_at', 'is_submitted'
         )
         read_only_fields = (
             'id', 'student_email', 'assessment_title', 
@@ -59,5 +59,12 @@ class AssessmentSubmissionSerializer(serializers.ModelSerializer):
                 # Additional validation for image path can be added here
             except Exception as e:
                 raise ValidationError(f"Invalid Handwritten question ID: {question_id}")
+
+        # Validate Coding answers
+        for question_id, code_answer in data.get('codequestions_answers', {}).items():
+            try:
+                question = data['assessment'].coding_questions.get(id=question_id)
+            except Exception as e:
+                raise ValidationError(f"Invalid Coding question ID: {question_id}")
 
         return data 
