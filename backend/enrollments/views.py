@@ -38,7 +38,7 @@ class EnrolledCoursesAPIView(generics.ListAPIView):
 
 
 
-class PromoteStudentsFacultyAPIView(APIView):
+class PromoteStudentsAPIView(APIView):
     permission_classes = [isInstitution]
 
     def post(self, request):
