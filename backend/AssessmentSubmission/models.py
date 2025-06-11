@@ -265,7 +265,7 @@ class AssessmentSubmission(models.Model):
                         "passed": passed,
                         "error": result.get("stderr")
                     })
-
+                print(results)
                 # Calculate proportional score
                 if total_cases > 0:
                     score = int((passed_cases / total_cases) * question.max_grade)
