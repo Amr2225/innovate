@@ -249,7 +249,10 @@ class AssessmentSubmission(models.Model):
                             
                             return data1 == data2
 
-                    passed = compare_json_structures(output_data, expected_data)
+                        passed = compare_json_structures(output_data, expected_data)
+                    except json.JSONDecodeError:
+                        # If JSON parsing fails, do regular string comparison
+                        passed = output == expected
 
                     if passed:
                         passed_cases += 1
@@ -273,6 +276,7 @@ class AssessmentSubmission(models.Model):
                 score, created = CodingQuestionScore.objects.update_or_create(
                     question=question,
                     enrollment_id=self.enrollment,
+                    student_answer=code_answer,
                     defaults={"score": score}
                 )
 
@@ -280,7 +284,7 @@ class AssessmentSubmission(models.Model):
                 for result in results:
                     CodingScoreTestInteractions.objects.create(
                         questionScore=score,
-                        testCase=case,
+                        testCase_id=result["test_case_id"],
                         passed=result["passed"]
                     )
 
