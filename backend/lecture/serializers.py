@@ -2,6 +2,7 @@ from rest_framework import serializers
 from chapter.models import Chapter
 from lecture.models import Lecture, LectureProgress
 from users.models import User
+from enrollments.models import Enrollments
 
 
 class ChapterSerializer(serializers.ModelSerializer):
@@ -37,15 +38,15 @@ class LectureSerializer(serializers.ModelSerializer):
         course = chapter.course
         semester = course.semester
 
-        students = User.objects.filter(
-            institution=course.institution,
-            role="Student",
-            semester=semester
+        enrollments = Enrollments.objects.filter(
+            course=course,
+            user__role="Student",
+            user__semester=semester
         )
 
         progress_entries = [
-            LectureProgress(user=student, lecture=lecture, completed=False)
-            for student in students
+            LectureProgress(enrollment=enrollment, lecture=lecture, completed=False)
+            for enrollment in enrollments
         ]
         LectureProgress.objects.bulk_create(progress_entries)
 
@@ -63,18 +64,29 @@ class LectureProgressSerializer(serializers.ModelSerializer):
             'id',
             'lecture',
             'lecture_data',
-            'completed'
+            'completed',
+            'time_spent'
         )
 
     def create(self, validated_data):
         request = self.context.get('request')
         lecture = validated_data.get('lecture')
         completed = validated_data.get('completed', False)
+        time_spent = validated_data.get('time_spent')
+
+        # Get the enrollment for this user and lecture's course
+        enrollment = Enrollments.objects.get(
+            user=request.user,
+            course=lecture.chapter.course
+        )
 
         progress, created = LectureProgress.objects.update_or_create(
-            user=request.user,
+            enrollment=enrollment,
             lecture=lecture,
-            defaults={'completed': completed}
+            defaults={
+                'completed': completed,
+                'time_spent': time_spent
+            }
         )
         return progress
 
@@ -123,15 +135,15 @@ class LectureBulkCreateSerializer(serializers.Serializer):
             course = chapter.course
             semester = course.semester
 
-            students = User.objects.filter(
-                institution=course.institution,
-                role="Student",
-                semester=semester
+            enrollments = Enrollments.objects.filter(
+                course=course,
+                user__role="Student",
+                user__semester=semester
             )
 
             progress_entries = [
-                LectureProgress(user=student, lecture=lecture, completed=False)
-                for student in students
+                LectureProgress(enrollment=enrollment, lecture=lecture, completed=False)
+                for enrollment in enrollments
             ]
             LectureProgress.objects.bulk_create(progress_entries)
 

@@ -76,6 +76,8 @@ INSTALLED_APPS = [
     'CodingQuestion',
     'DynamicMCQ',
     'AssessmentSubmission',
+    'teacher_analytics'
+   
 ]
 
 ASGI_APPLICATION = 'main.asgi.application'

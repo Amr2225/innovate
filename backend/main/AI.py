@@ -142,7 +142,7 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
         prompt[1]['content'] = f"""
         context: {text}
 
-        Based on the provided context, generate {num_questions} multiple-choice questions at {difficulty_desc} difficulty level. Your response must be strictly in the following JSON format:
+        Based on the provided context, generate {num_questions} multiple-choice questions at {difficulty_desc} difficulty level from the context only. Your response must be strictly in the following JSON format:
 
         [{{"question": "<question text>",
           "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>", "<option 5>", "<option 6>"],
@@ -155,7 +155,7 @@ def generate_mcqs_from_text(text, num_questions=10, seed=None, difficulty='3', n
         4. Each option MUST be a string
         5. The options array MUST contain EXACTLY {num_options} strings
         6. Do not include any explanations or additional text
-        7. Ensure the JSON is valid and properly formatted
+        7. Ensure the JSON is valid and properly formatted if not try to generate the question again
         8. Use double quotes for all strings
         9. Do not include any trailing commas
         10. Do not include any comments or markdown formatting

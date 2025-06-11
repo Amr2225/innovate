@@ -129,14 +129,17 @@ def create_lectures(chapters):
             lectures.append(lecture)
     return lectures
 
-def create_lecture_progress(lectures, students):
-    for student in students:
-        for lecture in lectures:
+def create_lecture_progress(lectures, enrollments):
+    for enrollment in enrollments:
+        # Get lectures for this enrollment's course
+        course_lectures = [l for l in lectures if l.chapter.course == enrollment.course]
+        for lecture in course_lectures:
             if random.random() < 0.7:  # 70% chance of completion
                 LectureProgress.objects.create(
-                    user=student,
+                    enrollment=enrollment,
                     lecture=lecture,
-                    completed=True
+                    completed=True,
+                    time_spent=random.uniform(10, 60)  # Random time between 10 and 60 minutes
                 )
 
 def create_assessments(courses):
@@ -251,7 +254,7 @@ def main():
     lectures = create_lectures(chapters)
     
     print("Creating lecture progress...")
-    create_lecture_progress(lectures, students)
+    create_lecture_progress(lectures, enrollments)
     
     print("Creating assessments...")
     assessments = create_assessments(courses)
