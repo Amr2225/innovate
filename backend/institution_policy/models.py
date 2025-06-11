@@ -11,3 +11,5 @@ class InstitutionPolicy(models.Model):
     min_gpa_required = models.FloatField(null=True, blank=True)
     min_attendance_percent = models.FloatField(default=75.0, null=True, blank=True)
     max_allowed_courses_per_semester = models.IntegerField(default=6, null=True, blank=True)
+    year_registration_open = models.BooleanField(default=False)
+    summer_registration_open = models.BooleanField(default=False)

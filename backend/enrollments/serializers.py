@@ -25,8 +25,9 @@ class EnrollmentsSerializer(serializers.ModelSerializer):
             'course_data',
             'enrolled_at',
             'is_completed',
-            'total_score',
-            'retries'
+            'is_passed',
+            'is_summer_enrollment',
+            'total_score'
         )
 
     def to_representation(self, instance):

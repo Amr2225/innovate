@@ -16,12 +16,12 @@ class Course(models.Model):
     semester = models.PositiveSmallIntegerField(null=True, blank=True)
     passing_grade = models.FloatField(default=50.0, null=True, blank=True)
     is_active = models.BooleanField(default=False)
+    total_grade = models.PositiveSmallIntegerField(null=True, blank=True)
+    is_summer_open = models.BooleanField(default=False)
 
     # Faculty fields
     credit_hours = models.PositiveSmallIntegerField(null=True, blank=True)
     
-    # School fields
-    total_grade = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         constraints = [

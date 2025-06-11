@@ -16,7 +16,7 @@ import csv
 class CourseListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = CourseSerializer
     filterset_fields = ['id', 'name', 'prerequisite_course',
-                        'instructors', 'total_grade', 'credit_hours', 'semester']
+                        'instructors', 'total_grade', 'credit_hours', 'semester', 'is_active', 'is_summer_open']
 
     def get_queryset(self):
         user = self.request.user

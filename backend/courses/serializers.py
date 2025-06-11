@@ -14,7 +14,7 @@ class InstructorSerializer(serializers.ModelSerializer):
 class PrerequisiteCourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = ['id', 'name', 'description', 'prerequisite_course', 'instructors', 'total_grade', 'credit_hours', 'semester', 'level', 'is_active']
+        fields = ['id', 'name', 'description', 'prerequisite_course', 'instructors', 'total_grade', 'credit_hours', 'semester', 'level', 'is_active', 'is_summer_open']
 
 class CourseSerializer(serializers.ModelSerializer):
     prerequisite_course = serializers.PrimaryKeyRelatedField(
@@ -42,7 +42,8 @@ class CourseSerializer(serializers.ModelSerializer):
             'credit_hours',
             'semester',
             'level',
-            'chapters'
+            'chapters',
+            'is_summer_open'
         )
     
     def __init__(self, *args, **kwargs):

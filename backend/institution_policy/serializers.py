@@ -11,5 +11,7 @@ class InstitutionPolicySerializer(serializers.ModelSerializer):
             'max_allowed_failures',
             'min_gpa_required',
             'min_attendance_percent',
-            'max_allowed_courses_per_semester'
+            'max_allowed_courses_per_semester',
+            'year_registration_open',
+            'summer_registration_open'
         )
