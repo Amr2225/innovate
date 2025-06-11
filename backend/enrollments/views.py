@@ -12,6 +12,8 @@ from courses.models import Course
 from enrollments.models import Enrollments
 from rest_framework.views import APIView
 from courses.serializers import CourseSerializer
+import uuid
+from uuid import UUID
 from assessment.models import AssessmentScore
 from institution_policy.models import InstitutionPolicy
 from users.models import User
@@ -23,7 +25,7 @@ from enrollments.serializers import (
 from lecture.models import Lecture, LectureProgress
 
 class EnrolledCoursesAPIView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [isStudent]
     serializer_class = CourseSerializer
 
     def get_queryset(self):
@@ -67,17 +69,16 @@ class PromoteStudentsFacultyAPIView(APIView):
 
             for enrollment in enrollments:
                 total_semester_score += enrollment.total_score
-                total_semester_grade += enrollment.course.total_grade
+                total_semester_grade += enrollment.course.total_grade or 0
                 print(enrollment.course.name)
                 print(str(enrollment.total_score) + " / " + str(enrollment.course.passing_grade))
                 if enrollment.total_score >= enrollment.course.passing_grade:
-                    enrollment.is_completed = True
+                    enrollment.is_passed = True
                     enrollment.save()
                 else:
                     failed_courses_count += 1
-                    enrollment.retries += 1
                     enrollment.save()
-                enrollment.total_score = 0
+                enrollment.is_completed = True
                 enrollment.save()
             if total_semester_grade > 0:
                 percentage = (total_semester_score / total_semester_grade) * 100
@@ -110,86 +111,111 @@ class PromoteStudentsFacultyAPIView(APIView):
 
 
 
-
 class EligibleCoursesAPIView(generics.ListCreateAPIView):
+
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return EnrollMultipleCoursesSerializer
         return CourseSerializer
-    permission_classes = [IsAuthenticated]
+    
+    permission_classes = [isStudent]
 
     def get_queryset(self):
         user = self.request.user
 
-        completed_course_ids = Enrollments.objects.filter(
-            user=user,
-            is_completed=True
-        ).values_list('course_id', flat=True)
+        policy = InstitutionPolicy.objects.filter(institution=user.institution.first()).first()
+        if not policy:
+            raise PermissionDenied("No institution policy found.")
+        
+        if policy.year_registration_open:
+            all_active_courses = Course.objects.filter(is_active=True)
 
-        enrolled_course_ids = Enrollments.objects.filter(
-            user=user
-        ).values_list('course_id', flat=True)
+            eligible_courses = []
 
-        potential_courses = Course.objects.exclude(id__in=enrolled_course_ids)
+            for course in all_active_courses:
+                last_enrollment = Enrollments.objects.filter(user=user, course=course).order_by('-enrolled_at').first()
 
-        eligible_courses = potential_courses.filter(
-            (Q(prerequisite_course__isnull=True) |
-            Q(prerequisite_course__in=completed_course_ids)) &
-            Q(semester__lte=user.semester)
-        )
+                if last_enrollment:
+                    if not last_enrollment.is_passed and last_enrollment.is_completed:
+                        eligible_courses.append(course)
+                    continue
+                else:
+                    prereq = course.prerequisite_course
+                    completed_course_ids = Enrollments.objects.filter(
+                        user=user,
+                        is_passed=True,
+                        is_completed=True
+                    ).values_list('course_id', flat=True)
 
-        return eligible_courses
+                    if (not prereq or prereq.id in completed_course_ids) and course.semester <= user.semester:
+                        eligible_courses.append(course)
+
+            return eligible_courses
+        
+        elif policy.summer_registration_open:
+
+            all_active_courses = Course.objects.filter(is_active=True, is_summer_open=True)
+            
+            eligible_courses = []
+            
+            for course in all_active_courses:
+                last_enrollment = Enrollments.objects.filter(user=user, course=course).order_by('-enrolled_at').first()
+                if last_enrollment:
+                    if not last_enrollment.is_passed and last_enrollment.is_completed:
+                        eligible_courses.append(course)
+                    continue
+            
+            return eligible_courses
+        
+        raise PermissionDenied("Registration is not open yet.")
     
     def create(self, request, *args, **kwargs):
         user = request.user
-        print(request.data)
+
+        policy = InstitutionPolicy.objects.filter(institution=user.institution.first()).first()
+        if not policy:
+            raise PermissionDenied("No institution policy found.")
+
+        if not (policy.year_registration_open or policy.summer_registration_open):
+            raise PermissionDenied("Registration is not open yet.")
+        
         course_ids = request.data.get("courses", [])
 
         if not isinstance(course_ids, list) or not course_ids:
             return Response({"error": "Please provide a list of course IDs."}, status=status.HTTP_400_BAD_REQUEST)
 
-        completed_course_ids = set(Enrollments.objects.filter(
-            user=user,
-            is_completed=True
-        ).values_list('course_id', flat=True))
+        try:
+            course_uuids = [UUID(cid) for cid in course_ids]
+        except ValueError:
+            return Response({"error": "One or more course IDs are invalid UUIDs."}, status=status.HTTP_400_BAD_REQUEST)
 
-        enrolled_course_ids = set(Enrollments.objects.filter(
-            user=user
-        ).values_list('course_id', flat=True))
-
+        eligible_courses = self.get_queryset()
+        eligible_course_dict = {course.id: course for course in eligible_courses}
+        
+        if not all(cid in eligible_course_dict for cid in course_uuids):
+            return Response({"error": "One or more selected courses are not eligible for enrollment."}, status=status.HTTP_400_BAD_REQUEST)
+        
         enrolled_courses = []
-        skipped_courses = {}
 
-        for course_id in course_ids:
-            try:
-                course = Course.objects.get(id=course_id)
-            except Course.DoesNotExist:
-                skipped_courses[course_id] = "Course not found."
-                continue
-
-            if course.id in enrolled_course_ids:
-                skipped_courses[course_id] = "Already enrolled."
-                continue
-
-            prereq = course.prerequisite_course
-            if prereq and prereq.id not in completed_course_ids:
-                skipped_courses[course_id] = "Prerequisite not completed."
-                continue
-
-            enrollment = Enrollments.objects.create(user=user, course=course)
-            enrolled_courses.append(enrollment)
-
-            lectures = Lecture.objects.filter(chapter__course=course)
-            progress_entries = [LectureProgress(user=user, lecture=lecture) for lecture in lectures]
-            try:
-                LectureProgress.objects.bulk_create(progress_entries)
-            except Exception as e:
-                print(f"Error creating progress entries: {e}")
+        for course_id in course_uuids:
+            course = eligible_course_dict[course_id]
+            if policy.summer_registration_open:
+                enrollment = Enrollments.objects.create(user=user, course=course, is_summer_enrollment=True)
+                enrolled_courses.append(enrollment)
+            elif policy.year_registration_open:
+                enrollment = Enrollments.objects.create(user=user, course=course)
+                enrolled_courses.append(enrollment)
+                lectures = Lecture.objects.filter(chapter__course=course)
+                progress_entries = [LectureProgress(user=user, lecture=lecture) for lecture in lectures]
+                try:
+                    LectureProgress.objects.bulk_create(progress_entries)
+                except Exception as e:
+                    print(f"Error creating progress entries: {e}")
 
         return Response({
-            "enrolled": EnrollmentsSerializer(enrolled_courses, many=True, context={'request': request}).data,
-            "skipped": skipped_courses
-        }, status=status.HTTP_201_CREATED)
+        "enrolled": EnrollmentsSerializer(enrolled_courses, many=True, context={'request': request}).data
+    }, status=status.HTTP_201_CREATED)
+
 
 class EnrollmentAssessmentScoresView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]

@@ -13,11 +13,9 @@ class Enrollments(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
     enrolled_at = models.DateTimeField(auto_now_add=True)
     is_completed = models.BooleanField(default=False)
+    is_passed = models.BooleanField(default=False)
+    is_summer_enrollment = models.BooleanField(default=False)
     total_score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    retries = models.IntegerField(default=0)
-
-    class Meta:
-        unique_together = ('user', 'course')
 
     def __str__(self):
         return f"{self.user.email} - {self.course.name}"
