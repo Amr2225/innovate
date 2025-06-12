@@ -21,7 +21,7 @@ import Loader from "@/components/Loader";
 export default function AssignmentSection() {
   const { data: assignments, isLoading } = useQuery({
     queryKey: ["assignments"],
-    queryFn: getAssessment,
+    queryFn: () => getAssessment({ pageParam: 1, page_size: 10, type: "Assignment" }),
   });
 
   if (isLoading) return <Loader />;

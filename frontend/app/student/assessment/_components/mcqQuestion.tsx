@@ -24,7 +24,7 @@ export default function MCQQuestion({
       <div className='pl-3'>
         <RadioGroup
           onValueChange={(value) => setMcqAnswer(questionId, value)}
-          value={mcqAnswers[questionId]}
+          value={mcqAnswers[questionId] || ""}
         >
           {options.map((option, index) => (
             <div key={index} className='flex items-center gap-3'>

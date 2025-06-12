@@ -16,13 +16,20 @@ import { createAssessmentStore } from "@/store/assessmentStore";
 import { Plus } from "lucide-react";
 
 export default function AddAssignmentPage() {
+  // const [sectionKey, setSectionKey] = useState("");
   const { courseId } = useParams();
 
   const useAssessmentStore = createAssessmentStore(courseId as string);
-  const { questions, setQuestions, addQuestion, currentSection } = useAssessmentStore();
+  const { questions, setQuestions, addQuestion, currentSection, sections } = useAssessmentStore();
+
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     setSectionKey(`section-${currentSection}`);
+  //   }, 200);
+  // }, [currentSection]);
 
   return (
-    <AssessmentTabs>
+    <AssessmentTabs defaultSection={`section-${sections[0].id}`}>
       <TabsContent value={`section-${currentSection}`}>
         <Reorder.Group
           axis='y'

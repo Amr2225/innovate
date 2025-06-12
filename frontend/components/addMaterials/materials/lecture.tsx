@@ -1,5 +1,5 @@
 "use client";
-import { memo, useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 // Components
 import {
@@ -37,16 +37,12 @@ interface LecturesProps {
 }
 
 function LectureItem({ lecture, index, chapterId, lectureLength }: LectureItemProps) {
-  const [isEditing, setIsEditing] = useState<boolean[]>([]);
+  const [isEditing, setIsEditing] = useState<boolean[]>(new Array(lectureLength).fill(false));
   const [dialogOpen, setDialogOpen] = useState<string | null>(null);
 
   const { courseId } = useParams();
-  const useCourseStore = createCourseStore(courseId as string);
+  const useCourseStore = createCourseStore((courseId as string) || "new");
   const { updateLecture, deleteLecture } = useCourseStore();
-
-  useEffect(() => {
-    setIsEditing(new Array(lectureLength).fill(false));
-  }, [lectureLength]);
 
   const handleEditToggle = useCallback(() => {
     setIsEditing((prev) => {
@@ -114,53 +110,6 @@ function LectureItem({ lecture, index, chapterId, lectureLength }: LectureItemPr
         </Button>
       </div>
 
-      {/* <CustomDialog
-        title='Video'
-        description='Upload a video for the lecture'
-        open={dialogOpen === "video"}
-        setOpen={(open) => setDialogOpen(open ? "video" : null)}
-      >
-        <div className='flex justify-center items-center h-[250px] w-full rounded-md border border-neutral-300 overflow-hidden'>
-          {!lecture.video ? (
-            <div
-              {...getRootProps()}
-              className='flex justify-center items-center w-full h-full flex-col gap-2 cursor-pointer'
-            >
-              <input {...getInputProps()} accept='video/*' />
-              <Video
-                className={cn("size-10 text-neutral-400", {
-                  "text-primary": isDragActive,
-                })}
-              />
-              <p className={cn("text-neutral-400", { "text-primary": isDragActive })}>
-                No video selected
-              </p>
-            </div>
-          ) : (
-            <div className='w-full h-full'>
-              <Player src={previewUrl as string} />
-            </div>
-          )}
-        </div>
-        <div className='flex justify-between items-center gap-2'>
-          <div className='space-x-2'>
-            <DialogClose asChild>
-              <Button type='button' variant='secondary'>
-                Close
-              </Button>
-            </DialogClose>
-            {lecture.video && (
-              <Button
-                variant='link'
-                onClick={() => updateLecture(chapterId, lecture.id, "video", null)}
-              >
-                Reset
-              </Button>
-            )}
-          </div>
-          <Button>Upload</Button>
-        </div>
-      </CustomDialog> */}
       <DialogGroup
         dialogOpen={dialogOpen}
         setDialogOpen={setDialogOpen}
@@ -187,4 +136,4 @@ const LecturesCard = ({ chapterId, lectures }: LecturesProps) => {
   );
 };
 
-export default memo(LecturesCard);
+export default LecturesCard;

@@ -1,5 +1,5 @@
 "use client";
-import React, { memo, useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 // Components
 import EditInput from "@/components/editInput";
@@ -34,14 +34,11 @@ interface ChapterCardProps {
 
 function ChapterCard({ chapter, index }: ChapterCardProps) {
   const { courseId } = useParams();
-  const useCourseStore = createCourseStore(courseId as string);
+  const useCourseStore = createCourseStore((courseId as string) || "new");
+
   const { updateChapter, deleteChapter, addLecture, chapters } = useCourseStore();
 
-  const [isEditing, setIsEditing] = useState<boolean[]>([]);
-
-  useEffect(() => {
-    setIsEditing(new Array(chapters.length).fill(false));
-  }, [chapters.length]);
+  const [isEditing, setIsEditing] = useState<boolean[]>(new Array(chapters.length).fill(false));
 
   const { ref, isDropTarget } = useDroppable({
     id: chapter.id,
@@ -50,27 +47,6 @@ function ChapterCard({ chapter, index }: ChapterCardProps) {
       chapterId: chapter.id,
     },
   });
-
-  // const { ref: sortableRef, handleRef } = useSortable({
-  //   id: chapter.id,
-  //   index,
-  //   type: "chapter",
-  //   accept: "chapter",
-  //   group: "chapter",
-  //   collisionPriority: CollisionPriority.Lowest,
-  // });
-
-  // const { ref: droppableRef, isDropTarget } = useDroppable({
-  //   id: chapter.id,
-  //   collisionPriority: CollisionPriority.Lowest,
-  //   accept: "lecture",
-  //   type: "lecture",
-  // });
-
-  // const ref = (node: HTMLElement | null) => {
-  //   sortableRef(node);
-  //   droppableRef(node);
-  // };
 
   const handleEditToggle = useCallback(() => {
     setIsEditing((prev) => {
@@ -153,4 +129,4 @@ function ChapterCard({ chapter, index }: ChapterCardProps) {
   );
 }
 
-export default memo(ChapterCard);
+export default ChapterCard;

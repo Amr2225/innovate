@@ -37,7 +37,7 @@ export default function AddVideoDialog({
   // Load video from IndexedDB
   const { previewUrl } = useVideo(lecture.video?.storageKey as string);
   const { courseId } = useParams();
-  const useCourseStore = createCourseStore(courseId as string);
+  const useCourseStore = createCourseStore((courseId as string) || "new");
   const { updateLecture } = useCourseStore();
 
   const onDrop = useCallback(

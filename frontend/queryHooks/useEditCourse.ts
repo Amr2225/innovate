@@ -1,23 +1,26 @@
 import { createChapterService } from "@/apiService/courseService";
 import { getAttachmentForLecture } from "@/store/attachmentStorage";
-import { createCourseStore } from "@/store/courseStore";
+import { createCourseStore, deleteCourseStore } from "@/store/courseStore";
 import { getVideo } from "@/store/videoStorage";
 import { Chapter } from "@/types/course.type";
 import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 export function useEditCourse(courseId: string) {
     const useCourseStore = createCourseStore(courseId);
     const { chapters } = useCourseStore();
+    const router = useRouter();
 
     const { mutate: createChapter, isPending: isCreatingChapter } = useMutation({
         mutationFn: (chapterData: FormData) => createChapterService(chapterData),
-        onSuccess: (data) => {
-            toast.success("Chapter created successfully");
-            console.log("chapterData", data);
+        onSuccess: () => {
+            toast.success("Curriculum created successfully");
+            router.push(`/institution/courses/`);
+            deleteCourseStore(courseId);
         },
         onError: (error) => {
-            console.log(error);
+            toast.error(error.message);
         },
     });
 

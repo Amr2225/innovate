@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 
 // Store
 import { createCourseStore } from "@/store/courseStore";
@@ -15,14 +16,11 @@ import { Lecture } from "@/types/course.type";
 import { Loader2 } from "lucide-react";
 
 export default function CoursePreviewPage() {
-  const [activeLecture, setActiveLecture] = useState<Lecture | null>(null);
-
-  const useCourseStore = createCourseStore(undefined);
+  const { courseId } = useParams();
+  const useCourseStore = createCourseStore(courseId as string);
   const { chapters } = useCourseStore();
 
-  useEffect(() => {
-    if (chapters.length > 0) setActiveLecture(chapters[0].lectures[0]);
-  }, [chapters]);
+  const [activeLecture, setActiveLecture] = useState<Lecture | null>(chapters[0].lectures[0]);
 
   const lectureNumber = useMemo(() => {
     if (!activeLecture) return null;

@@ -48,7 +48,7 @@ export default function QuestionCard({ question }: { question: Question }) {
 
         <div className='flex w-[20%] justify-end gap-3 items-center'>
           <Select
-            value={question.questionType as string}
+            value={question.questionType || ""}
             onValueChange={(value) => updateQuestion(question.id, "questionType", value)}
           >
             <SelectTrigger>

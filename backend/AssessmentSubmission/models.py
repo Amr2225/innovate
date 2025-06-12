@@ -152,7 +152,7 @@ class AssessmentSubmission(models.Model):
     def create_handwritten_scores(self):
         """Create HandwrittenQuestionScore records for each answer"""
         from HandwrittenQuestion.models import HandwrittenQuestionScore, HandwrittenQuestion
-        from main.AI import evaluate_handwritten_answer
+        from AI.evaluate_handwritten_answer import evaluate_handwritten_answer
 
         for question_id, file_path in self.handwritten_answers.items():
             question = HandwrittenQuestion.objects.get(id=question_id)

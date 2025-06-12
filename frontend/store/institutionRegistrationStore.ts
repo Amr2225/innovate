@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { EncryptedStorage } from './encryptedStorage'
 import { FileData } from '@/types/file.type'
+import { getImageMetadata, ImageMetadata, saveImage } from './imageStorage'
 
 
 type InstitutionStore = {
@@ -15,10 +16,12 @@ type InstitutionStore = {
     current_step: number
     credits: number
     logoData: FileData | null
+    logoStorageKey: string
     hmac: string | null
     reset: () => void
-    setFile: (file: File) => void
-    getFile: () => Promise<File | null>
+    setLogo: (Logo: File) => Promise<void>
+    // getFile: () => Promise<File | null>
+    getLogoName: () => Promise<ImageMetadata | null>
     setCredits: (credits: number) => void
     addCreds: (name: string, email: string, password: string, confirm_password: string) => void
     setCurrentStep: () => void
@@ -28,10 +31,11 @@ type InstitutionStore = {
     verficationFailedCallback: () => void
 }
 
-const initialState: Pick<InstitutionStore, 'name' | 'email' | 'password' | 'confirm_password' | 'isEmailVerified' | 'isPaymentSuccess' | 'isRegistrationSuccess' | 'current_step' | 'credits' | 'logoData' | 'hmac'> = {
+const initialState: Pick<InstitutionStore, 'name' | 'email' | 'password' | 'confirm_password' | 'isEmailVerified' | 'isPaymentSuccess' | 'isRegistrationSuccess' | 'current_step' | 'credits' | 'logoData' | 'hmac' | "logoStorageKey"> = {
     name: '',
     email: '',
     password: '',
+    logoStorageKey: '',
     confirm_password: '',
     isEmailVerified: false,
     isPaymentSuccess: false,
@@ -51,44 +55,25 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
                 set({ name, email, password, confirm_password });
                 get().setCurrentStep();
             },
-            setFile: async (file: File) => {
-                const arrayBuffer = await file.arrayBuffer();
-                // Convert ArrayBuffer to Base64 string for storage
-                const base64String = btoa(
-                    String.fromCharCode(...new Uint8Array(arrayBuffer))
-                );
+            setLogo: async (Logo: File) => {
+                const imageKey = `image_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+                await saveImage(Logo, imageKey)
                 set({
                     logoData: {
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
-                        lastModified: file.lastModified,
-                        arrayBuffer: base64String
-                    }
-                });
+                        name: Logo.name,
+                        lastModified: Logo.lastModified,
+                        size: Logo.size,
+                        type: Logo.type
+                    },
+                    logoStorageKey: imageKey
+                })
             },
-            getFile: async () => {
-                const logoData = get().logoData;
-                if (!logoData) return null;
-
-                // Convert Base64 string back to ArrayBuffer
-                const binaryString = atob(logoData.arrayBuffer as string);
-                const bytes = new Uint8Array(binaryString.length);
-                for (let i = 0; i < binaryString.length; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                const file = new File(
-                    [bytes],
-                    logoData.name,
-                    {
-                        type: logoData.type,
-                        lastModified: logoData.lastModified
-                    }
-                );
-
-                return file;
+            getLogoName: async () => {
+                return await getImageMetadata("123")
             },
+            // getFile: async () => {
+
+            // },
             setHmac: (hmac: string) => {
                 set({ hmac });
             },

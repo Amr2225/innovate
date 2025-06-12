@@ -34,7 +34,7 @@ export default function AddAttachmentDialog({
   chapterId,
 }: DialogGroupProps) {
   const { courseId } = useParams();
-  const useCourseStore = createCourseStore(courseId as string);
+  const useCourseStore = createCourseStore((courseId as string) || "new");
   const { updateLecture } = useCourseStore();
 
   const onDrop = useCallback(

@@ -12,9 +12,9 @@ from rest_framework import status
 from django.db.models import Sum
 from django.http import Http404
 from HandwrittenQuestion.models import HandwrittenQuestionScore
-from django.utils import timezone
 from AssessmentSubmission.models import AssessmentSubmission
 from django.apps import apps
+from users.permissions import isStudent
 
 # ----------------------
 # Assessment Views
@@ -814,40 +814,7 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
 
 
 class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
-    """
-    API endpoint to get questions for a specific student in an assessment.
-
-    This endpoint returns all questions (MCQ, Dynamic MCQ, and Handwritten) for a specific student
-    in an assessment, including their section numbers and grades.
-
-    GET /api/assessments/{assessment_id}/student-questions/
-
-    Parameters:
-    - assessment_id (UUID): The ID of the assessment
-
-    Returns:
-    ```json
-    {
-        "questions": [
-            {
-                "type": "dynamic_mcq|mcq|handwritten",
-                "id": "uuid",
-                "question": "string",
-                "options": ["string"],  // For MCQ and Dynamic MCQ
-                "grade": "string",  // For MCQ and Dynamic MCQ
-                "max_grade": "string",  // For Handwritten
-                "section_number": "integer"
-            }
-        ]
-    }
-    ```
-
-    Status Codes:
-    - 200: Successfully retrieved questions
-    - 403: Not authorized to view questions
-    - 404: Assessment not found
-    """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [isStudent]
     serializer_class = AssessmentSerializer
 
     def get_object(self):
@@ -874,10 +841,18 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
     def retrieve(self, request, *args, **kwargs):
         assessment = self.get_object()
 
-        # Check if assessment has started
-        if assessment.start_date > timezone.now():
+        # check if assessment is already submitted
+        enrollment = Enrollments.objects.get(
+            user=request.user,
+            course=assessment.course,
+            is_completed=False
+        )
+        if AssessmentSubmission.objects.filter(
+            enrollment=enrollment,
+            assessment=assessment
+        ).exists():
             raise PermissionDenied(
-                f"This assessment has not started yet. It will be available on {assessment.start_date.strftime('%Y-%m-%d %H:%M:%S')}")
+                "You have already submitted this assessment")
 
         try:
             # Get all questions for the student

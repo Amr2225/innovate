@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Breadcrumb,
   // BreadcrumbLink,
@@ -20,6 +20,22 @@ const generateLink = (pathnames: string[], index: number): string => {
 export function Breadcrumbs() {
   const { customPathnames, metadata } = useBreadcrumb();
   const pathname = usePathname();
+  // Add client-side only rendering
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Skip rendering anything meaningful during SSR
+  if (!isClient) {
+    return (
+      <Breadcrumb>
+        <BreadcrumbList></BreadcrumbList>
+      </Breadcrumb>
+    );
+  }
+
   const pathnames = customPathnames
     ? customPathnames.split("/").filter((path) => path)
     : pathname.split("/").filter((path) => path);

@@ -21,8 +21,8 @@ export default async function InstitutionDashboardLayout({
     <SidebarProvider>
       <BreadcrumbProvider>
         <AppSidebar session={session} />
-        <SidebarInset>
-          <header className='flex sticky top-0 bg-background h-16 shrink-0 items-center gap-2 border-b px-4'>
+        <SidebarInset className='h-full overflow-hidden'>
+          <header className='flex sticky top-0 bg-background h-16 shrink-0 items-center gap-2 border-b px-4 z-50'>
             <SidebarTrigger className='-ml-1' />
             <Separator orientation='vertical' className='mr-2 h-4' />
             <Breadcrumbs />
@@ -39,8 +39,8 @@ export default async function InstitutionDashboardLayout({
               variant='icon'
             />
           </header>
-          <div className='bg-primary-background h-full'>
-            <div className='container bg-white mx-auto h-[80vh] hide-scrollbar overflow-scroll mt-12 py-2 px-4'>
+          <div className='bg-primary-background max-h-full overflow-hidden'>
+            <div className='container bg-white mx-auto h-[80vh] hide-scrollbar overflow-scroll mt-12 py-2 px-4 w-full'>
               {children}
             </div>
           </div>
