@@ -19,7 +19,7 @@ import { Menu, PencilLine, Trash2, Plus } from "lucide-react";
 // Components
 import LecturesCard from "./lecture";
 import { useDroppable } from "@dnd-kit/react";
-import { useCourseStore } from "@/store/courseStore";
+import { createCourseStore } from "@/store/courseStore";
 
 interface ChapterCardProps {
   chapter: Chapter;
@@ -28,6 +28,7 @@ interface ChapterCardProps {
 
 function ChapterCard({ chapter, index }: ChapterCardProps) {
   const [isEditing, setIsEditing] = useState<boolean[]>([]);
+  const useCourseStore = createCourseStore();
   const { updateChapter, deleteChapter, addLecture, chapters } = useCourseStore();
 
   useEffect(() => {

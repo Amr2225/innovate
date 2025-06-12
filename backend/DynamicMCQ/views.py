@@ -1,4 +1,6 @@
 from django.forms import ValidationError
+from rest_framework import status
+from rest_framework.response import Response
 from rest_framework import generics, permissions
 from .models import DynamicMCQ, DynamicMCQQuestions
 from .serializers import DynamicMCQSerializer, DynamicMCQQuestionsSerializer
@@ -45,7 +47,7 @@ class DynamicMCQListCreateAPIView(generics.ListCreateAPIView):
     """
     API endpoint to list and create Dynamic MCQ questions for an assessment.
 
-    POST /assessments/{assessment_id}/
+    POST /{assessment_id}/
     Create a new Dynamic MCQ for an assessment.
 
     Request body:
@@ -91,8 +93,13 @@ class DynamicMCQListCreateAPIView(generics.ListCreateAPIView):
 
         return DynamicMCQ.objects.none()
 
-    def perform_create(self, serializer):
+    def create(self, request, *args, **kwargs):
         assessment_id = self.kwargs.get('assessment_id')
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            error_msg = next(iter(serializer.errors.values()))
+            [0] if serializer.errors else "Validation error"
+            return Response({"message": "\n".join(error_msg)}, status=status.HTTP_400_BAD_REQUEST)
         try:
             Assessment = get_assessment_model()
             assessment = Assessment.objects.get(id=assessment_id)
@@ -116,13 +123,14 @@ class DynamicMCQListCreateAPIView(generics.ListCreateAPIView):
         # Get num_options from request data or use default
         num_options = self.request.data.get('num_options', 4)
         if not isinstance(num_options, int) or num_options < 2 or num_options > 6:
-            raise ValidationError("Number of options must be between 2 and 6")
+            raise ValidationError(
+                "Number of options must be between 2 and 6")
 
         serializer.save(
-            created_by=user,
             assessment=assessment,
             num_options=num_options
         )
+        return Response({"message": "Dynamic MCQ created successfully"}, status=status.HTTP_201_CREATED)
 
 
 class DynamicMCQQuestionsListCreateAPIView(generics.ListCreateAPIView):

@@ -1,16 +1,13 @@
 import React from "react";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  //   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-// import { Button } from "@/components/ui/button";
 import { Table, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { TableHeader } from "@/components/ui/table";
 import { SubmissionData } from "@/types/user.types";
@@ -40,7 +37,6 @@ export default function StatusDialog({ open, onOpenChange, data }: StatusDialogP
                 <TableHead>Birth Date</TableHead>
                 <TableHead>Age</TableHead>
                 <TableHead>Role</TableHead>
-                <TableHead>Institution</TableHead>
                 <TableHead>Error</TableHead>
               </TableRow>
             </TableHeader>
@@ -58,7 +54,6 @@ export default function StatusDialog({ open, onOpenChange, data }: StatusDialogP
                   <TableCell>{item.birth_date}</TableCell>
                   <TableCell>{item.age}</TableCell>
                   <TableCell>{item.role}</TableCell>
-                  <TableCell>{item.institution}</TableCell>
                   <TableCell>{item.error}</TableCell>
                 </TableRow>
               ))}
@@ -66,8 +61,7 @@ export default function StatusDialog({ open, onOpenChange, data }: StatusDialogP
           </Table>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Close</AlertDialogCancel>
-          <AlertDialogAction>Continue</AlertDialogAction>
+          <AlertDialogCancel className='mr-auto'>Close</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -63,7 +63,7 @@ const formSchema = z.object({
 });
 
 export default function BasInfoForm() {
-  const useCourseStore = createCourseStore(undefined);
+  const useCourseStore = createCourseStore("new");
   const { addCourse } = useCourseStore();
 
   const form = useForm({

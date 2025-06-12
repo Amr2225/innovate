@@ -7,7 +7,7 @@ export type AssessmentStore = Assessment & {
     sections: {
         id: string;
     }[];
-    currentSection: number;
+    currentSection: string;
     setCourseId: (courseId: string) => void;
 
     // Assessment
@@ -17,7 +17,7 @@ export type AssessmentStore = Assessment & {
     addQuestion: () => void;
     setQuestions: (questions: Question[] | ((prev: Question[]) => Question[])) => void;
 
-    updateQuestion: (questionId: string, key: keyof Question, value: string | string[]) => void;
+    updateQuestion: <T extends Question>(questionId: string, key: keyof T, value: string | string[]) => void;
     deleteQuestion: (questionId: string) => void;
 
     // MCQ 
@@ -28,10 +28,15 @@ export type AssessmentStore = Assessment & {
 
 
     // AI Generated MCQ
-    setAIGenerateMCQ: (questionId: string, title: string, options: string[], mcqAnswer: string) => void;
+    setAIGenerateMCQ: (questionId: string, title: string, options: string[], mcqAnswer: string, totalGrade: number) => void;
+    updateAIGeneratedMCQAnswer: (questionId: string, questionIndex: number, optionIndex: number, newOptionValue: string) => void;
+    updateAIGeneratedMCQQuestion: (questionId: string, questionIndex: number, newQuestionValue: string) => void;
+    deleteAIGenerateMCQQueston: (questionId: string, questionTitle: string) => void;
+    deleteAIGenerateMCQ: (questionId: string) => void;
+
 
     // Sections
-    setCurrentSection: (sectionNumber: number) => void;
+    setCurrentSection: (sectionNumber: string) => void;
     addSection: () => void;
     deleteSection: (sectionId: string) => void;
 }
@@ -46,7 +51,7 @@ const initialState: Pick<AssessmentStore, "id" | "title" | "type" | "questions" 
     due_date: new Date(),
     start_date: null,
     sections: [{ id: "1" }],
-    currentSection: 1,
+    currentSection: "1",
 }
 
 const storeCache: Record<string, UseBoundStore<StoreApi<AssessmentStore>>> = {};
@@ -72,6 +77,7 @@ export const createAssessmentStore = (courseId: string) => {
                             id: Math.random().toString(),
                             title: "New Question",
                             questionType: "",
+                            totalGrade: null,
                             sectionNumber: state.currentSection,
                         }]
                     }))
@@ -80,7 +86,7 @@ export const createAssessmentStore = (courseId: string) => {
                     questions: typeof questions === 'function' ? questions(state.questions) : questions
                 })),
 
-                updateQuestion: (questionId: string, key: keyof Question, value: string | string[]) => {
+                updateQuestion: <T extends Question>(questionId: string, key: keyof T, value: string | string[]) => {
                     set((state) => ({
                         questions: state.questions.map((question) => question.id === questionId ? {
                             ...question,
@@ -93,23 +99,74 @@ export const createAssessmentStore = (courseId: string) => {
                         questions: state.questions.filter((question) => question.id !== questionId)
                     }))
                 },
-                setAIGenerateMCQ: (questionId: string, title: string, options: string[], mcqAnswer: string) => {
+
+
+                // AI Generated MCQ
+                setAIGenerateMCQ: (questionId: string, title: string, options: string[], mcqAnswer: string, totalGrade: number) => {
                     set((state) => ({
-                        questions: state.questions.map((question) => question.id === questionId ? {
+                        questions: state.questions.map((question) => question.id === questionId && question.questionType === "aiMcq" ? {
                             ...question,
-                            questions: [{
-                                question: title,
-                                options: options,
-                                correct_answer: mcqAnswer
-                            }]
+                            questions: question.questions ?
+                                [...question.questions, {
+                                    question: title,
+                                    options: options,
+                                    correct_answer: mcqAnswer,
+                                    total_grade: totalGrade
+                                }] : [{
+                                    question: title,
+                                    options: options,
+                                    correct_answer: mcqAnswer,
+                                    total_grade: totalGrade
+                                }]
                         } : question)
                     }))
                 },
+                updateAIGeneratedMCQAnswer: (questionId: string, questionIndex: number, optionIndex: number, newOptionValue: string) => {
+                    set((state) => ({
+                        questions: state.questions.map((question) => question.id === questionId && question.questionType === "aiMcq" ? {
+                            ...question,
+                            questions:
+                                question.questions?.map((questions, index) => index === questionIndex ?
+                                    {
+                                        ...questions,
+                                        options: questions.options?.toSpliced(optionIndex, 1, newOptionValue)
+                                    }
+                                    : questions)
+                        } : question)
+                    }))
+                },
+                updateAIGeneratedMCQQuestion: (questionId: string, questionIndex: number, newQuestionValue: string) => {
+                    set((state) => ({
+                        questions: state.questions.map((question) => question.id === questionId && question.questionType === "aiMcq" ? {
+                            ...question,
+                            questions: question.questions?.map((questions, index) => index === questionIndex ?
+                                { ...questions, question: newQuestionValue }
+                                : questions)
+                        } : question)
+                    }))
+                },
+                deleteAIGenerateMCQQueston: (questionId: string, questionTitle: string) => {
+                    set((state) => ({
+                        questions: state.questions.map((question) => question.id === questionId && question.questionType === "aiMcq" ? {
+                            ...question,
+                            questions: question.questions?.filter((questions) => questions.question !== questionTitle)
+                        } : question)
+                    }))
+                },
+                deleteAIGenerateMCQ: (questionId: string) => {
+                    set((state) => ({
+                        questions: state.questions.map((question) => question.id === questionId && question.questionType === "aiMcq" ? {
+                            ...question,
+                            questions: []
+                        } : question)
+                    }))
+                },
+
+                // MCQ
                 addMCQAnswer: (questionId: string) => {
                     set((state) => ({
-                        questions: state.questions.map((question) => question.id === questionId ? {
+                        questions: state.questions.map((question) => question.id === questionId && question.questionType === "mcq" ? {
                             ...question,
-                            // options: question.options!.push({ id: Math.random().toString(), option: "New Answer" })
                             options: question.options
                                 ? [...question.options, { id: Math.random().toString(), option: "New Answer" }]
                                 : [{ id: Math.random().toString(), option: "New Answer" }]
@@ -126,7 +183,7 @@ export const createAssessmentStore = (courseId: string) => {
                 },
                 updateMCQAnswer: (questionId: string, answerId: string, key: keyof Answer, value: string) => {
                     set((state) => ({
-                        questions: state.questions.map((question) => question.id === questionId ? {
+                        questions: state.questions.map((question) => question.id === questionId && question.questionType === "mcq" ? {
                             ...question,
                             options: question.options!.map((answer) => answer.id === answerId ? { ...answer, [key]: value } : answer)
                         } : question)
@@ -135,13 +192,13 @@ export const createAssessmentStore = (courseId: string) => {
                 deleteMCQAnswer: (questionId: string, answerId: string) => {
                     if (!questionId) return;
                     set((state) => ({
-                        questions: state.questions.map((question) => question.id === questionId ? {
+                        questions: state.questions.map((question) => question.id === questionId && question.questionType === "mcq" ? {
                             ...question,
                             options: question.options!.filter((answer) => answer.id !== answerId)
                         } : question)
                     }))
                 },
-                setCurrentSection: (sectionNumber: number) => {
+                setCurrentSection: (sectionNumber: string) => {
                     set({
                         currentSection: sectionNumber
                     })
@@ -156,7 +213,7 @@ export const createAssessmentStore = (courseId: string) => {
                         // Delete the section from the sections array
                         sections: state.sections.filter((section) => section.id !== sectionId),
                         // Delete the questions that are in the section
-                        questions: state.questions.filter((question) => question.sectionNumber !== Number(sectionId))
+                        questions: state.questions.filter((question) => question.sectionNumber !== sectionId)
                     }))
                 }
             }),

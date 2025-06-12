@@ -7,8 +7,12 @@ urlpatterns = [
 
     path('users/register/csv/', views.BulkUserImportView.as_view(),
          name="institution_register_csv"),
+    #     path('users/register/', views.InstitutionUserCreationView.as_view(),
+    #          name="institution_register"),
     path('users/', views.InstitutionUserView.as_view(),
          name="institution_register_user"),
+    path('users/<uuid:user_id>/', views.InstitutionUserUpdateDeleteView.as_view(),
+         name="institution_register_user_update_delete"),
 
     # Payment
     path('webhook/', paymentViews.InstitutionPaymentWebhookView.as_view(),

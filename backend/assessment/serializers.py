@@ -10,13 +10,16 @@ from enrollments.models import Enrollments
 
 class AssessmentListSerializer(serializers.ModelSerializer):
     has_submitted = serializers.SerializerMethodField()
+    course = serializers.CharField(source='course.name', read_only=True)
+    course_description = serializers.CharField(
+        source='course.description', read_only=True)
     # enrollment_id = serializers.UUIDField(
     #     source='enrollment.id', read_only=True)
 
     class Meta:
         model = Assessment
         fields = ['id', 'title', 'type', 'start_date',
-                  'due_date', 'accepting_submissions', 'has_submitted']
+                  'due_date', 'accepting_submissions', 'has_submitted', 'course', 'course_description', "grade"]
 
     def get_has_submitted(self, obj):
         request = self.context.get('request')

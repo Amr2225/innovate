@@ -3,8 +3,9 @@ import { transformData } from "@/lib/transformations";
 import { InstitutionMembersType, SubmissionData } from "@/types/user.types";
 import { getSession } from "@/lib/session";
 import axios from "axios";
+import { InstitutionRegisterStudentSchemaType } from "@/schema/institutionRegisterSchema";
 
-interface GetMembersResponse {
+interface MembersResponse {
     data: InstitutionMembersType[]
     next: number | null
     previous: number | null
@@ -21,13 +22,48 @@ interface IGeneratePayment {
     redirection_url?: string
 }
 
-export const getMembers = async (pageParam: number, pageSize: number, role?: string): Promise<GetMembersResponse> => {
-    const res = await api.get("/institution/users/", { params: { page: pageParam, page_size: pageSize, role } })
+interface IMembers {
+    pageParam: number
+    pageSize: number
+    role?: "Teacher" | "Student" | "Institution"
+    first_name?: string
+    last_name?: string
+    email?: string
+}
+
+// interface IUpdateUser {
+//     first_name?: string
+//     middle_name?: string
+//     last_name?: string
+//     email?: string
+//     role?: string
+//     national_id?: string
+//     birth_date?: string
+//     age?: number
+// }
+
+// Users Management
+export const getMembers = async ({ pageParam, pageSize, role, first_name, last_name, email }: IMembers): Promise<MembersResponse> => {
+    const res = await api.get("/institution/users/", { params: { page: pageParam, page_size: pageSize, role, first_name, last_name, email } })
 
     if (res.status === 200) return res.data
     throw new Error(res.data.message || "Failed to get users")
 }
 
+export const updateUser = async ({ userId, data }: { userId: string, data: Record<string, string | number | boolean | Date> }): Promise<SubmissionData[]> => {
+    const res = await api.put(`/institution/users/${userId}/`, data)
+    if (res.status === 200) return res.data
+    throw new Error(res.data.message || "Failed to update user")
+}
+
+export const deleteUser = async ({ userId }: { userId: string }): Promise<boolean> => {
+    const res = await api.delete(`/institution/users/${userId}/`)
+    if (res.status === 204) return true
+    throw new Error(res.data.message || "Failed to delete user")
+}
+
+
+// Institution User Registration
 export const bulkUserInsert = async (formData: FormData): Promise<SubmissionData[]> => {
     const res = await api.post("/institution/users/register/csv/", formData, {
         headers: {
@@ -40,6 +76,12 @@ export const bulkUserInsert = async (formData: FormData): Promise<SubmissionData
     }
     return transformData(res.data, session.user.name);
 };
+
+export const registerSingleUser = async (data: InstitutionRegisterStudentSchemaType): Promise<boolean> => {
+    const res = await api.post("/institution/users/", data)
+    if (res.status === 201) return true
+    throw new Error(res.data.message || "Failed to register user")
+}
 
 
 export const generatePaymentLink = async (data: IGeneratePayment): Promise<string> => {

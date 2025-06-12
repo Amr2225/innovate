@@ -1,8 +1,10 @@
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// import { useAssessmentStore } from "@/store/assessmentStore";
+import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+
+// Icons
 import { CirclePlus, Loader2, Trash } from "lucide-react";
+
+// Components
 import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
@@ -10,17 +12,35 @@ import {
   ContextMenuContent,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { useEffect, useState } from "react";
-import { createAssessmentStore } from "@/store/assessmentStore";
-import { useParams } from "next/navigation";
-
 import DatePicker from "@/components/date-picker";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { useAssessmentQuery } from "@/queryHooks/useAssessment";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
-export default function AssessmentTabs({ children }: { children: React.ReactNode }) {
-  const [firstSection, setFirstSection] = useState<string>("");
+// Utils and Hooks
+import { cn } from "@/lib/utils";
+import { useAssessmentQuery } from "@/queryHooks/useAssessment";
+import { createAssessmentStore } from "@/store/assessmentStore";
+
+export default function AssessmentTabs({
+  defaultSection,
+  children,
+}: {
+  defaultSection: `section-${string}`;
+  children: React.ReactNode;
+}) {
+  // const [firstSection, setFirstSection] = useState<string>("");
   const { handleCreateAssessment, isCreating } = useAssessmentQuery();
 
   const { courseId } = useParams();
@@ -38,13 +58,13 @@ export default function AssessmentTabs({ children }: { children: React.ReactNode
     updateAssessment,
   } = useAssessmentStore();
 
-  useEffect(() => {
-    if (sections.length > 0) {
-      setTimeout(() => {
-        setFirstSection(`section-${sections[0].id}`);
-      }, 300);
-    }
-  }, [sections, setFirstSection]);
+  // useEffect(() => {
+  //   if (sections.length > 0) {
+  //     setTimeout(() => {
+  //       setFirstSection(`section-${sections[0].id}`);
+  //     }, 300);
+  //   }
+  // }, [sections, setFirstSection]);
 
   return (
     <motion.section
@@ -92,21 +112,32 @@ export default function AssessmentTabs({ children }: { children: React.ReactNode
             />
           </div>
 
-          <Button
-            variant='default'
-            className='mt-4 w-full self-end'
-            onClick={handleCreateAssessment}
-            disabled={isCreating}
-          >
-            {isCreating ? <Loader2 className='size-4 animate-spin' /> : "Upload"}
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant='default' className='mt-4 w-full self-end' disabled={isCreating}>
+                {isCreating ? <Loader2 className='size-4 animate-spin' /> : "Upload"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will create the assessment with all the questions and sections.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleCreateAssessment}>Continue</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
       <Tabs
-        key={firstSection}
-        defaultValue={firstSection}
-        onValueChange={(value) => setCurrentSection(Number(value.split("-")[1]))}
+        key={defaultSection}
+        defaultValue={defaultSection}
+        onValueChange={(value) => setCurrentSection(value.split("-")[1])}
       >
         <motion.div
           className='w-full flex items-center gap-2'

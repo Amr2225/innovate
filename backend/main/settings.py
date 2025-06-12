@@ -31,7 +31,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://192.168.1.2:3000",
     # "https://f659-156-208-242-179.ngrok-free.app",
-    "https://1aa2-154-182-231-59.ngrok-free.app",
+    "https://79d7-154-177-34-214.ngrok-free.app",
 ]
 
 # For development, you can use these more permissive settings

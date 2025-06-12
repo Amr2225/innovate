@@ -12,7 +12,7 @@ import { BookText, Paperclip } from "lucide-react";
 
 // Utils
 import { cn } from "@/lib/utils";
-import { useCourseStore } from "@/store/courseStore";
+import { createCourseStore } from "@/store/courseStore";
 import { GetFileSizeFromBytes } from "@/lib/getFileSize";
 
 // External libraries
@@ -27,6 +27,7 @@ export default function AddAttachmentDialog({
   lecture,
   chapterId,
 }: DialogGroupProps) {
+  const useCourseStore = createCourseStore();
   const { updateLecture } = useCourseStore();
 
   const onDrop = useCallback(

@@ -32,9 +32,10 @@ interface DraggableDroppable {
 
 export default function Curriculum() {
   const { courseId } = useParams();
-  console.log(courseId);
-  const useCourseStore = createCourseStore(courseId as string);
+  const useCourseStore = createCourseStore((courseId as string) || "new");
   const { chapters, setChapters, addChapter } = useCourseStore();
+
+  console.log(chapters);
 
   const getContainerId = (id: string) => {
     if (chapters.some((chapter) => chapter.id === id)) {

@@ -22,7 +22,7 @@ export function NavBar({
   const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
-    if (!startTime || !endTime) return;
+    if (!endTime) return;
     const interval = setInterval(() => {
       setTimeLeft(moment(endTime).diff(moment(startTime), "milliseconds"));
     }, 1000);

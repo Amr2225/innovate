@@ -1,4 +1,4 @@
-import { Assessment, Question } from "@/types/assessment.type";
+import { AIGeneratedMCQQuestion, Assessment, DynamicMCQQuestion, HandWrittenQuestion, MCQQuestion, Question } from "@/types/assessment.type";
 import { api } from "./api";
 
 //------------------------
@@ -16,7 +16,7 @@ export const createAssessment = async (assessment: Pick<Assessment, "courseId" |
 };
 
 // Handwritten
-export const handwrittenQuestion = async ({ question, assessmentId }: { question: Pick<Question, "title" | "handWrittenAnswerKey" | "totalGrade">, assessmentId: string }) => {
+export const handwrittenQuestion = async ({ question, assessmentId }: { question: Pick<HandWrittenQuestion, "title" | "handWrittenAnswerKey" | "totalGrade">, assessmentId: string }) => {
     const response = await api.post<Question>("/handwrittenQuestion/questions/", {
         assessment: assessmentId,
         question_text: question.title,
@@ -29,17 +29,17 @@ export const handwrittenQuestion = async ({ question, assessmentId }: { question
 }
 
 // Dynamic MCQ
-export const dynamicMcqQuestion = async ({ question, assessmentId }: { question: Pick<Question, "totalGrade" | "sectionNumber" | "context" | "lectures" | "difficulty" | "numberOfQuestions">, assessmentId: string }) => {
-    const response = await api.post<Question>(`/dynamicMCQ/assessments/${assessmentId}/`, {
-        section_number: question.sectionNumber,
+export const dynamicMcqQuestion = async ({ question, assessmentId, sections }: { question: DynamicMCQQuestion, assessmentId: string, sections: { id: string }[] }) => {
+    const response = await api.post<{ message: string }>(`/dynamicMCQ/${assessmentId}/`, {
+        section_number: sections.findIndex((section) => section.id === question.sectionNumber) + 1,
         lecture_ids: question.lectures,
         difficulty: question.difficulty,
         total_grade: question.totalGrade,
         number_of_questions: question.numberOfQuestions
     });
 
-    if (response.status === 201) return response.data;
-    throw new Error("Failed to create dynamic mcq question");
+    if (response.status === 201) return true
+    throw new Error(response.data.message || "Failed to create dynamic mcq question");
 }
 
 interface AIGeneratedMcqQuestionResponse {
@@ -49,23 +49,35 @@ interface AIGeneratedMcqQuestionResponse {
 }
 
 // AI Generated MCQ
-export const aiGeneratedMcqQuestion = async ({ question }: { question: Pick<Question, "title" | "numberOfChoices" | "difficulty" | "lectures"> }) => {
-    const response = await api.post<{ mcqs: AIGeneratedMcqQuestionResponse[] }>(`/mcqQuestion/generate-from-lectures/`, {
+export const aiGeneratedMcqQuestion = async ({ question }: { question: AIGeneratedMCQQuestion }) => {
+    const response = await api.post<{ mcqs: AIGeneratedMcqQuestionResponse[], message?: string }>(`/mcqQuestion/generate-from-lectures/`, {
         question: question.title,
         num_options: question.numberOfChoices,
         difficulty: question.difficulty,
-        num_questions_per_lecture: 4,
+        number_of_questions: question.numberOfQuestions,
         lecture_ids: question.lectures
     });
-    console.log("data", response.data, response.status);
 
     if (response.status === 200) return response.data.mcqs;
-    throw new Error("Failed to create dynamic mcq question");
+    throw new Error(response.data.message || "Failed to create dynamic mcq question");
+}
+
+// Save AI Generated MCQ
+export const saveAIGeneratedMcqQuestion = async ({ question, assessmentId, sections }: { question: AIGeneratedMCQQuestion, assessmentId: string, sections: { id: string }[] }) => {
+    const response = await api.post<{ message: string }>(`/mcqQuestion/save-generated-mcqs/${assessmentId}/`, {
+        assessment: assessmentId,
+        mcqs: question.questions,
+        question_grade: question.totalGrade,
+        section_number: sections.findIndex((section) => section.id === question.sectionNumber) + 1
+    });
+
+    if (response.status === 201) return true
+    throw new Error(response.data.message || "Failed to save ai generated mcq question");
 }
 
 
 // MCQ
-export const mcqQuestion = async ({ question, assessmentId }: { question: Pick<Question, "title" | "options" | "totalGrade" | "mcqAnswer" | "sectionNumber">, assessmentId: string }) => {
+export const mcqQuestion = async ({ question, assessmentId }: { question: Pick<MCQQuestion, "title" | "options" | "totalGrade" | "mcqAnswer" | "sectionNumber">, assessmentId: string }) => {
     const response = await api.post<Question>('/mcqQuestion/mcq-questions/', {
         assessment: assessmentId,
         question: question.title,
@@ -80,13 +92,23 @@ export const mcqQuestion = async ({ question, assessmentId }: { question: Pick<Q
 }
 
 
-
 // ----------------------------
 //  Getting Assessment
 // ----------------------------
-interface AssessmentResponse extends Assessment {
+export interface AssessmentResponse extends Assessment {
     has_submitted: boolean;
     course: string;
+    course_description: string;
+}
+
+interface GetAssessmentResponse {
+    data: AssessmentResponse[];
+    previous: number | null;
+    next: number | null;
+    page: number;
+    page_size: number;
+    total_pages: number;
+    total_items: number;
 }
 
 interface QuestionResponse extends Omit<Question, 'options' | 'questionType'> {
@@ -95,16 +117,18 @@ interface QuestionResponse extends Omit<Question, 'options' | 'questionType'> {
     options: string[];
 }
 
-export const getAssessment = async () => {
-    const response = await api.get<{ data: AssessmentResponse[] }>(`/assessment/`, { params: { page_size: 200, type: "Assignment" } });
+export const getAssessment = async ({ pageParam, page_size, type, due_date, title }: { pageParam?: number, page_size?: number, type?: string, due_date?: string, title?: string }): Promise<GetAssessmentResponse> => {
+    const response = await api.get<GetAssessmentResponse>(`/assessment/`, { params: { page: pageParam, page_size, type, due_date, title } });
 
     if (response.status === 200) return response.data;
     throw new Error("Failed to get assessment");
 }
 
 export const getAssessmentQuestionsForStudent = async (assessmentId: string) => {
-    const response = await api.get<{ questions: QuestionResponse[], assessment: AssessmentResponse }>(`/assessment/${assessmentId}/student-questions/`);
-    return response.data;
+    const response = await api.get<{ questions: QuestionResponse[], assessment: AssessmentResponse, detail: string }>(`/assessment/${assessmentId}/student-questions/`);
+
+    if (response.status === 200) return response.data;
+    throw new Error(response.data.detail || "Failed to get assessment questions for student");
 }
 
 export const getAssessmentByCourseId = async (courseId: string) => {

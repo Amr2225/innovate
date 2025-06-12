@@ -30,6 +30,11 @@ const initialState: Pick<CourseStore, 'course' | 'chapters'> = {
 
 const storeCache: Record<string, UseBoundStore<StoreApi<CourseStore>>> = {};
 
+export const deleteCourseStore = (courseId: string) => {
+    delete storeCache[courseId];
+    localStorage.removeItem(`course-store-${courseId}`);
+}
+
 export const createCourseStore = (courseId?: string) => {
     if (courseId && storeCache[courseId]) return storeCache[courseId];
 

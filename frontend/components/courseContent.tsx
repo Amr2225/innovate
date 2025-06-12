@@ -20,7 +20,7 @@ interface CourseContentProps {
 }
 
 export default function CourseContent({ activeLecture, setActiveLecture }: CourseContentProps) {
-  const useCourseStore = createCourseStore(undefined);
+  const useCourseStore = createCourseStore("new");
   const { chapters } = useCourseStore();
   if (!activeLecture) return null;
 

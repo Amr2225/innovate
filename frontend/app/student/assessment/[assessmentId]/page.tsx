@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 
 // Services
 import { getAssessmentQuestionsForStudent } from "@/apiService/assessmentService";
@@ -24,15 +25,21 @@ import {
   createSolveAssessmentStore,
   deleteSolveAssessmentStore,
 } from "@/store/solveAssessmentStore";
-import { Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 export default function AssessmentPage() {
   const { assessmentId } = useParams();
+
+  const router = useRouter();
   const useSolveAssessmentStore = createSolveAssessmentStore(assessmentId as string);
   const { handWrittenAnswers, mcqAnswers } = useSolveAssessmentStore();
 
   //TODO: Add logic if the student already submitted an assessment can't access this page
-  const { data: assessment, isLoading } = useQuery({
+  const {
+    data: assessment,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: [`assessment-${assessmentId}`],
     queryFn: () => getAssessmentQuestionsForStudent(assessmentId as string),
   });
@@ -46,10 +53,31 @@ export default function AssessmentPage() {
       }),
 
     onSuccess: () => {
+      router.push(`/student/assessment/${assessmentId}/submission`);
       deleteSolveAssessmentStore(assessmentId as string);
     },
   });
 
+  console.log(error);
+
+  if (error)
+    return (
+      <div className='w-full min-h-screen bg-neutral-50'>
+        <div className='w-full h-[calc(100vh-7rem)] flex justify-center items-center'>
+          <div className='w-[85%] mx-auto bg-white rounded-lg p-8 border shadow-sm'>
+            <div className='flex flex-col items-center justify-center gap-4'>
+              <p className='text-neutral-600 text-center'>{error.message}</p>
+              <Button asChild>
+                <Link href={`/student/dashboard`}>
+                  <ArrowLeft className='size-4 mr-2' />
+                  Go Back
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   if (isLoading || !assessment || !assessmentId) return <Loader />;
 
   return (

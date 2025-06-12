@@ -6,12 +6,10 @@ from django.utils import timezone
 # DRF
 from rest_framework import serializers
 
-# Python
-import random
-
 # Helpers
 from users.helper import generateTokens
 from .models import Payment
+import datetime
 
 User = get_user_model()
 
@@ -135,7 +133,7 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
             email=validated_data['email'],
             name=validated_data['name'],
             role="Institution",
-            logo=validated_data['logo'],
+            logo=validated_data.get('logo', None),
             is_email_verified=True,
             is_active=True,
         )
@@ -168,13 +166,12 @@ class InstitutionRegisterSeralizer(serializers.ModelSerializer):
 
 
 class InstitutionUserSeralizer(serializers.ModelSerializer):
-    # TODO: implement rules for the age attribute (calculated, or entered)
     Role = (
         ("Student", "Student"),
         ("Teacher", "Teacher"),
     )
 
-    role = serializers.ChoiceField(choices=Role)
+    role = serializers.ChoiceField(choices=Role, required=False)
     institution = serializers.CharField(
         read_only=True, source="institution.name")
 
@@ -217,4 +214,104 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
         user = User.objects.create(**data, access_code=None)
         user.save()
         user.institution.set([request.user])
+        return user
+
+
+class InstitutionUserCreationSerializer(serializers.ModelSerializer):
+    """
+    Serializer specifically for creating users by institutions
+    """
+    Role = (
+        ("Student", "Student"),
+        ("Teacher", "Teacher"),
+    )
+
+    role = serializers.ChoiceField(choices=Role)
+    email = serializers.EmailField(required=False)
+    age = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = User
+        fields = (
+            "first_name",
+            "middle_name",
+            "last_name",
+            "email",
+            "role",
+            "national_id",
+            "birth_date",
+            "age",
+        )
+        extra_kwargs = {
+            "first_name": {'required': True},
+            "middle_name": {'required': True},
+            "last_name": {'required': True},
+            "role": {'required': True},
+            "national_id": {'required': True},
+        }
+
+    def validate(self, data):
+        # Calculate age from birth_date if provided
+        if 'birth_date' in data and data['birth_date']:
+            birth_date = data['birth_date']
+            today = datetime.date.today()
+            age = today.year - birth_date.year
+            if (today.month, today.day) < (birth_date.month, birth_date.day):
+                age -= 1
+            data['age'] = age
+
+        return data
+
+    def validate_national_id(self, value):
+        """
+        Check that the national ID is unique unless the user 
+        is already associated with another institution.
+        """
+        try:
+            # Check if a user with this national ID exists
+            existing_user = User.objects.get(national_id=value)
+
+            # If the user exists but is not in this institution
+            request = self.context.get('request')
+            if request and not existing_user.institution.filter(id=request.user.id).exists():
+                return value
+
+            raise serializers.ValidationError(
+                "A user with this national ID already exists in your institution.")
+        except User.DoesNotExist:
+            # This is a new user
+            return value
+
+    def validate_email(self, value):
+        """
+        Check that the email is unique unless the user 
+        is already associated with another institution.
+        """
+        try:
+            existing_user = User.objects.get(email=value)
+
+            # If the user exists but is not in this institution
+            request = self.context.get('request')
+            if request and not existing_user.institution.filter(id=request.user.id).exists():
+                return value
+
+            raise serializers.ValidationError(
+                "A user with this email already exists in your institution.")
+        except User.DoesNotExist:
+            return value
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+
+        # Create the user with default values for required fields
+        user = User.objects.create(
+            **validated_data,
+            access_code=None,
+            is_email_verified=False,
+            is_active=True
+        )
+
+        # Associate the user with the institution
+        user.institution.set([request.user])
+
         return user
