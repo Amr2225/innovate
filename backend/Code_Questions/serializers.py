@@ -12,7 +12,7 @@ class TestCaseSerializer(serializers.ModelSerializer):
             'question'
         )
         
-        read_only_fields = ('question', 'id')
+        read_only_fields = ('id',)
         
     # def create(self, validated_data):
         # request = self.context.get('request')
@@ -78,3 +78,8 @@ class GenerateCodingQuestionsContextSerializer(serializers.Serializer):
     difficulty = serializers.ChoiceField(choices=CodingQuestion.DIFFICULTY_CHOICES, default='3')
     language_id = serializers.ChoiceField(choices=CodingQuestion.LANGUAGE_CHOICES, default='python3')
     context = serializers.CharField()
+
+class CodingQuestionDeleteSerializer(serializers.Serializer):
+    class Meta:
+        model = CodingQuestion
+        fields = ('id',)

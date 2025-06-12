@@ -904,14 +904,19 @@ def generate_coding_questions_from_text(text, num_questions=5, difficulty='3', l
                         "function_signature": "def function_name(param1, param2):",
                         "test_cases": [
                             {{
-                                "input_data": [\"input1\", \"input2\"],
+                                "input_data": [\"input1\"],  # Can be any length array
                                 "expected_output": "output1",
                                 "is_public": true
                             }},
                             {{
-                                "input_data": [\"input3\", \"input4\"],
+                                "input_data": [\"input1\", \"input2\", \"input3\"],  # Example with 3 inputs
                                 "expected_output": "output2",
                                 "is_public": false
+                            }},
+                            {{
+                                "input_data": [\"input1\", \"input2\"],  # Example with 2 inputs
+                                "expected_output": "output3",
+                                "is_public": true
                             }}
                         ]
                     }}
@@ -926,6 +931,8 @@ def generate_coding_questions_from_text(text, num_questions=5, difficulty='3', l
                 6. Return ONLY the JSON array, no other text or explanation
                 7. Ensure all JSON is properly formatted with double quotes
                 8. Do not include any markdown formatting or code blocks
+                9. input_data array can have any number of elements (1 or more)
+                10. Make sure test cases have consistent input_data array lengths for each question
                 """
             }
         ]

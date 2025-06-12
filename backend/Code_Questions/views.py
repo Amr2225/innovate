@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from .models import CodingQuestion, CodingQuestionScore, TestCase
-from .serializers import CodingQuestionSerializer, CodingQuestionScoreSerializer, GenerateCodingQuestionsSerializer, GenerateCodingQuestionsContextSerializer
+from .serializers import CodingQuestionSerializer, CodingQuestionScoreSerializer, GenerateCodingQuestionsSerializer, GenerateCodingQuestionsContextSerializer, TestCaseSerializer, CodingQuestionDeleteSerializer
 from .utils.piston import run_code, prepare_code_for_piston
 from enrollments.models import Enrollments
 from assessment.models import Assessment
@@ -270,6 +270,33 @@ class GenerateCodingContextQuestionsView(APIView):
                 {"error": f"An error occurred: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class TestCaseCreateView(APIView):
+    permission_classes = [isTeacher]  # Or your custom permission
+    serializer_class = TestCaseSerializer
+    def post(self, request):
+        serializer = TestCaseSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class CodingQuestionDeleteView(APIView):
+    permission_classes = [isTeacher]
+    serializer_class = CodingQuestionDeleteSerializer
+
+    def delete(self, request, question_id):
+        try:
+            question = CodingQuestion.objects.get(id=question_id)
+        except CodingQuestion.DoesNotExist:
+            return Response({"error": "Question not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Delete all related test cases
+        question.test_cases.all().delete()
+        # Delete the question itself
+        question.delete()
+        return Response({"message": "Coding question and its test cases deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
+
 # class CodequestionScoreListView(generics.ListAPIView):
     # queryset = CodingQuestionScore.objects.all()
     # serializer_class = CodingQuestionScoreSerializer
