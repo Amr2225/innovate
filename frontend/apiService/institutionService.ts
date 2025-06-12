@@ -74,13 +74,14 @@ export const bulkUserInsert = async (formData: FormData): Promise<SubmissionData
     if (!session) {
         throw new Error("Session not found");
     }
-    return transformData(res.data, session.user.name);
+    if (res.status === 200) return transformData(res.data, session.user.name);
+    throw new Error(res.data.error || "Failed to add user")
 };
 
 export const registerSingleUser = async (data: InstitutionRegisterStudentSchemaType): Promise<boolean> => {
     const res = await api.post("/institution/users/", data)
     if (res.status === 201) return true
-    throw new Error(res.data.message || "Failed to register user")
+    throw new Error(res.data?.detail || "Failed to register user")
 }
 
 

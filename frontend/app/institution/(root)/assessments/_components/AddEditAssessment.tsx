@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { Dispatch, SetStateAction, useState } from "react";
 
 import CustomDialog from "@/components/CustomDialog";
 import { Button } from "@/components/ui/button";
@@ -20,25 +20,97 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addAssessmentSchema, AddAssessmentSchema } from "@/schema/addAssessmentSchema";
 import { getCourses } from "@/apiService/courseService";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DateTimePicker } from "@/components/date-picker";
+import { createAssessment, updateAssessment } from "@/apiService/assessmentService";
+import { toast } from "sonner";
+import { Assessment } from "@/types/assessment.type";
 
-export default function AddAssessment() {
-  const [open, setOpen] = useState(false);
+interface AddEditAssessmentProps {
+  assessment?: Assessment;
+  isDialogOpen?: boolean;
+  setIsDialogOpen?: Dispatch<SetStateAction<string | null>>;
+  courseId?: string | null;
+}
+
+export default function AddEditAssessment({
+  assessment,
+  isDialogOpen = false,
+  setIsDialogOpen,
+  courseId,
+}: AddEditAssessmentProps) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(isDialogOpen || typeof courseId === "string");
+
+  const handleDialogOpenChange = (newOpenState: boolean) => {
+    setOpen(newOpenState);
+    if (setIsDialogOpen) {
+      if (open) setIsDialogOpen(null);
+      else setIsDialogOpen(assessment?.id || null);
+    }
+  };
+
+  const { mutate: createAssessmentMutation, isPending: isCreatingAssessment } = useMutation({
+    mutationFn: (assessment: AddAssessmentSchema) =>
+      createAssessment({
+        courseId: assessment.course,
+        title: assessment.title,
+        type: assessment.type,
+        due_date: assessment.due_date,
+        start_date: assessment.start_date,
+        grade: assessment.total_grade,
+      }),
+    onSuccess: () => {
+      toast.success("Assessment created successfully");
+      queryClient.invalidateQueries({ queryKey: ["institution-assessments"] });
+      form.reset();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+    onMutate: () => {
+      setOpen(false);
+    },
+  });
+
+  const { mutate: updateAssessmentMutation, isPending: isUpdatingAssessment } = useMutation({
+    mutationFn: (updatedAssessment: AddAssessmentSchema) =>
+      updateAssessment({
+        courseId: updatedAssessment.course,
+        id: assessment?.id as string,
+        title: updatedAssessment.title,
+        type: updatedAssessment.type,
+        due_date: updatedAssessment.due_date,
+        start_date: updatedAssessment.start_date,
+        grade: updatedAssessment.total_grade,
+      }),
+    onSuccess: () => {
+      toast.success("Assessment updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["institution-assessments"] });
+      form.reset();
+      setOpen(false);
+      setIsDialogOpen?.(null);
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
 
   const form = useForm<AddAssessmentSchema>({
     resolver: zodResolver(addAssessmentSchema),
     defaultValues: {
-      title: "",
-      course: "",
-      type: "Assignment",
-      due_date: new Date(),
-      total_grade: 0,
+      title: assessment?.title || "",
+      course: assessment?.courseId || courseId || "",
+      type: assessment?.type || "Assignment",
+      due_date: assessment?.due_date ? new Date(assessment.due_date) : new Date(),
+      start_date: assessment?.start_date ? new Date(assessment.start_date) : null,
+      total_grade: assessment?.grade || 0,
     },
   });
 
@@ -49,19 +121,37 @@ export default function AddAssessment() {
 
   return (
     <CustomDialog
-      title='Create New Assessment'
-      description='Create a new assessment for your courses'
+      title={assessment ? `Edit Assessment ${assessment.title}` : "Create New Assessment"}
+      description={
+        assessment
+          ? `Edit the assessment details ${assessment.title}`
+          : "Create a new assessment for your courses"
+      }
       open={open}
-      setOpen={setOpen}
+      setOpen={handleDialogOpenChange}
       trigger={
-        <Button className='gap-1'>
-          <Plus size={16} />
-          Add Assessment
-        </Button>
+        !assessment && (
+          <Button className='gap-1' disabled={isCreatingAssessment}>
+            {isCreatingAssessment ? (
+              <Loader2 className='animate-spin' size={16} />
+            ) : (
+              <>
+                <Plus size={16} />
+                Add Assessment
+              </>
+            )}
+          </Button>
+        )
       }
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(() => {})}>
+        <form
+          onSubmit={form.handleSubmit((data) => {
+            if (assessment) updateAssessmentMutation(data);
+            else createAssessmentMutation(data);
+          })}
+          className='space-y-2'
+        >
           <FormField
             control={form.control}
             name='title'
@@ -131,7 +221,9 @@ export default function AddAssessment() {
             name='type'
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Type</FormLabel>
+                <FormLabel className='after:content-["*"] after:ml-0.5 after:text-red-500'>
+                  Type
+                </FormLabel>
                 <FormControl>
                   <Select onValueChange={(value) => field.onChange(value)} value={field.value}>
                     <FormControl>
@@ -156,9 +248,16 @@ export default function AddAssessment() {
             name='total_grade'
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Total Grade</FormLabel>
+                <FormLabel className='after:content-["*"] after:ml-0.5 after:text-red-500'>
+                  Total Grade
+                </FormLabel>
                 <FormControl>
-                  <Input type='number' placeholder='Total Grade' {...field} />
+                  <Input
+                    {...field}
+                    type='number'
+                    placeholder='Total Grade'
+                    onChange={(e) => field.onChange(Number(e.target.value) || "")}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -173,7 +272,7 @@ export default function AddAssessment() {
                 <FormItem>
                   <FormLabel>Start Date</FormLabel>
                   <FormControl>
-                    <Input type='date' {...field} />
+                    <DateTimePicker date={field.value || undefined} setDate={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -185,56 +284,35 @@ export default function AddAssessment() {
               name='due_date'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Due Date</FormLabel>
+                  <FormLabel className='after:content-["*"] after:ml-0.5 after:text-red-500'>
+                    Due Date
+                  </FormLabel>
                   <FormControl>
-                    <Input type='date' {...field} />
+                    <DateTimePicker date={field.value} setDate={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </div>
+          <DialogFooter className='mt-5 !flex !flex-row !justify-between'>
+            <h6 className='text-xs text-muted-foreground after:content-["*"] after:ml-0.5 after:text-red-500'>
+              Required fields are marked with
+            </h6>
+
+            <Button type='submit' disabled={isUpdatingAssessment}>
+              {isUpdatingAssessment ? (
+                <Loader2 className='animate-spin' size={16} />
+              ) : (
+                <>
+                  <Plus size={16} />
+                  {assessment ? "Update Assessment" : "Create Assessment"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </form>
       </Form>
-      <div className='grid gap-4 py-4'>
-        <div className='grid grid-cols-4 items-center gap-4'>
-          <label htmlFor='assessmentTitle' className='text-right'>
-            Title
-          </label>
-          <Input id='assessmentTitle' placeholder='e.g. Midterm Exam' className='col-span-3' />
-        </div>
-        <div className='grid grid-cols-4 items-center gap-4'>
-          <label htmlFor='courseSelect' className='text-right'>
-            Course
-          </label>
-          <Input id='courseSelect' placeholder='Select course' className='col-span-3' />
-        </div>
-        <div className='grid grid-cols-4 items-center gap-4'>
-          <label htmlFor='assessmentType' className='text-right'>
-            Type
-          </label>
-          <Input
-            id='assessmentType'
-            placeholder='e.g. Exam, Quiz, Assignment'
-            className='col-span-3'
-          />
-        </div>
-        <div className='grid grid-cols-4 items-center gap-4'>
-          <label htmlFor='dueDate' className='text-right'>
-            Due Date
-          </label>
-          <Input id='dueDate' type='date' className='col-span-3' />
-        </div>
-        <div className='grid grid-cols-4 items-center gap-4'>
-          <label htmlFor='totalMarks' className='text-right'>
-            Total Marks
-          </label>
-          <Input id='totalMarks' type='number' placeholder='e.g. 100' className='col-span-3' />
-        </div>
-      </div>
-      <DialogFooter>
-        <Button type='submit'>Create Assessment</Button>
-      </DialogFooter>
     </CustomDialog>
   );
 }

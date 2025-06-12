@@ -10,10 +10,13 @@ from rest_framework.pagination import PageNumberPagination
 
 # Institution Serializers
 from institution.filter import InstituionUserFilter
-from institution.serializers import InstitutionRegisterSeralizer, InstitutionUserSeralizer, InstitutionUserCreationSerializer
+from institution.serializers import InstitutionRegisterSeralizer, InstitutionUserSeralizer, InstitutionUserCreationSerializer, InstitutionPaymentSerializer
 
 # Permissions
 from users.permissions import isInstitution
+
+# Models
+from institution.models import Payment
 
 # Python
 import io
@@ -140,19 +143,6 @@ class InstitutionUserView(generics.ListCreateAPIView):
             return InstitutionUserCreationSerializer
         return InstitutionUserSeralizer
 
-    # def create(self, request, *args, **kwargs):
-    #     """
-    #     Add a single user to the institution
-    #     """
-    #     serializer = self.get_serializer(data=request.data)
-    #     if serializer.is_valid():
-    #         user = serializer.save()
-    #         return Response(
-    #             serializer.data,
-    #             status=status.HTTP_201_CREATED
-    #         )
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class InstitutionUserUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = InstitutionUserSeralizer
@@ -163,3 +153,9 @@ class InstitutionUserUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         user = self.request.user
         return User.objects.filter(institution=user)
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        user.credits += 1
+        user.save(update_fields=['credits'])
+        return super().perform_destroy(instance)

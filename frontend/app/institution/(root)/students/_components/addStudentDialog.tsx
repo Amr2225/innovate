@@ -36,12 +36,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { institutionService } from "@/apiService/services";
 import { BulkUserSchema, BulkUserSchemaType } from "@/schema/bulkUserSchema";
 import StatusDialog from "./status-dialog";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AddStudentDialog() {
   const [activeTab, setActiveTab] = useState("form");
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [studentDialogOpen, setStudentDialogOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  const { updateUser } = useAuth();
 
   const form = useForm<InstitutionRegisterStudentSchemaType>({
     resolver: zodResolver(InstitutionRegisterStudentSchema),
@@ -71,9 +74,10 @@ export default function AddStudentDialog() {
       queryClient.invalidateQueries({ queryKey: ["institution-users"] });
       setIsAddUserOpen(false);
       form.reset();
+      updateUser();
     },
-    onError: () => {
-      toast.error("Failed to register user");
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 
@@ -82,12 +86,13 @@ export default function AddStudentDialog() {
     mutationFn: (formData: FormData) => institutionService.bulkUserInsert(formData),
     onSuccess: () => {
       toast.success("Users registered successfully");
-      queryClient.invalidateQueries({ queryKey: ["institution-users"] });
+      queryClient.invalidateQueries({ queryKey: ["institution-users"], exact: false });
       setStudentDialogOpen(true);
       csvForm.reset();
+      updateUser();
     },
-    onError: () => {
-      toast.error("Failed to add students");
+    onError: (error) => {
+      toast.error(error.message);
     },
   });
 

@@ -11,10 +11,14 @@ from rest_framework.serializers import ValidationError
 # Python
 import requests
 
+# Models
 from institution.models import Plan
-from institution.paymentPayload import get_payment_payload
-from institution.serializers import InstitutionGeneratePaymentSerializer, InstitutionBuyCreditsSerializer
 
+# Serializers
+from institution.paymentPayload import get_payment_payload
+from institution.serializers import InstitutionGeneratePaymentSerializer, InstitutionBuyCreditsSerializer, InstitutionPaymentSerializer
+
+# Permissions
 from users.permissions import isInstitution
 
 
@@ -79,11 +83,20 @@ class InstitutionVerifyPaymentView(views.APIView):
                 {'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class InstitutionGeneratePaymentIntentView(views.APIView):
+class InstitutionGeneratePaymentIntentView(generics.ListCreateAPIView):
     serializer_class = InstitutionGeneratePaymentSerializer
+    permission_classes = [isInstitution]
 
-    # Validate the plan ID
-    def post(self, request, *args, **kwargs):
+    def get_queryset(self):
+        user = self.request.user
+        return Payment.objects.filter(institution=user)
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return InstitutionPaymentSerializer
+        return InstitutionGeneratePaymentSerializer
+
+    def create(self, request, *args, **kwargs):
         plan_id = request.data.get('plan_id')
 
         # If the redirection URL is not provided, use the default one redirects the registration page

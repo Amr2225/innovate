@@ -5,15 +5,18 @@ import React, { useCallback, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { paymentService } from "@/apiService/services";
+import { Label } from "@/components/ui/label";
 
 export default function CreditsInput({
   name,
   email,
   planId,
+  minimumCredits = 0,
 }: {
   name: string;
   email: string;
   planId: string;
+  minimumCredits?: number;
 }) {
   const [credits, setCredits] = useState(0);
 
@@ -25,6 +28,12 @@ export default function CreditsInput({
       toast.error("Please enter credits amount");
       return;
     }
+
+    if (credits < minimumCredits) {
+      toast.error(`Minimum credits amount is ${minimumCredits}`);
+      return;
+    }
+
     startTransition(async () => {
       paymentService
         .generatePaymentLink({
@@ -42,12 +51,18 @@ export default function CreditsInput({
           toast.error(err.response.data.errors);
         });
     });
-  }, [credits, email, name, planId]);
+  }, [credits, email, minimumCredits, name, planId]);
 
   return (
     <div>
-      <Input type='number' value={credits || ""} onChange={(e) => setCredits(+e.target.value)} />
-      <Button onClick={handleBuyCredits} disabled={isPending}>
+      <Label>Credits</Label>
+      <Input
+        type='number'
+        value={credits || ""}
+        onChange={(e) => setCredits(+e.target.value)}
+        placeholder='Enter credits amount'
+      />
+      <Button onClick={handleBuyCredits} disabled={isPending} className='mt-4'>
         {isPending ? <Loader2 className='w-4 h-4 animate-spin' /> : "Buy Credits"}
       </Button>
     </div>

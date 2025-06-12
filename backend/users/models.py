@@ -60,7 +60,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     birth_date = models.DateTimeField(blank=True, null=True)
     age = models.PositiveIntegerField(blank=True, null=True)
     national_id = models.CharField(
-        max_length=14, blank=True, null=True, unique=True, validators=[nationalId_length_validation])
+        max_length=14, blank=True, null=True, unique=False, validators=[nationalId_length_validation])
     semester = models.PositiveSmallIntegerField(default=1)
 
     # Institution Fields

@@ -12,9 +12,6 @@ import {
   ContextMenuContent,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import DatePicker from "@/components/date-picker";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -43,28 +40,10 @@ export default function AssessmentTabs({
   // const [firstSection, setFirstSection] = useState<string>("");
   const { handleCreateAssessment, isCreating } = useAssessmentQuery();
 
-  const { courseId } = useParams();
+  const { assessmentId } = useParams();
 
-  const useAssessmentStore = createAssessmentStore(courseId as string);
-  const {
-    sections,
-    setCurrentSection,
-    addSection,
-    deleteSection,
-    title,
-    grade,
-    start_date,
-    due_date,
-    updateAssessment,
-  } = useAssessmentStore();
-
-  // useEffect(() => {
-  //   if (sections.length > 0) {
-  //     setTimeout(() => {
-  //       setFirstSection(`section-${sections[0].id}`);
-  //     }, 300);
-  //   }
-  // }, [sections, setFirstSection]);
+  const useAssessmentStore = createAssessmentStore(assessmentId as string);
+  const { sections, setCurrentSection, addSection, deleteSection } = useAssessmentStore();
 
   return (
     <motion.section
@@ -74,44 +53,9 @@ export default function AssessmentTabs({
       className='p-4 w-full h-full'
     >
       <div className='flex flex-col md:flex-row items-center md:items-center justify-between w-full mb-5'>
-        <h1 className='text-2xl font-bold mb-4 whitespace-nowrap'>Add Assignment</h1>
+        <h1 className='text-2xl font-bold mb-4 whitespace-nowrap'>Add Questions</h1>
 
-        <div className='grid md:grid-cols-[1fr_1fr_1fr_1fr_0.12fr] items-end grid-cols-1 gap-3'>
-          <div className='flex flex-col items-start gap-2'>
-            <Label>Title</Label>
-            <Input
-              type='text'
-              placeholder='Enter Title'
-              defaultValue={title}
-              onBlur={(e) => updateAssessment("title", e.target.value)}
-            />
-          </div>
-          <div className='flex flex-col items-start gap-2'>
-            <Label>Grade</Label>
-            <Input
-              type='number'
-              placeholder='Enter Grade'
-              defaultValue={grade}
-              onBlur={(e) => updateAssessment("grade", e.target.value)}
-            />
-          </div>
-
-          <div className='flex flex-col items-start gap-2'>
-            <Label>Start Date</Label>
-            <DatePicker
-              date={start_date as Date}
-              setDate={(date) => updateAssessment("start_date", date as string)}
-            />
-          </div>
-
-          <div className='flex flex-col items-start gap-2'>
-            <Label>Due Date</Label>
-            <DatePicker
-              date={due_date}
-              setDate={(date) => updateAssessment("due_date", date as string)}
-            />
-          </div>
-
+        <div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant='default' className='mt-4 w-full self-end' disabled={isCreating}>

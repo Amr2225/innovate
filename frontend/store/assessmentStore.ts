@@ -56,8 +56,13 @@ const initialState: Pick<AssessmentStore, "id" | "title" | "type" | "questions" 
 
 const storeCache: Record<string, UseBoundStore<StoreApi<AssessmentStore>>> = {};
 
-export const createAssessmentStore = (courseId: string) => {
-    if (storeCache[courseId]) return storeCache[courseId];
+export const deleteAssessmentStore = (assessmentId: string) => {
+    delete storeCache[assessmentId];
+    localStorage.removeItem(`assessment-store-${assessmentId}`);
+}
+
+export const createAssessmentStore = (assessmentId: string) => {
+    if (storeCache[assessmentId]) return storeCache[assessmentId];
 
     const assessmentStore = create<AssessmentStore>()(
         persist(
@@ -218,13 +223,13 @@ export const createAssessmentStore = (courseId: string) => {
                 }
             }),
             {
-                name: `assessment-store-${courseId}`,
+                name: `assessment-store-${assessmentId}`,
                 storage: createJSONStorage(() => new EncryptedStorage()),
             }
         )
     )
 
-    storeCache[courseId] = assessmentStore;
+    storeCache[assessmentId] = assessmentStore;
     return assessmentStore;
 }
 

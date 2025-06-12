@@ -17,7 +17,7 @@ SITE_ID = 1
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS").split(" ")
 
 # WEBSITE_URL = "http://192.168.1.2:8000"
-WEBSITE_URL = "https://bb02-156-208-242-179.ngrok-free.app"
+WEBSITE_URL = "https://60d3-154-182-238-185.ngrok-free.app"
 
 AUTH_USER_MODEL = "users.User"
 
@@ -31,7 +31,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://192.168.1.2:3000",
     # "https://f659-156-208-242-179.ngrok-free.app",
-    "https://79d7-154-177-34-214.ngrok-free.app",
+    "https://60d3-154-182-238-185.ngrok-free.app",
 ]
 
 # For development, you can use these more permissive settings

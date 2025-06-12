@@ -5,15 +5,36 @@ import { api } from "./api";
 //  Creating Assessment
 //------------------------
 export const createAssessment = async (assessment: Pick<Assessment, "courseId" | "title" | "type" | "due_date" | "start_date" | "grade">) => {
-    const response = await api.post<Assessment>("/assessment/", {
+    const response = await api.post<{ detail?: string }>("/assessment/", {
         ...assessment,
         courseId: undefined,
         course: assessment.courseId
     });
 
-    if (response.status === 201) return response.data;
-    throw new Error("Failed to create assessment");
+    if (response.status === 201) return true;
+    throw new Error(response.data?.detail || "Failed to create assessment");
 };
+
+export const updateAssessment = async (assessment: Pick<Assessment, "id" | "courseId" | "title" | "type" | "start_date" | "due_date" | "grade">) => {
+    const response = await api.put<{ message: string }>(`/assessment/${assessment.id}/`, {
+        course: assessment.courseId,
+        title: assessment.title,
+        type: assessment.type,
+        start_date: assessment.start_date,
+        due_date: assessment.due_date,
+        grade: assessment.grade
+    });
+
+    if (response.status === 200) return true;
+    throw new Error(response.data?.message || "Failed to update assessment");
+}
+
+export const deleteAssessment = async (assessmentId: string) => {
+    const response = await api.delete<{ detail: string }>(`/assessment/${assessmentId}/`);
+
+    if (response.status === 204) return true
+    throw new Error(response.data?.detail || "Failed to delete assessment")
+}
 
 // Handwritten
 export const handwrittenQuestion = async ({ question, assessmentId }: { question: Pick<HandWrittenQuestion, "title" | "handWrittenAnswerKey" | "totalGrade">, assessmentId: string }) => {
@@ -77,17 +98,17 @@ export const saveAIGeneratedMcqQuestion = async ({ question, assessmentId, secti
 
 
 // MCQ
-export const mcqQuestion = async ({ question, assessmentId }: { question: Pick<MCQQuestion, "title" | "options" | "totalGrade" | "mcqAnswer" | "sectionNumber">, assessmentId: string }) => {
-    const response = await api.post<Question>('/mcqQuestion/mcq-questions/', {
+export const mcqQuestion = async ({ question, assessmentId, sections }: { question: Pick<MCQQuestion, "title" | "options" | "totalGrade" | "correctOption" | "sectionNumber">, assessmentId: string, sections: { id: string }[] }) => {
+    const response = await api.post<Question>(`/mcqQuestion/${assessmentId}/`, {
         assessment: assessmentId,
         question: question.title,
-        options: question.options,
-        answer_key: question.mcqAnswer,
+        options: question.options.map((option) => option.option),
+        answer_key: question.correctOption,
         question_grade: question.totalGrade,
-        section_number: question.sectionNumber
+        section_number: sections.findIndex((section) => section.id === question.sectionNumber) + 1
     });
 
-    if (response.status === 201) return response.data;
+    if (response.status === 201) return true;
     throw new Error("Failed to create mcq question");
 }
 

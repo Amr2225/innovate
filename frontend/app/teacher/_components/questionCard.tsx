@@ -1,20 +1,17 @@
-import React, { useRef, useState } from "react";
+import React from "react";
+import { useParams } from "next/navigation";
 
 // Components
 import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import TypedSelectItem from "./typedSelectItem";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { DoubleClickEditInput } from "@/components/doubleClickEditInput";
 
 // Types
 import { Question } from "@/types/assessment.type";
 
-// Store
-// import { useAssessmentStore } from "@/store/assessmentStore";
-
 // Utils
-import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 // Question Types
@@ -23,14 +20,16 @@ import DynamicMCQQuestion from "./QuestionTypes/mcq/dynamicMcqQuestion";
 import AIGeneratedMcqQuestion from "./QuestionTypes/mcq/AIGeneratedMcqQuestion";
 import HandWrittenQuestion from "./QuestionTypes/handwrittenQuestion";
 import CodeQuestion from "./QuestionTypes/codeQuestion";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+
+// Icons
 import { Info } from "lucide-react";
-import { useParams } from "next/navigation";
+
+// Store
 import { createAssessmentStore } from "@/store/assessmentStore";
 
 export default function QuestionCard({ question }: { question: Question }) {
-  const { courseId } = useParams();
-  const useAssessmentStore = createAssessmentStore(courseId as string);
+  const { assessmentId } = useParams();
+  const useAssessmentStore = createAssessmentStore(assessmentId as string);
   const { updateQuestion } = useAssessmentStore();
 
   return (
@@ -80,71 +79,9 @@ export default function QuestionCard({ question }: { question: Question }) {
   );
 }
 
-// TODO: Make this a component
-export function CustomEditInput({
-  value,
-  setValue,
-  textStyle,
-}: {
-  value: string;
-  setValue: (value: string) => void;
-  textStyle?: string;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (e.target.value.trim() === "") return;
-
-    setValue(e.target.value);
-    setIsEditing(false);
-  };
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const inputValue = inputRef.current?.value;
-    if (!inputValue) return;
-    if (inputValue.trim() === "") return;
-
-    setValue(inputValue);
-    setIsEditing(false);
-  };
-
-  return (
-    <span className='font-bold '>
-      {isEditing ? (
-        <form className='flex items-center gap-2' onSubmit={handleSubmit}>
-          <Input
-            className={cn("w-full", textStyle)}
-            defaultValue={value}
-            ref={inputRef}
-            onBlur={handleBlur}
-            autoFocus
-          />
-          <div className='flex items-center gap-2'>
-            {/* <Button variant='secondary' type='button' className='px-3 text-xs font-semibold'>
-              Cancel
-            </Button> */}
-            <Button variant='default' type='submit' className='px-3 text-xs font-semibold'>
-              Save
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <h4
-          onDoubleClick={() => setIsEditing(true)}
-          className={cn("font-bold text-sm select-none", textStyle)}
-        >
-          {value}
-        </h4>
-      )}
-    </span>
-  );
-}
-
 function QuestionTitle({ question }: { question: Question }) {
-  const { courseId } = useParams();
-  const useAssessmentStore = createAssessmentStore(courseId as string);
+  const { assessmentId } = useParams();
+  const useAssessmentStore = createAssessmentStore(assessmentId as string);
   const { updateQuestion } = useAssessmentStore();
 
   if (question.questionType === "aiMcq") {
@@ -194,10 +131,10 @@ function QuestionTitle({ question }: { question: Question }) {
   }
 
   return (
-    <CustomEditInput
+    <DoubleClickEditInput
       textStyle='text-lg'
       value={question.title}
-      setValue={(value) => updateQuestion(question.id, "title", value)}
+      setValue={(value: string) => updateQuestion(question.id, "title", value)}
     />
   );
 }

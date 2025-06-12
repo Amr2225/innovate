@@ -41,13 +41,15 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
 import { InstitutionMembersType } from "@/types/user.types";
 import React, { useState, useMemo } from "react";
 import { Search, ArrowUpDown, ChevronLeft, ChevronRight, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import AddStudentDialog from "./_components/addStudentDialog";
+// import { updateUser } from "@/apiService/institutionService";
+import { useAuth } from "@/hooks/useAuth";
 
 interface GlobalFilter {
   first_name?: string;
@@ -68,7 +70,8 @@ export default function StudentsPage() {
   });
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [debouncedFilter] = useDebounce(globalFilter, 500);
-  const queryClient = useQueryClient();
+  // const queryClient = useQueryClient();
+  const { updateUser } = useAuth();
 
   // Fetch data from API
   // TODO: fix pagination
@@ -82,6 +85,7 @@ export default function StudentsPage() {
     fetchPreviousPage,
     isFetchingNextPage,
     isFetchingPreviousPage,
+    refetch,
   } = useInfiniteQuery({
     queryKey: ["institution-users", debouncedFilter, currentPage],
     queryFn: ({ pageParam }) =>
@@ -114,7 +118,8 @@ export default function StudentsPage() {
     },
     onSuccess: () => {
       toast.success("User deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["institution-users"] });
+      updateUser();
+      refetch();
     },
     onError: () => {
       toast.error("Failed to delete user");
@@ -137,7 +142,7 @@ export default function StudentsPage() {
       {
         onSuccess: () => {
           toast.success(`Updated User Successfully`);
-          queryClient.invalidateQueries({ queryKey: ["institution-users"] });
+          refetch();
         },
         onError: () => {
           toast.error(`Failed to update User`);

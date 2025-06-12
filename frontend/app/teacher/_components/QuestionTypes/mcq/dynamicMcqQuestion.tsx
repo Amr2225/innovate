@@ -11,30 +11,21 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Info, Loader2 } from "lucide-react";
+import { Info } from "lucide-react";
 
 import CustomDialog from "@/components/CustomDialog";
 import { useState } from "react";
 import { DialogClose } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { getLectures } from "@/apiService/LectureService";
-import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { createAssessmentStore } from "@/store/assessmentStore";
+import LectureSelector from "./lectureSelector";
 
 export default function DynamicMCQQuestion({ question }: { question: DynamicMCQQuestion }) {
   const [dialogOpen, setDialogOpen] = useState<"addContext" | "addLectures" | null>(null);
 
-  const { courseId } = useParams();
-  const useAssessmentStore = createAssessmentStore(courseId as string);
+  const { assessmentId } = useParams();
+  const useAssessmentStore = createAssessmentStore(assessmentId as string);
   const { updateQuestion } = useAssessmentStore();
 
   const form = useForm({
@@ -219,7 +210,6 @@ export default function DynamicMCQQuestion({ question }: { question: DynamicMCQQ
               </Button>
             </DialogClose>
           </div>
-          {/* <Button>Upload</Button> */}
         </div>
       </CustomDialog>
 
@@ -245,69 +235,5 @@ export default function DynamicMCQQuestion({ question }: { question: DynamicMCQQ
         </div>
       </CustomDialog>
     </div>
-  );
-}
-
-function LectureSelector({ question }: { question: DynamicMCQQuestion }) {
-  const params = useParams();
-  const courseId = params.courseId as string;
-
-  const useAssessmentStore = createAssessmentStore(courseId as string);
-  const { updateQuestion } = useAssessmentStore();
-
-  const { data: lectures, isLoading } = useQuery({
-    queryKey: ["lectures"],
-    queryFn: () => getLectures({ page_size: 1000, courseId }),
-  });
-
-  if (isLoading) return <Loader2 className='size-4 animate-spin' />;
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant='outline' className='w-full justify-between'>
-          Select Lectures
-          <span className='ml-2 opacity-70'>
-            {Array.isArray(question.lectures) && question.lectures.length > 0
-              ? `${question.lectures.length} selected`
-              : "None"}
-          </span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className='max-h-full overflow-auto'
-        sideOffset={4}
-        style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
-      >
-        <DropdownMenuLabel>Select Lectures</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {lectures?.map((lecture) => (
-          <DropdownMenuCheckboxItem
-            key={lecture.id}
-            className='hover:bg-neutral-100 cursor-pointer'
-            checked={
-              Array.isArray(question.lectures) && question.lectures.includes(lecture.id || "")
-            }
-            onCheckedChange={(checked) => {
-              const currentValues = Array.isArray(question.lectures) ? question.lectures : [];
-              if (checked) {
-                updateQuestion<DynamicMCQQuestion>(question.id, "lectures", [
-                  ...currentValues,
-                  lecture.id,
-                ]);
-              } else {
-                updateQuestion<DynamicMCQQuestion>(
-                  question.id,
-                  "lectures",
-                  currentValues.filter((id) => id !== lecture.id)
-                );
-              }
-            }}
-          >
-            {lecture.title}
-          </DropdownMenuCheckboxItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

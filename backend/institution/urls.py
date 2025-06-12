@@ -31,4 +31,6 @@ urlpatterns = [
          name="institution_plan_detail"),
     path('current-plan/', plansViews.InstitutionCurrentPlanView.as_view(),
          name="institution_current_plan"),
+    #     path("payment/", views.InstitutionPaymentView.as_view(),
+    #          name="institution_payment"),
 ]

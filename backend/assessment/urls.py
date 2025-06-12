@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     AssessmentListCreateAPIView,
-    AssessmentDetailAPIView,
+    AssessmentRetrieveUpdateDestroyAPIView,
     AssessmentScoreListCreateAPIView,
     AssessmentScoreDetailAPIView,
     AssessmentQuestionsAPIView,
@@ -15,9 +15,13 @@ urlpatterns = [
     # Assessment endpoints
     path('', AssessmentListCreateAPIView.as_view(),
          name='assessment-list-create'),
+
+    path('<uuid:assessment_id>/', AssessmentRetrieveUpdateDestroyAPIView.as_view(),
+         name='assessment-detail'),
+
+
     path('<uuid:course_id>/', AssessmentListCreateAPIView.as_view(),
          name='course-assessments'),
-    path('<uuid:pk>/', AssessmentDetailAPIView.as_view(), name='assessment-detail'),
     path('<uuid:pk>/questions/', AssessmentQuestionsAPIView.as_view(),
          name='assessment-questions'),
 

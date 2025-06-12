@@ -20,8 +20,8 @@ export default function AIGeneratedMcqQuestionPreview({
   AIQuestions: AIGeneratedMCQQuestion["questions"];
   AIQuestionId: string;
 }) {
-  const { courseId } = useParams();
-  const useAssessmentStore = createAssessmentStore(courseId as string);
+  const { assessmentId } = useParams();
+  const useAssessmentStore = createAssessmentStore(assessmentId as string);
   const { deleteAIGenerateMCQQueston, updateAIGeneratedMCQAnswer, updateAIGeneratedMCQQuestion } =
     useAssessmentStore();
 

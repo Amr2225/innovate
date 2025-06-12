@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from assessment.errors import AssessmentInvalidDueDate
 from .models import Assessment, AssessmentScore
 from courses.models import Course
 from users.models import User
@@ -13,13 +15,14 @@ class AssessmentListSerializer(serializers.ModelSerializer):
     course = serializers.CharField(source='course.name', read_only=True)
     course_description = serializers.CharField(
         source='course.description', read_only=True)
+    courseId = serializers.UUIDField(source='course.id', read_only=True)
     # enrollment_id = serializers.UUIDField(
     #     source='enrollment.id', read_only=True)
 
     class Meta:
         model = Assessment
         fields = ['id', 'title', 'type', 'start_date',
-                  'due_date', 'accepting_submissions', 'has_submitted', 'course', 'course_description', "grade"]
+                  'due_date', 'accepting_submissions', 'has_submitted', 'course', 'course_description', "grade", "courseId"]
 
     def get_has_submitted(self, obj):
         request = self.context.get('request')
@@ -49,17 +52,25 @@ class AssessmentListSerializer(serializers.ModelSerializer):
 class AssessmentSerializer(serializers.ModelSerializer):
     course_name = serializers.CharField(source='course.name', read_only=True)
     accepting_submissions = serializers.BooleanField(read_only=True)
+    start_date = serializers.DateTimeField(default=timezone.now)
 
     class Meta:
         model = Assessment
         fields = ('id', 'course', 'course_name', 'title', 'type', 'due_date', 'grade',
                   'start_date', 'accepting_submissions')
-        read_only_fields = ('id', 'course_name', 'accepting_submissions')
+        read_only_fields = ('id', 'course_name',
+                            'accepting_submissions')
+
+    def to_internal_value(self, data):
+        # If start_date is explicitly set to null, use the default value
+        if 'start_date' in data and data['start_date'] is None:
+            data['start_date'] = timezone.now()
+        return super().to_internal_value(data)
 
     def validate(self, data):
         # Check if due date is in the future
         if data.get('due_date') and data['due_date'] < timezone.now():
-            raise ValidationError("Due date must be in the future")
+            raise AssessmentInvalidDueDate()
         return data
 
 

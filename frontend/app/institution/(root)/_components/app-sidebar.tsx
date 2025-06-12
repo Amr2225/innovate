@@ -4,7 +4,6 @@ import {
   Search,
   Settings,
   NotebookPen,
-  GraduationCap,
   BarChart4,
   Calendar,
   FileText,
@@ -76,11 +75,11 @@ const courseItems = [
     url: "/assessments",
     icon: FileText,
   },
-  {
-    title: "Grades",
-    url: "/courses/grades",
-    icon: GraduationCap,
-  },
+  // {
+  //   title: "Grades",
+  //   url: "/courses/grades",
+  //   icon: GraduationCap,
+  // },
 ];
 
 // Settings and notifications

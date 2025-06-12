@@ -1,16 +1,19 @@
 import { Button } from "@/components/ui/button";
-import { Answer, Question } from "@/types/assessment.type";
+import { Answer, type MCQQuestion } from "@/types/assessment.type";
 import { AnimatePresence, Reorder, motion, useDragControls } from "framer-motion";
 import { GripVertical, Info, Plus, Trash } from "lucide-react";
-import { CustomEditInput } from "../../questionCard";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { useParams } from "next/navigation";
 import { createAssessmentStore } from "@/store/assessmentStore";
+import { DoubleClickEditInput } from "@/components/doubleClickEditInput";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
-export default function MCQQuestion({ question }: { question: Question }) {
-  const { courseId } = useParams();
-  const useAssessmentStore = createAssessmentStore(courseId as string);
-  const { addMCQAnswer, setMCQAnswer } = useAssessmentStore();
+export default function MCQQuestion({ question }: { question: MCQQuestion }) {
+  const { assessmentId } = useParams();
+  const useAssessmentStore = createAssessmentStore(assessmentId as string);
+  const { addMCQAnswer, setMCQAnswer, updateQuestion } = useAssessmentStore();
 
   return (
     <div>
@@ -40,20 +43,58 @@ export default function MCQQuestion({ question }: { question: Question }) {
           //   transition={{ duration: 0.2 }}
           //   layoutId={`mcq-${question.id}`}
         >
-          <AnimatePresence>
-            {question.options?.map((answer) => (
-              <AnswerItem key={answer.id} questionId={question.id} answer={answer} />
-            ))}
-          </AnimatePresence>
-          <Button
-            variant='link'
-            className='pl-0 text-xs text-neutral-500 hover:text-neutral-600'
-            type='button'
-            onClick={() => addMCQAnswer(question.id)}
-          >
-            <Plus className='size-3' />
-            Add Answer
-          </Button>
+          <div className='flex gap-2 items-start'>
+            <div className='flex-1'>
+              <AnimatePresence>
+                {question.options?.map((answer) => (
+                  <AnswerItem key={answer.id} questionId={question.id} answer={answer} />
+                ))}
+              </AnimatePresence>
+              <Button
+                variant='link'
+                className='pl-0 text-xs text-neutral-500 hover:text-neutral-600'
+                type='button'
+                onClick={() => addMCQAnswer(question.id)}
+              >
+                <Plus className='size-3' />
+                Add Answer
+              </Button>
+            </div>
+
+            <div className='flex-[0.25]'>
+              <div>
+                <Label className='mb-1 block'>Correct Answer</Label>
+                <Input
+                  value={question.correctOption || ""}
+                  type='text'
+                  placeholder='Correct Answer'
+                  onChange={(e) =>
+                    updateQuestion<MCQQuestion>(question.id, "correctOption", e.target.value)
+                  }
+                  onBlur={() => {
+                    if (
+                      !question.options
+                        .map((option) => option.option)
+                        .includes(question.correctOption)
+                    ) {
+                      toast.error("Correct answer is not in the options");
+                      updateQuestion<MCQQuestion>(question.id, "correctOption", "");
+                    }
+                  }}
+                />
+
+                <Label className='mt-3 mb-1 block'>Grade</Label>
+                <Input
+                  value={question.totalGrade || ""}
+                  type='number'
+                  placeholder='Grade'
+                  onChange={(e) =>
+                    updateQuestion<MCQQuestion>(question.id, "totalGrade", e.target.value)
+                  }
+                />
+              </div>
+            </div>
+          </div>
         </Reorder.Group>
       </motion.div>
     </div>
@@ -61,8 +102,8 @@ export default function MCQQuestion({ question }: { question: Question }) {
 }
 
 function AnswerItem({ questionId, answer }: { questionId: string; answer: Answer }) {
-  const { courseId } = useParams();
-  const useAssessmentStore = createAssessmentStore(courseId as string);
+  const { assessmentId } = useParams();
+  const useAssessmentStore = createAssessmentStore(assessmentId as string);
   const { deleteMCQAnswer, updateMCQAnswer } = useAssessmentStore();
 
   const controls = useDragControls();
@@ -91,12 +132,13 @@ function AnswerItem({ questionId, answer }: { questionId: string; answer: Answer
           </Button>
           {/* <h6 className='text-sm'>{answer.option}</h6> */}
 
-          <CustomEditInput
+          <DoubleClickEditInput
             textStyle='text-sm font-normal'
             value={answer.option}
             setValue={(value) => updateMCQAnswer(questionId, answer.id, "option", value)}
           />
         </div>
+
         <div className='flex items-center gap-2'>
           <Button
             variant='ghost'

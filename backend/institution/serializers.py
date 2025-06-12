@@ -6,10 +6,14 @@ from django.utils import timezone
 # DRF
 from rest_framework import serializers
 
+# Errors
+from institution.errors import InstitutionCreditError, InstitutionNationalIdError, InstitutionEmailError
+
 # Helpers
 from users.helper import generateTokens
 from .models import Payment
 import datetime
+from institution.models import Payment
 
 User = get_user_model()
 
@@ -198,22 +202,29 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
             'date_joined',
             'email',
         )
-        # extra_kwargs = {
-        #     # "first_name": { 'required': True},
-        #     # "middle_name": {'write_only': True, 'required': True},
-        #     # "last_name": {'write_only': True, 'required': True},
-        #     "role": {'write_only': True, 'required': True},
-        #     "national_id": {'write_only': True, 'required': True},
-        #     "birth_date": {'write_only': True, 'required': True},
-        #     'date_joined': {'read_only': True},
-        #     'is_email_verified': {'read_only': True},
-        # }
+
+    def validate(self, data):
+        national_id = data.get('national_id')
+        institution = self.context['request'].user
+        if User.objects.filter(national_id=national_id, institution=institution).exists():
+            raise InstitutionNationalIdError()
+        return data
 
     def create(self, data):
         request = self.context.get('request')
+        institution_user = request.user
+
+        # Validate that the institution's credits are greater than 1
+        if hasattr(institution_user, 'credits') and institution_user.credits <= 1:
+            raise InstitutionCreditError()
+
         user = User.objects.create(**data, access_code=None)
         user.save()
-        user.institution.set([request.user])
+        user.institution.set([institution_user])
+
+        institution_user.credits -= 1
+        institution_user.save(update_fields=['credits'])
+
         return user
 
 
@@ -276,8 +287,7 @@ class InstitutionUserCreationSerializer(serializers.ModelSerializer):
             if request and not existing_user.institution.filter(id=request.user.id).exists():
                 return value
 
-            raise serializers.ValidationError(
-                "A user with this national ID already exists in your institution.")
+            raise InstitutionNationalIdError()
         except User.DoesNotExist:
             # This is a new user
             return value
@@ -288,20 +298,19 @@ class InstitutionUserCreationSerializer(serializers.ModelSerializer):
         is already associated with another institution.
         """
         try:
-            existing_user = User.objects.get(email=value)
+            User.objects.get(email=value)
 
-            # If the user exists but is not in this institution
-            request = self.context.get('request')
-            if request and not existing_user.institution.filter(id=request.user.id).exists():
-                return value
-
-            raise serializers.ValidationError(
-                "A user with this email already exists in your institution.")
+            raise InstitutionEmailError()
         except User.DoesNotExist:
             return value
 
     def create(self, validated_data):
         request = self.context.get('request')
+
+        # Validate that the institution's credit is greater than 1
+        institution = request.user
+        if institution.credits <= 1:
+            raise InstitutionCreditError()
 
         # Create the user with default values for required fields
         user = User.objects.create(
@@ -311,7 +320,20 @@ class InstitutionUserCreationSerializer(serializers.ModelSerializer):
             is_active=True
         )
 
+        institution.credits -= 1
+        institution.save(update_fields=['credits'])
+
         # Associate the user with the institution
         user.institution.set([request.user])
 
         return user
+
+
+class InstitutionPaymentSerializer(serializers.ModelSerializer):
+    plan = serializers.CharField(source='plan.type', read_only=True)
+    currency = serializers.CharField(source='plan.currency', read_only=True)
+
+    class Meta:
+        model = Payment
+        fields = ['id', 'plan', 'currency', 'valid_from', 'valid_to', 'is_current',
+                  'credits_amount', 'transaction_id', 'order_id', 'payment_status']

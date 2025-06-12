@@ -48,11 +48,11 @@ class AssessmentPermission(permissions.BasePermission):
 
         # Teachers can access assessments for their courses
         if request.user.role == "Teacher":
-            return obj.course.teacher == request.user.teacher
+            return obj.course.instructors == request.user
 
         # Institutions can access assessments for their courses
         if request.user.role == "Institution":
-            return obj.course.institution == request.user.institution
+            return obj.course.institution == request.user
 
         return False
 
@@ -171,9 +171,11 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
         serializer.save()
 
 
-class AssessmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+class AssessmentRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AssessmentSerializer
     permission_classes = [permissions.IsAuthenticated, AssessmentPermission]
+    lookup_url_kwarg = 'assessment_id'
+    lookup_field = 'id'
 
     def get_queryset(self):
         user = self.request.user
@@ -187,13 +189,13 @@ class AssessmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
         elif user.role == "Teacher":
             # Teachers can see assessments for courses they teach
             return Assessment.objects.filter(
-                course__teacher=user.teacher
+                course__teacher=user
             )
 
         elif user.role == "Institution":
             # Institutions can see assessments for their courses
             return Assessment.objects.filter(
-                course__institution=user.institution
+                course__institution=user
             )
 
         return Assessment.objects.none()
@@ -206,10 +208,10 @@ class AssessmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 
         # Check if user has permission to update assessment for this course
         course = serializer.instance.course
-        if user.role == "Teacher" and course.teacher != user.teacher:
+        if user.role == "Teacher" and course.instructors != user:
             raise PermissionDenied(
                 "You can only update assessments for courses you teach")
-        if user.role == "Institution" and course.institution != user.institution:
+        if user.role == "Institution" and course.institution != user:
             raise PermissionDenied(
                 "You can only update assessments for your institution's courses")
 
@@ -223,10 +225,10 @@ class AssessmentDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
 
         # Check if user has permission to delete assessment for this course
         course = instance.course
-        if user.role == "Teacher" and course.teacher != user.teacher:
+        if user.role == "Teacher" and course.instructors != user:
             raise PermissionDenied(
                 "You can only delete assessments for courses you teach")
-        if user.role == "Institution" and course.institution != user.institution:
+        if user.role == "Institution" and course.institution != user:
             raise PermissionDenied(
                 "You can only delete assessments for your institution's courses")
 

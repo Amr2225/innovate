@@ -70,7 +70,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 
 // Local Components
-import AddEditCourse from "./_components/addCourse";
+import AddEditCourse from "./_components/addEditCourse";
 import { toast } from "sonner";
 import { useBreadcrumb } from "@/context/breadcrumbsContext";
 
@@ -347,9 +347,11 @@ export default function CoursesPage() {
                       <span>Add Curriculum</span>
                     </Link>
                   </Button>
-                  <Button variant='outline' className='h-24 flex flex-col gap-2'>
-                    <FileText className='h-6 w-6' />
-                    <span>Add Assessment</span>
+                  <Button variant='outline' className='h-24 flex flex-col gap-2' asChild>
+                    <Link href={`/institution/assessments?courseId=${course.id}`}>
+                      <FileText className='h-6 w-6' />
+                      <span>Add Assessment</span>
+                    </Link>
                   </Button>
                 </div>
                 <DialogFooter>

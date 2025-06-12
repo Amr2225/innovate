@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useState } from "react";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface DatePickerProps {
   date?: Date;
@@ -124,7 +125,7 @@ export function DateTimePicker({ date, setDate }: DatePickerProps) {
           )}
         >
           <CalendarIcon className='mr-2 h-4 w-4' />
-          {date ? format(date, "MM/dd/yyyy hh:mm aa") : <span>MM/DD/YYYY hh:mm aa</span>}
+          {date ? moment(date).format("MM/DD/YYYY hh:mm A") : <span>Pick a date</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className='w-auto p-0'>

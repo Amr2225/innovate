@@ -1,11 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { createAssessmentStore } from "@/store/assessmentStore";
 import { Question } from "@/types/assessment.type";
 import { Reorder, useDragControls } from "framer-motion";
 import { Menu, Trash2 } from "lucide-react";
-import React, { useState } from "react";
 import QuestionCard from "./questionCard";
 import { useParams } from "next/navigation";
 export default function QuestionContainer({
@@ -16,16 +14,9 @@ export default function QuestionContainer({
   questionNumber: number;
 }) {
   const controls = useDragControls();
-  const { courseId } = useParams();
-  const useAssessmentStore = createAssessmentStore(courseId as string);
+  const { asssssmentmentId } = useParams();
+  const useAssessmentStore = createAssessmentStore(asssssmentmentId as string);
   const { deleteQuestion } = useAssessmentStore();
-
-  // const handleUpdateQuestionTitle = useCallback(
-  //   (value: string) => {
-  //     updateQuestion(question.id, "question", value);
-  //   },
-  //   [question.id, updateQuestion]
-  // );
 
   return (
     <Reorder.Item
@@ -48,22 +39,11 @@ export default function QuestionContainer({
           >
             <Menu className='size-5' />
           </Button>
-          {/* <CustomEditInput
-            value={question.question}
-            setValue={handleUpdateQuestionTitle}
-            textStyle='text-base'
-          /> */}
 
           <h4 className={cn("font- text-base")}>Question {questionNumber}</h4>
         </div>
 
         <div className='flex items-center gap-2'>
-          {/* <Button variant='ghost' onClick={handleAddLecture} className='p-2 hover:bg-neutral-200'>
-            <Plus className='size-5' />
-          </Button>
-          <Button variant='ghost' onClick={handleEditToggle} className='p-2 hover:bg-neutral-200'>
-            <PencilLine className='size-5' />
-          </Button> */}
           <Button
             variant='ghost'
             className='p-2 hover:bg-neutral-200'
@@ -76,50 +56,5 @@ export default function QuestionContainer({
 
       <QuestionCard question={question} />
     </Reorder.Item>
-  );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function CustomEditInput({
-  value,
-  setValue,
-  textStyle,
-}: {
-  value: string;
-  setValue: (value: string) => void;
-  textStyle?: string;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-
-  return (
-    <span className='font-bold '>
-      {isEditing ? (
-        <form
-          className='flex items-center gap-2'
-          onSubmit={(e) => {
-            e.preventDefault();
-            setIsEditing(false);
-          }}
-        >
-          <Input
-            className='w-full'
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={(e) => e.target.value.trim() !== "" && setIsEditing(false)}
-            autoFocus
-          />
-          <Button variant='secondary' type='submit' className='py-3 px-4 font-semibold'>
-            Save
-          </Button>
-        </form>
-      ) : (
-        <h4
-          onDoubleClick={() => setIsEditing(true)}
-          className={cn("font-bold text-sm select-none", textStyle)}
-        >
-          {value}
-        </h4>
-      )}
-    </span>
   );
 }

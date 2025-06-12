@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -49,22 +49,37 @@ import {
 } from "@/components/ui/select";
 import {
   Search,
-  Plus,
   MoreVertical,
   FileText,
-  Calendar,
   Edit,
   Trash,
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Plus,
 } from "lucide-react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { AssessmentResponse, getAssessment } from "@/apiService/assessmentService";
 import { useDebounce } from "use-debounce";
 import moment from "moment";
-import AddAssessment from "./_components/AddAssessment";
+import AddEditAssessment from "./_components/AddEditAssessment";
+import Link from "next/link";
+import { useBreadcrumb } from "@/context/breadcrumbsContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { deleteAssessment as deleteAssessmentApi } from "@/apiService/assessmentService";
+import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
 
 interface GlobalFilter {
   type?: string;
@@ -80,12 +95,28 @@ const getStatus = (startDate: Date, endDate: Date) => {
 };
 
 export default function AssessmentsPage() {
-  // Table state
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState<GlobalFilter>({});
   const [debouncedFilter] = useDebounce(globalFilter, 500);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Edit
+  const [editAssessment, setEditAssessment] = useState<string | null>(null);
+  const [deleteAssessment, setDeleteAssessment] = useState<string | null>(null);
+
+  const { setNewMetadata } = useBreadcrumb();
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId");
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  const handleAlertDialogChange = (newOpenState: boolean, assessmentId: string) => {
+    if (newOpenState) setDeleteAssessment(assessmentId);
+    else setDeleteAssessment(null);
+  };
 
   const {
     data,
@@ -96,6 +127,7 @@ export default function AssessmentsPage() {
     fetchPreviousPage,
     isFetchingNextPage,
     isFetchingPreviousPage,
+    refetch,
   } = useInfiniteQuery({
     queryKey: ["institution-assessments", debouncedFilter, currentPage],
     queryFn: () =>
@@ -110,6 +142,17 @@ export default function AssessmentsPage() {
     initialPageParam: currentPage,
     getNextPageParam: (lastPage) => lastPage.next,
     getPreviousPageParam: (firstPage) => firstPage.previous,
+  });
+
+  const { mutate: deleteAssessmentMutation } = useMutation({
+    mutationFn: (assessmentId: string) => deleteAssessmentApi(assessmentId),
+    onSuccess: () => {
+      toast.success("Assessment deleted successfully");
+      refetch();
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
   });
 
   const assessments = useMemo(() => data?.pages.flatMap((page) => page.data) || [], [data?.pages]);
@@ -321,20 +364,64 @@ export default function AssessmentsPage() {
               <DropdownMenuContent align='end'>
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className='cursor-pointer'>
-                  <Calendar className='mr-2 h-4 w-4' />
-                  Reschedule
+                <DropdownMenuItem
+                  onClick={() => setNewMetadata(assessment.id, assessment.title)}
+                  className='cursor-pointer'
+                  asChild
+                >
+                  <Link href={`/institution/assessments/${assessment.id}`}>
+                    <Plus className='mr-2 h-4 w-4' />
+                    Add Questions
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem className='cursor-pointer'>
+                <DropdownMenuItem
+                  onClick={() => setEditAssessment(assessment.id)}
+                  className='cursor-pointer'
+                >
                   <Edit className='mr-2 h-4 w-4' />
                   Edit Assessment
                 </DropdownMenuItem>
-                <DropdownMenuItem className='cursor-pointer'>
+                <DropdownMenuItem
+                  onClick={() => setDeleteAssessment(assessment.id)}
+                  className='cursor-pointer'
+                >
                   <Trash className='mr-2 h-4 w-4' />
                   Delete Assessment
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {editAssessment && (
+              <AddEditAssessment
+                assessment={assessment}
+                isDialogOpen={editAssessment === assessment.id}
+                setIsDialogOpen={setEditAssessment}
+              />
+            )}
+
+            {deleteAssessment && (
+              <AlertDialog
+                open={deleteAssessment === assessment.id}
+                onOpenChange={(open) => handleAlertDialogChange(open, deleteAssessment)}
+              >
+                <AlertDialogTrigger asChild></AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the course and all
+                      its associated data.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => deleteAssessmentMutation(assessment.id)}>
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         );
       },
@@ -366,7 +453,7 @@ export default function AssessmentsPage() {
             Manage your institution&apos;s assessments and grading
           </p>
         </div>
-        <AddAssessment />
+        <AddEditAssessment courseId={courseId} />
       </div>
 
       {/* Filters */}
@@ -378,6 +465,7 @@ export default function AssessmentsPage() {
             className='pl-8'
             value={globalFilter.title || ""}
             onChange={(e) => {
+              setCurrentPage(1);
               setGlobalFilter({ ...globalFilter, title: e.target.value });
               table.setPageIndex(0);
             }}

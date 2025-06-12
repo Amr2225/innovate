@@ -24,7 +24,6 @@ export interface QuestionBase {
 
 export interface MCQQuestion extends QuestionBase {
     questionType: "mcq";
-    mcqAnswer: string;
     options: Answer[];
     correctOption: string;
 }
