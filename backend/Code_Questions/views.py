@@ -4,7 +4,7 @@ from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from .models import CodingQuestion, CodingQuestionScore, TestCase
 from .serializers import CodingQuestionSerializer, CodingQuestionScoreSerializer, GenerateCodingQuestionsSerializer, GenerateCodingQuestionsContextSerializer
-from .utils.judge0 import run_code
+from .utils.piston import run_code, prepare_code_for_piston
 from enrollments.models import Enrollments
 from assessment.models import Assessment
 from main.AI import generate_coding_questions_from_pdf, generate_coding_questions_from_text
@@ -31,76 +31,80 @@ class CodingQuestionDetailView(generics.RetrieveAPIView):
     queryset = CodingQuestion.objects.all()
     serializer_class = CodingQuestionSerializer
 
-# class CodeSubmissionView(APIView):
-#     def post(self, request, question_id):
-#         try:
-#             question = CodingQuestion.objects.get(id=question_id)
-#         except CodingQuestion.DoesNotExist:
-#             return Response({"error": "Question not found"}, status=404)
+class CodeSubmissionView(APIView):
+    def post(self, request, question_id):
+        try:
+            question = CodingQuestion.objects.get(id=question_id)
+        except CodingQuestion.DoesNotExist:
+            return Response({"error": "Question not found"}, status=404)
 
-#         code = request.data.get('code')
-#         enrollment_id = request.data.get('enrollment_id')
+        code = request.data.get('code')
+        enrollment_id = request.data.get('enrollment_id')
 
-#         if not code:
-#             return Response({"error": "Code is required"}, status=400)
+        if not code:
+            return Response({"error": "Code is required"}, status=400)
 
-#         if not enrollment_id:
-#             return Response({"error": "Enrollment ID is required"}, status=400)
+        if not enrollment_id:
+            return Response({"error": "Enrollment ID is required"}, status=400)
 
-#         try:
-#             enrollment = Enrollments.objects.get(id=enrollment_id)
-#         except Enrollments.DoesNotExist:
-#             return Response({"error": "Enrollment not found"}, status=404)
+        try:
+            enrollment = Enrollments.objects.get(id=enrollment_id)
+        except Enrollments.DoesNotExist:
+            return Response({"error": "Enrollment not found"}, status=404)
 
-#         results = []
-#         total_cases = question.test_cases.count()
-#         passed_cases = 0
+        results = []
+        total_cases = question.test_cases.count()
+        passed_cases = 0
 
-#         for case in question.test_cases.all():
-#             result = run_code(
-#                 source_code=code,
-#                 stdin=case.input_data,
-#                 language_id=question.language_id
-#             )
+        # Wrap the student code for input/output handling
+        wrapped_code = prepare_code_for_piston(code)
 
-#             output = (result.get("stdout") or "").strip()
-#             expected = case.expected_output.strip()
+        for case in question.test_cases.all():
+            result = run_code(
+                source_code=wrapped_code,
+                stdin=case.input_data,
+                language=question.language_id
+            )
 
-#             passed = output == expected
-#             if passed:
-#                 passed_cases += 1
+            output = (result.get("stdout") or "").strip()
+            expected = case.expected_output.strip()
 
-#             results.append({
-#                 "input": case.input_data,
-#                 "expected_output": expected,
-#                 "actual_output": output,
-#                 "passed": passed,
-#                 "error": result.get("stderr")
-#             })
+            passed = output == expected
+            if passed:
+                passed_cases += 1
 
-#         # Calculate proportional score
-#         if total_cases > 0:
-#             score = int((passed_cases / total_cases) * question.score)
-#         else:
-#             score = 0
+            results.append({
+                "input": case.input_data,
+                "expected_output": expected,
+                "actual_output": output,
+                "passed": passed,
+                "error": result.get("stderr")
+            })
 
-#         # Save or update the score in CodingQuestionScore
-#         CodingQuestionScore.objects.update_or_create(
-#             question=question,
-#             enrollment=enrollment,
-#             defaults={"score": score}
-#         )
+        # Calculate proportional score
+        if total_cases > 0:
+            score = int((passed_cases / total_cases) * question.max_grade)
+        else:
+            score = 0
 
-#         return Response({
-#             "results": results,
-#             "score": score,
-#             "total_possible_score": question.score,
-#             "passed_test_cases": passed_cases,
-#             "total_test_cases": total_cases
-#         })
+        # Save or update the score in CodingQuestionScore
+        CodingQuestionScore.objects.update_or_create(
+            question=question,
+            enrollment_id=enrollment,
+            defaults={"score": score}
+        )
+
+        return Response({
+            "results": results,
+            "score": score,
+            "total_possible_score": question.max_grade,
+            "passed_test_cases": passed_cases,
+            "total_test_cases": total_cases
+        })
 
 
 class GenerateCodingQuestionsView(APIView):
+    permission_classes = [isTeacher]
     serializer_class = GenerateCodingQuestionsSerializer
 
     def post(self, request):
@@ -114,39 +118,29 @@ class GenerateCodingQuestionsView(APIView):
         - language_id: (optional) Programming language ID (default: 71 for Python)
         """
         try:
-            # Get required fields
-            pdf_file = request.FILES.get('pdf_file')
-            assessment_id = request.data.get('assessment_id')
+            # Validate input data
+            serializer = self.serializer_class(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            if not pdf_file:
-                return Response(
-                    {"error": "PDF file is required"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            # Get validated data
+            assessment_id = serializer.validated_data['assessment_id']
+            num_questions = serializer.validated_data['num_questions']
+            difficulty = serializer.validated_data['difficulty']
+            language_id = serializer.validated_data['language_id']
 
-            if not assessment_id:
-                return Response(
-                    {"error": "Assessment ID is required"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Get optional fields with defaults
-            num_questions = int(request.data.get('num_questions', 5))
-            difficulty = request.data.get('difficulty', '3')
-            language_id = int(request.data.get('language_id', 71))
-
-            # Validate assessment exists
+            # Get assessment
             try:
                 assessment = Assessment.objects.get(id=assessment_id)
             except Assessment.DoesNotExist:
                 return Response(
-                    {"error": "Assessment not found"}, 
+                    {"error": "Assessment not found"},
                     status=status.HTTP_404_NOT_FOUND
                 )
 
             # Generate questions from PDF
             generated_questions = generate_coding_questions_from_pdf(
-                pdf_file=pdf_file,
+                pdf_file=request.FILES['pdf_file'],
                 num_questions=num_questions,
                 difficulty=difficulty,
                 language_id=language_id
@@ -196,52 +190,35 @@ class GenerateCodingQuestionsView(APIView):
                 {"error": f"An error occurred: {str(e)}"}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-            
+
 class GenerateCodingContextQuestionsView(APIView):
+    permission_classes = [isTeacher]
     serializer_class = GenerateCodingQuestionsContextSerializer
 
     def post(self, request):
-        """
-        Generate coding questions from a PDF file
-        Required fields in request:
-        - Context : The Context to generate questions from
-        - assessment_id: UUID of the assessment to associate questions with
-        - num_questions: (optional) Number of questions to generate (default: 5)
-        - difficulty: (optional) Difficulty level 1-5 (default: 3)
-        - language_id: (optional) Programming language ID (default: 71 for Python)
-        """
         try:
-            # Get required fields
-            context = request.data.get('context')
-            assessment_id = request.data.get('assessment_id')
+            # Validate input data
+            serializer = self.serializer_class(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            if not context:
-                return Response(
-                    {"error": "Context is required"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            # Get validated data
+            assessment_id = serializer.validated_data['assessment_id']
+            num_questions = serializer.validated_data['num_questions']
+            difficulty = serializer.validated_data['difficulty']
+            language_id = serializer.validated_data['language_id']
+            context = serializer.validated_data['context']
 
-            if not assessment_id:
-                return Response(
-                    {"error": "Assessment ID is required"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Get optional fields with defaults
-            num_questions = int(request.data.get('num_questions', 5))
-            difficulty = request.data.get('difficulty', '3')
-            language_id = int(request.data.get('language_id', 71))
-
-            # Validate assessment exists
+            # Get assessment
             try:
                 assessment = Assessment.objects.get(id=assessment_id)
             except Assessment.DoesNotExist:
                 return Response(
-                    {"error": "Assessment not found"}, 
+                    {"error": "Assessment not found"},
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # Generate questions from PDF
+            # Generate questions from text
             generated_questions = generate_coding_questions_from_text(
                 text=context,
                 num_questions=num_questions,
