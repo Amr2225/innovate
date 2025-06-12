@@ -813,14 +813,14 @@ def extract_text_from_pdf(pdf_file):
         logger.error(f"Error extracting text from PDF: {str(e)}")
         return None
 
-def generate_coding_questions_from_pdf(pdf_file, num_questions=5, difficulty='3', language_id=71):
+def generate_coding_questions_from_pdf(pdf_file, num_questions=5, difficulty='3', language_id='python3'):
     """
     Extract text from PDF and generate coding questions using AI
     Args:
         pdf_file: InMemoryUploadedFile or path to PDF file
         num_questions (int): Number of questions to generate
         difficulty (str): Difficulty level ('1'=Very Easy, '2'=Easy, '3'=Medium, '4'=Hard, '5'=Very Hard)
-        language_id (int): Programming language ID (default: 71 for Python)
+        language_id (str): Programming language ID (default: 'python3')
     Returns:
         list: List of coding question dictionaries with test cases
     """
@@ -835,14 +835,14 @@ def generate_coding_questions_from_pdf(pdf_file, num_questions=5, difficulty='3'
         logger.error(f"Failed to generate coding questions from PDF: {str(e)}")
         raise ValueError(f"Failed to generate coding questions from PDF: {str(e)}")
 
-def generate_coding_questions_from_text(text, num_questions=5, difficulty='3', language_id=71):
+def generate_coding_questions_from_text(text, num_questions=5, difficulty='3', language_id='python3'):
     """
     Generate coding questions from text using AI
     Args:
         text (str): Input text to generate questions from
         num_questions (int): Number of questions to generate
         difficulty (str): Difficulty level ('1'=Very Easy, '2'=Easy, '3'=Medium, '4'=Hard, '5'=Very Hard)
-        language_id (int): Programming language ID (default: 71 for Python)
+        language_id (str): Programming language ID (default: 'python3')
     Returns:
         list: List of coding question dictionaries with test cases
     """
@@ -861,16 +861,16 @@ def generate_coding_questions_from_text(text, num_questions=5, difficulty='3', l
         
         # Map language ID to name
         language_map = {
-            71: 'Python',
-            62: 'Java',
-            50: 'C',
-            54: 'C++',
-            51: 'C#',
-            63: 'JavaScript',
-            74: 'TypeScript',
-            68: 'PHP'
+            'python3': 'Python 3',
+            'java': 'Java',
+            'c': 'C',
+            'cpp': 'C++',
+            'csharp': 'C#',
+            'javascript': 'JavaScript',
+            'typescript': 'TypeScript',
+            'php': 'PHP'
         }
-        language_name = language_map.get(language_id, 'Python')
+        language_name = language_map.get(language_id, 'Python 3')
         
         # Prepare the prompt for coding questions
         prompt = [
@@ -904,12 +904,12 @@ def generate_coding_questions_from_text(text, num_questions=5, difficulty='3', l
                         "function_signature": "def function_name(param1, param2):",
                         "test_cases": [
                             {{
-                                "input_data": "input1",
+                                "input_data": [\"input1\", \"input2\"],
                                 "expected_output": "output1",
                                 "is_public": true
                             }},
                             {{
-                                "input_data": "input2",
+                                "input_data": [\"input3\", \"input4\"],
                                 "expected_output": "output2",
                                 "is_public": false
                             }}
@@ -929,7 +929,7 @@ def generate_coding_questions_from_text(text, num_questions=5, difficulty='3', l
                 """
             }
         ]
-
+        
         # Adjust temperature based on difficulty
         temperature_map = {
             '1': 0.7,  # Lower temperature for more consistent, easier questions

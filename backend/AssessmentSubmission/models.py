@@ -9,6 +9,7 @@ from decimal import Decimal
 from django.conf import settings
 import os
 import json
+from Code_Questions.utils.piston import run_code, prepare_code_for_piston
 
 class AssessmentSubmission(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -205,7 +206,7 @@ class AssessmentSubmission(models.Model):
     def create_code_scores(self):
         """Create CodingQuestionScore records for each code answer"""
         from Code_Questions.models import CodingQuestion, CodingQuestionScore, CodingScoreTestInteractions
-        from Code_Questions.utils.judge0 import run_code
+        from Code_Questions.utils.piston import run_code, prepare_code_for_piston
         from enrollments.models import Enrollments
 
         for question_id, code_answer in self.codequestions_answers.items():
@@ -216,11 +217,14 @@ class AssessmentSubmission(models.Model):
                 total_cases = question.test_cases.count()
                 passed_cases = 0
 
+                # Prepare the code with wrapper
+                wrapped_code = prepare_code_for_piston(code_answer)
+
                 for case in question.test_cases.all():
                     result = run_code(
-                        source_code=code_answer,
+                        source_code=wrapped_code,
                         stdin=case.input_data,
-                        language_id=question.language_id
+                        language=question.language_id
                     )
 
                     output = (result.get("stdout") or "").strip()

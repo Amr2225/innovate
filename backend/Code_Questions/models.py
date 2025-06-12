@@ -6,14 +6,14 @@ from enrollments.models import Enrollments
 
 class CodingQuestion(models.Model):
     LANGUAGE_CHOICES = [
-        (71, 'Python'),
-        (62, 'Java'),
-        (50, 'C'),
-        (54, 'C++'),
-        (51, 'C#'),
-        (63, 'JavaScript'),
-        (74, 'TypeScript'),
-        (68, 'PHP'),
+        ('python3', 'Python 3'),
+        ('java', 'Java'),
+        ('c', 'C'),
+        ('cpp', 'C++'),
+        ('csharp', 'C#'),
+        ('javascript', 'JavaScript'),
+        ('typescript', 'TypeScript'),
+        ('php', 'PHP'),
     ]
     DIFFICULTY_CHOICES = [
         ('1', 'Very Easy'),
@@ -23,14 +23,13 @@ class CodingQuestion(models.Model):
         ('5', 'Very Hard')
     ]
     
-        
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     assessment_Id = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name='coding_questions')
     created_date = models.DateTimeField(auto_now_add=True)
     title = models.CharField(max_length=255)
     description = models.TextField()
     function_signature = models.CharField(max_length=255)
-    language_id = models.IntegerField(choices=LANGUAGE_CHOICES, default=71)  # 71 = Python 3
+    language_id = models.CharField(max_length=20, choices=LANGUAGE_CHOICES, default='python3')
     difficulty = models.CharField(max_length=1, choices=DIFFICULTY_CHOICES, default='3')
     max_grade = models.IntegerField(default=5)
     section_number = models.IntegerField(default=0)
