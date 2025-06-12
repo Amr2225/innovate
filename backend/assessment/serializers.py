@@ -45,7 +45,7 @@ class AssessmentSerializer(serializers.ModelSerializer):
         model = Assessment
         fields = ('id', 'course', 'course_name', 'title', 'type', 'due_date', 'grade', 
                  'start_date', 'accepting_submissions')
-        read_only_fields = ('id', 'course_name', 'accepting_submissions')
+        read_only_fields = ('id', 'course_name', 'accepting_submissions', 'grade')
 
     def validate(self, data):
         # Check if due date is in the future
