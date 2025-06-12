@@ -62,71 +62,7 @@ class AssessmentSubmissionPermission(permissions.BasePermission):
         return False
 
 class AssessmentSubmissionAPIView(generics.CreateAPIView):
-    """
-    API endpoint to submit an assessment.
 
-    This endpoint allows students to submit their answers for an assessment,
-    including MCQ answers and handwritten answer images.
-
-    POST /api/assessments/{assessment_id}/submit/
-
-    Parameters:
-    - assessment_id (UUID): The ID of the assessment
-    - mcq_answers (JSON): Dictionary mapping question IDs to selected answers
-    - handwritten_{question_id} (File): Image file for handwritten answers
-
-    Example Request:
-    ```json
-    {
-        "mcq_answers": {
-            "question_id_1": "selected_option",
-            "question_id_2": "selected_option"
-        }
-    }
-    ```
-    And form data for handwritten answers:
-    ```
-    handwritten_question_id_1: [image_file]
-    handwritten_question_id_2: [image_file]
-    ```
-
-    Returns:
-    ```json
-    {
-        "id": "uuid",
-        "assessment": "uuid",
-        "enrollment": "uuid",
-        "student_email": "string",
-        "assessment_title": "string",
-        "course_name": "string",
-        "mcq_answers": {
-            "question_id": "selected_option"
-        },
-        "handwritten_answers": {
-            "question_id": "file_url"
-        },
-        "submitted_at": "datetime",
-        "is_submitted": "boolean"
-    }
-    ```
-
-    Status Codes:
-    - 201: Successfully submitted assessment
-    - 400: Invalid submission data or assessment not accepting submissions
-    - 403: Not authorized to submit assessment
-    - 404: Assessment not found
-
-    Permissions:
-    - Students: Can submit assessments for courses they're enrolled in
-    - Teachers/Institutions: Cannot submit assessments
-
-    Notes:
-    - All questions must be answered
-    - MCQ answers must be one of the provided options
-    - Handwritten answers must be valid image files (JPEG, PNG, GIF, BMP)
-    - Assessment must be accepting submissions
-    - Student must be enrolled in the course
-    """
     serializer_class = AssessmentSubmissionSerializer
     permission_classes = [AssessmentSubmissionPermission]
     parser_classes = [JSONParser, MultiPartParser, FormParser]
@@ -343,25 +279,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             )
 
     def create(self, request, *args, **kwargs):
-        """
-        Submit answers for an assessment.
 
-        This endpoint allows students to submit their answers for an assessment.
-        It handles both MCQ and handwritten answers.
-
-        The submission process:
-        1. Validates the assessment exists and is accepting submissions
-        2. Checks student enrollment
-        3. Validates answers against questions
-        4. Creates scores for each answer
-        5. Updates the submission status
-
-        Returns:
-        - 201: Assessment submitted successfully
-        - 400: Invalid input data
-        - 403: Not authorized to submit
-        - 404: Assessment not found
-        """
         try:
             # Get assessment ID from URL
             assessment_id = kwargs.get('pk')

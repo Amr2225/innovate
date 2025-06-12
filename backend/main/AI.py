@@ -9,6 +9,14 @@ import io
 import base64
 from PIL import Image
 from django.core.exceptions import ValidationError
+import subprocess
+import tempfile
+import os
+import time
+import psutil
+from typing import List, Dict, Any, Optional
+from django.core.files.storage import default_storage
+
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -812,3 +820,418 @@ def extract_text_from_pdf(pdf_file):
     except Exception as e:
         logger.error(f"Error extracting text from PDF: {str(e)}")
         return None
+
+
+def extract_text_from_lecture_attachments(lecture_ids: List[str], lecture_model, attachment_model) -> str:
+    """
+    Extract text from lecture attachments.
+    
+    Args:
+        lecture_ids (List[str]): List of lecture IDs
+        lecture_model: The Lecture model class
+        attachment_model: The LectureAttachment model class
+        
+    Returns:
+        str: Combined text from all lecture attachments
+    """
+    try:
+        combined_text = ""
+        
+        for lecture_id in lecture_ids:
+            lecture = lecture_model.objects.get(id=lecture_id)
+            attachments = attachment_model.objects.filter(lecture=lecture)
+            
+            for attachment in attachments:
+                if attachment.file.name.endswith('.pdf'):
+                    # Extract text from PDF
+                    pdf_text = extract_text_from_pdf(attachment.file.path)
+                    if pdf_text:
+                        combined_text += f"\n\nFrom {lecture.title} - {attachment.file.name}:\n{pdf_text}"
+                elif attachment.file.name.endswith(('.txt', '.md')):
+                    # Read text files directly
+                    with default_storage.open(attachment.file.name, 'r') as f:
+                        combined_text += f"\n\nFrom {lecture.title} - {attachment.file.name}:\n{f.read()}"
+        
+        return combined_text.strip()
+        
+    except Exception as e:
+        logger.error(f"Error extracting text from lecture attachments: {str(e)}")
+        raise
+
+
+def generate_coding_questions(
+    lecture_ids: Optional[List[str]] = None,
+    context: Optional[str] = None,
+    num_questions: int = 3,
+    grade: int = 100,
+    section_number: int = 1,
+    lecture_model = None,
+    attachment_model = None
+) -> List[Dict[str, Any]]:
+    """
+    Generate coding questions from lecture attachments or context using AI.
+    
+    Args:
+        lecture_ids (List[str], optional): List of lecture IDs
+        context (str, optional): Context text to generate questions from
+        num_questions (int): Number of questions to generate
+        grade (int): Grade for each question
+        section_number (int): Section number in the assessment
+        lecture_model: The Lecture model class (required if lecture_ids is provided)
+        attachment_model: The LectureAttachment model class (required if lecture_ids is provided)
+        
+    Returns:
+        List[Dict[str, Any]]: List of coding questions with title, description, function signature, and test cases
+    """
+    try:
+        # Get the source text
+        if lecture_ids:
+            if not lecture_model or not attachment_model:
+                raise ValueError("lecture_model and attachment_model are required when lecture_ids is provided")
+            source_text = extract_text_from_lecture_attachments(lecture_ids, lecture_model, attachment_model)
+        else:
+            source_text = context
+
+        if not source_text:
+            raise ValueError("No text content found to generate questions from")
+
+        # Prepare the prompt for the AI model
+        prompt = f"""Based on the following content, generate {num_questions} coding questions with test cases.
+Each question should include:
+1. A clear title
+2. A detailed description
+3. A function signature with type hints
+4. A set of test cases (both public and private)
+
+Content:
+{source_text}
+
+Generate the questions in the following JSON format:
+[
+    {{
+        "title": "Question title",
+        "description": "Detailed question description",
+        "function_signature": "def function_name(param1: type1, param2: type2) -> return_type:",
+        "language_id": 71,  # Python by default
+        "max_grade": {grade},
+        "test_cases": [
+            {{
+                "input": "input value",
+                "output": "expected output",
+                "is_public": true
+            }}
+        ]
+    }}
+]
+Crictal Requirements:
+1.ensure that the response is valid json format
+2.Double check that the response is in a json format
+
+Requirements for each question:
+1. Title should be clear and descriptive, prefixed with "Section {section_number} - "
+2. Description should be detailed and include:
+   - Problem statement
+   - Input/output requirements
+   - Constraints and edge cases
+   - Example usage
+3. Function signature must include:
+   - Descriptive parameter names
+   - Type hints for all parameters
+   - Return type hint
+4. Test cases must include:
+   - At least 2 public test cases
+   - At least 1 private test case
+   - Edge cases
+   - Input/output in proper format (strings for strings, arrays for arrays, etc.)
+   - Clear expected outputs
+
+Make sure to:
+1. Include edge cases in test cases
+2. Mix public and private test cases
+3. Use appropriate type hints
+4. Make questions challenging but solvable
+5. Include clear descriptions
+6. Generate realistic test cases with proper input/output formats
+7. Follow Python naming conventions
+8. Use proper data structures and algorithms
+9. Consider time and space complexity
+10. Include error handling cases
+
+The questions should be:
+- Relevant to the content
+- Progressive in difficulty
+- Testing different concepts
+- Well-structured and clear
+- Following best practices
+
+Return ONLY the JSON array of questions, nothing else."""
+
+        # Prepare messages for the AI model
+        messages = [
+            {"role": "system", "content": "You are an expert programming instructor who creates high-quality coding questions and test cases."},
+            {"role": "user", "content": prompt}
+        ]
+
+        # Call the AI model
+        try:
+            response = client.chat.completions.create(
+                model=settings.AI_MODEL,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000,
+            )
+            
+            # Extract and validate the response
+            if not response or not response.choices:
+                raise ValueError("Empty response from AI model")
+            
+            generated_text = response.choices[0].message.content.strip()
+            if not generated_text:
+                raise ValueError("Empty content in AI model response")
+            
+            # Try to parse the JSON response
+            try:
+                questions = json.loads(generated_text)
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in AI response: {str(e)}")
+                logger.error(f"Raw response: {generated_text}")
+                raise ValueError("Failed to parse AI response as valid JSON")
+            
+            # Validate the structure of the response
+            if not isinstance(questions, list):
+                raise ValueError("AI response must be a list of questions")
+            
+            if len(questions) == 0:
+                raise ValueError("No questions generated")
+            
+            if len(questions) > num_questions:
+                questions = questions[:num_questions]
+            
+            # Validate each question
+            for i, question in enumerate(questions):
+                # Ensure required fields are present
+                required_fields = ['title', 'description', 'function_signature', 'language_id', 'max_grade', 'test_cases']
+                missing_fields = [field for field in required_fields if field not in question]
+                if missing_fields:
+                    raise ValueError(f"Question {i+1} is missing required fields: {', '.join(missing_fields)}")
+                
+                # Validate field types
+                if not isinstance(question['title'], str):
+                    raise ValueError(f"Question {i+1}: title must be a string")
+                if not isinstance(question['description'], str):
+                    raise ValueError(f"Question {i+1}: description must be a string")
+                if not isinstance(question['function_signature'], str):
+                    raise ValueError(f"Question {i+1}: function_signature must be a string")
+                if not isinstance(question['language_id'], int):
+                    raise ValueError(f"Question {i+1}: language_id must be an integer")
+                if not isinstance(question['max_grade'], (int, float)):
+                    raise ValueError(f"Question {i+1}: max_grade must be a number")
+                if not isinstance(question['test_cases'], list):
+                    raise ValueError(f"Question {i+1}: test_cases must be a list")
+                
+                # Validate test cases
+                if len(question['test_cases']) < 3:
+                    raise ValueError(f"Question {i+1}: must have at least 3 test cases")
+                
+                public_cases = [tc for tc in question['test_cases'] if tc.get('is_public', True)]
+                private_cases = [tc for tc in question['test_cases'] if not tc.get('is_public', True)]
+                
+                if len(public_cases) < 2:
+                    raise ValueError(f"Question {i+1}: must have at least 2 public test cases")
+                if len(private_cases) < 1:
+                    raise ValueError(f"Question {i+1}: must have at least 1 private test case")
+                
+                # Validate each test case
+                for j, tc in enumerate(question['test_cases']):
+                    if not isinstance(tc, dict):
+                        raise ValueError(f"Question {i+1}, Test Case {j+1}: must be a dictionary")
+                    
+                    required_tc_fields = ['input', 'output']
+                    missing_tc_fields = [field for field in required_tc_fields if field not in tc]
+                    if missing_tc_fields:
+                        raise ValueError(f"Question {i+1}, Test Case {j+1}: missing required fields: {', '.join(missing_tc_fields)}")
+                    
+                    if not isinstance(tc['input'], str):
+                        raise ValueError(f"Question {i+1}, Test Case {j+1}: input must be a string")
+                    if not isinstance(tc['output'], str):
+                        raise ValueError(f"Question {i+1}, Test Case {j+1}: output must be a string")
+                    if 'is_public' in tc and not isinstance(tc['is_public'], bool):
+                        raise ValueError(f"Question {i+1}, Test Case {j+1}: is_public must be a boolean")
+            
+            return questions
+            
+        except Exception as e:
+            logger.error(f"Error calling AI model: {str(e)}")
+            raise
+        
+    except Exception as e:
+        logger.error(f"Error generating coding questions: {str(e)}")
+        raise
+
+
+def evaluate_coding_answer(
+    function_signature: str,
+    submitted_code: str,
+    language_id: int,
+    test_cases: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+    """
+    Evaluate a submitted coding answer against test cases.
+    
+    Args:
+        function_signature (str): The function signature to test
+        submitted_code (str): The code submitted by the student
+        language_id (int): The programming language ID
+        test_cases (List[Dict[str, Any]]): List of test cases with input and expected output
+        
+    Returns:
+        Dict[str, Any]: Dictionary containing test results, execution time, memory usage, and feedback
+    """
+    try:
+        # Create a temporary file for the submitted code
+        with tempfile.NamedTemporaryFile(mode='w', suffix=get_file_extension(language_id), delete=False) as f:
+            f.write(submitted_code)
+            temp_file_path = f.name
+
+        test_results = []
+        total_execution_time = 0
+        max_memory_usage = 0
+
+        # Run each test case
+        for test_case in test_cases:
+            start_time = time.time()
+            process = psutil.Process()
+            initial_memory = process.memory_info().rss / 1024 / 1024  # MB
+
+            try:
+                # Execute the code with the test input
+                result = execute_code(temp_file_path, language_id, test_case["input"])
+                actual_output = result.strip()
+                
+                # Calculate execution metrics
+                execution_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+                final_memory = process.memory_info().rss / 1024 / 1024  # MB
+                memory_usage = final_memory - initial_memory
+                
+                total_execution_time += execution_time
+                max_memory_usage = max(max_memory_usage, memory_usage)
+                
+                # Compare output with expected output
+                passed = actual_output == test_case["output"]
+                
+                test_results.append({
+                    "input": test_case["input"],
+                    "expected_output": test_case["output"],
+                    "actual_output": actual_output,
+                    "passed": passed,
+                    "execution_time": execution_time,
+                    "memory_usage": memory_usage,
+                    "is_public": test_case.get("is_public", True)
+                })
+                
+            except Exception as e:
+                test_results.append({
+                    "input": test_case["input"],
+                    "expected_output": test_case["output"],
+                    "error": str(e),
+                    "passed": False,
+                    "is_public": test_case.get("is_public", True)
+                })
+
+        # Clean up temporary file
+        os.unlink(temp_file_path)
+
+        # Calculate score based on passed test cases
+        public_tests = [t for t in test_results if t["is_public"]]
+        private_tests = [t for t in test_results if not t["is_public"]]
+        
+        public_score = sum(1 for t in public_tests if t["passed"]) / len(public_tests) if public_tests else 0
+        private_score = sum(1 for t in private_tests if t["passed"]) / len(private_tests) if private_tests else 0
+        
+        # Weight: 60% public tests, 40% private tests
+        final_score = (public_score * 0.6 + private_score * 0.4) * 100
+
+        # Generate feedback
+        feedback = f"Public tests: {sum(1 for t in public_tests if t['passed'])}/{len(public_tests)} passed\n"
+        feedback += f"Private tests: {sum(1 for t in private_tests if t['passed'])}/{len(private_tests)} passed\n"
+        feedback += f"Final score: {final_score:.2f}%"
+
+        return {
+            "test_results": test_results,
+            "execution_time": total_execution_time / len(test_cases) if test_cases else 0,
+            "memory_usage": max_memory_usage,
+            "score": final_score,
+            "feedback": feedback
+        }
+
+    except Exception as e:
+        logger.error(f"Error evaluating code: {str(e)}")
+        raise
+
+
+def get_file_extension(language_id: int) -> str:
+    """Get the file extension for a given language ID."""
+    extensions = {
+        71: '.py',    # Python 3
+        54: '.cpp',   # C++
+        62: '.java',  # Java
+        63: '.js',    # JavaScript
+        50: '.c',     # C
+        72: '.rb',    # Ruby
+        73: '.go',    # Go
+        74: '.swift', # Swift
+        75: '.kt',    # Kotlin
+        76: '.rs'     # Rust
+    }
+    return extensions.get(language_id, '.txt')
+
+
+def execute_code(file_path: str, language_id: int, input_data: str) -> str:
+    """
+    Execute the code file with the given input data.
+    
+    Args:
+        file_path (str): Path to the code file
+        language_id (int): The programming language ID
+        input_data (str): Input data for the program
+        
+    Returns:
+        str: The program output
+    """
+    try:
+        # Map language IDs to execution commands
+        commands = {
+            71: ['python', file_path],  # Python 3
+            54: ['g++', file_path, '-o', file_path + '.exe', '&&', file_path + '.exe'],  # C++
+            62: ['javac', file_path, '&&', 'java', os.path.splitext(file_path)[0]],  # Java
+            63: ['node', file_path],  # JavaScript
+            50: ['gcc', file_path, '-o', file_path + '.exe', '&&', file_path + '.exe'],  # C
+            72: ['ruby', file_path],  # Ruby
+            73: ['go', 'run', file_path],  # Go
+            74: ['swift', file_path],  # Swift
+            75: ['kotlinc', file_path, '-include-runtime', '-d', file_path + '.jar', '&&', 'java', '-jar', file_path + '.jar'],  # Kotlin
+            76: ['rustc', file_path, '&&', os.path.splitext(file_path)[0]]  # Rust
+        }
+
+        if language_id not in commands:
+            raise ValueError(f"Unsupported language ID: {language_id}")
+
+        # Execute the code with input data
+        process = subprocess.Popen(
+            commands[language_id],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        stdout, stderr = process.communicate(input=input_data)
+        
+        if process.returncode != 0:
+            raise RuntimeError(f"Execution error: {stderr}")
+            
+        return stdout
+
+    except Exception as e:
+        logger.error(f"Error executing code: {str(e)}")
+        raise

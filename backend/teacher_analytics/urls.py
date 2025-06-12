@@ -5,6 +5,7 @@ from .top_students_view import TopStudentsView
 from .course_metrics_view import CourseMetricsView
 from .courses_metrics_view import TeacherCoursesMetricsView
 from .student_metrics_view import StudentMetricsView
+from .Student_Dashboard import CourseCountView
 
 urlpatterns = [
     path('', TeacherAnalyticsView.as_view(), name='teacher-analytics'),
@@ -14,4 +15,5 @@ urlpatterns = [
     path('course-metrics/<uuid:course_id>/', CourseMetricsView.as_view(), name='course-metrics'),
     path('courses-metrics/', TeacherCoursesMetricsView.as_view(), name='courses-metrics'),
     path('student-metrics/', StudentMetricsView.as_view(), name='student-metrics'),
+    path('course-count/', CourseCountView.as_view(), name='course-count'),
 ] 
