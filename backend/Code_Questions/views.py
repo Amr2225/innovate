@@ -31,76 +31,76 @@ class CodingQuestionDetailView(generics.RetrieveAPIView):
     queryset = CodingQuestion.objects.all()
     serializer_class = CodingQuestionSerializer
 
-class CodeSubmissionView(APIView):
-    def post(self, request, question_id):
-        try:
-            question = CodingQuestion.objects.get(id=question_id)
-        except CodingQuestion.DoesNotExist:
-            return Response({"error": "Question not found"}, status=404)
+# class CodeSubmissionView(APIView):
+#     def post(self, request, question_id):
+#         try:
+#             question = CodingQuestion.objects.get(id=question_id)
+#         except CodingQuestion.DoesNotExist:
+#             return Response({"error": "Question not found"}, status=404)
 
-        code = request.data.get('code')
-        enrollment_id = request.data.get('enrollment_id')
+#         code = request.data.get('code')
+#         enrollment_id = request.data.get('enrollment_id')
 
-        if not code:
-            return Response({"error": "Code is required"}, status=400)
+#         if not code:
+#             return Response({"error": "Code is required"}, status=400)
 
-        if not enrollment_id:
-            return Response({"error": "Enrollment ID is required"}, status=400)
+#         if not enrollment_id:
+#             return Response({"error": "Enrollment ID is required"}, status=400)
 
-        try:
-            enrollment = Enrollments.objects.get(id=enrollment_id)
-        except Enrollments.DoesNotExist:
-            return Response({"error": "Enrollment not found"}, status=404)
+#         try:
+#             enrollment = Enrollments.objects.get(id=enrollment_id)
+#         except Enrollments.DoesNotExist:
+#             return Response({"error": "Enrollment not found"}, status=404)
 
-        results = []
-        total_cases = question.test_cases.count()
-        passed_cases = 0
+#         results = []
+#         total_cases = question.test_cases.count()
+#         passed_cases = 0
 
-        # Wrap the student code for input/output handling
-        wrapped_code = prepare_code_for_piston(code)
+#         # Wrap the student code for input/output handling
+#         wrapped_code = prepare_code_for_piston(code)
 
-        for case in question.test_cases.all():
-            result = run_code(
-                source_code=wrapped_code,
-                stdin=case.input_data,
-                language=question.language_id
-            )
+#         for case in question.test_cases.all():
+#             result = run_code(
+#                 source_code=wrapped_code,
+#                 stdin=case.input_data,
+#                 language=question.language_id
+#             )
 
-            output = (result.get("stdout") or "").strip()
-            expected = case.expected_output.strip()
+#             output = (result.get("stdout") or "").strip()
+#             expected = case.expected_output.strip()
 
-            passed = output == expected
-            if passed:
-                passed_cases += 1
+#             passed = output == expected
+#             if passed:
+#                 passed_cases += 1
 
-            results.append({
-                "input": case.input_data,
-                "expected_output": expected,
-                "actual_output": output,
-                "passed": passed,
-                "error": result.get("stderr")
-            })
+#             results.append({
+#                 "input": case.input_data,
+#                 "expected_output": expected,
+#                 "actual_output": output,
+#                 "passed": passed,
+#                 "error": result.get("stderr")
+#             })
 
-        # Calculate proportional score
-        if total_cases > 0:
-            score = int((passed_cases / total_cases) * question.max_grade)
-        else:
-            score = 0
+#         # Calculate proportional score
+#         if total_cases > 0:
+#             score = int((passed_cases / total_cases) * question.max_grade)
+#         else:
+#             score = 0
 
-        # Save or update the score in CodingQuestionScore
-        CodingQuestionScore.objects.update_or_create(
-            question=question,
-            enrollment_id=enrollment,
-            defaults={"score": score}
-        )
+#         # Save or update the score in CodingQuestionScore
+#         CodingQuestionScore.objects.update_or_create(
+#             question=question,
+#             enrollment_id=enrollment,
+#             defaults={"score": score}
+#         )
 
-        return Response({
-            "results": results,
-            "score": score,
-            "total_possible_score": question.max_grade,
-            "passed_test_cases": passed_cases,
-            "total_test_cases": total_cases
-        })
+#         return Response({
+#             "results": results,
+#             "score": score,
+#             "total_possible_score": question.max_grade,
+#             "passed_test_cases": passed_cases,
+#             "total_test_cases": total_cases
+#         })
 
 
 class GenerateCodingQuestionsView(APIView):
