@@ -4,6 +4,9 @@ import Player from "next-video/player";
 import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import useVideo from "@/hooks/useVideo";
+import HtmlParser from "html-react-parser";
+import styles from "@/components/addMaterials/materials/CusomtDialogs/richTextEditor.module.css";
+import { cn } from "@/lib/utils";
 
 export default function LectureDetails({
   lecture,
@@ -38,7 +41,9 @@ export default function LectureDetails({
 
         <TabsContent value='description'>
           <h1 className='text-lg font-bold'>Description</h1>
-          <p>{lecture.description}</p>
+          <div className={cn(styles.editorContainer, "mt-2")}>
+            <p>{HtmlParser(lecture.description)}</p>
+          </div>
         </TabsContent>
 
         <TabsContent value='attachments'>

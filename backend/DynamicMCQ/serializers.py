@@ -27,14 +27,15 @@ class DynamicMCQSerializer(serializers.ModelSerializer):
         # Validate that either context or lecture_ids is provided
         if not data.get('context') and not data.get('lecture_ids'):
             raise serializers.ValidationError(
-                "Either context or lecture_ids must be provided")
-        
+                "Either context or lectures must be provided")
+
         # Validate num_options
-        num_options = data.get('num_options', 4)  # Default to 4 if not provided
+        # Default to 4 if not provided
+        num_options = data.get('num_options', 4)
         if num_options < 2 or num_options > 6:
             raise serializers.ValidationError(
                 "Number of options must be between 2 and 6")
-        
+
         return data
 
 
@@ -48,9 +49,8 @@ class DynamicMCQQuestionsSerializer(serializers.ModelSerializer):
             'options',
             'answer_key',
             'question_grade',
-            # 'created_by'
         ]
-        read_only_fields = ['id', 'created_by']
+        read_only_fields = ['id']
 
     def validate(self, data):
         # Validate that answer_key is one of the options

@@ -1,17 +1,18 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    McqQuestionViewSet,
     McqQuestionListCreateAPIView,
     McqQuestionRetrieveUpdateDestroyAPIView,
-    GenerateMCQsFromTextView,
-    GenerateMCQsFromPDFView,
-    GenerateMCQsFromMultiplePDFsView,
     SaveGeneratedMCQsView
 )
 
+from .ai_views import (
+    GenerateMCQsFromTextView,
+    GenerateMCQsFromPDFView,
+    GenerateMCQsFromLecturesView,
+)
+
 router = DefaultRouter()
-router.register(r'mcq-questions', McqQuestionViewSet, basename='mcq-question')
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -36,12 +37,12 @@ urlpatterns = [
         name='mcq-generate-from-pdf'
     ),
     path(
-        'assessments/<str:assessment_id>/generate-from-lectures/',
-        GenerateMCQsFromMultiplePDFsView.as_view(),
+        'generate-from-lectures/',
+        GenerateMCQsFromLecturesView.as_view(),
         name='mcq-generate-from-lectures'
     ),
     path(
-        'assessments/<uuid:assessment_id>/save-generated-mcqs/',
+        'save-generated-mcqs/<uuid:assessment_id>/',
         SaveGeneratedMCQsView.as_view(),
         name='save-generated-mcqs'
     ),

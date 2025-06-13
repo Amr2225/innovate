@@ -1,25 +1,27 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-<<<<<<< HEAD
 import { EncryptedStorage } from './encryptedStorage'
 import { FileData } from '@/types/file.type'
+import { getImageMetadata, ImageMetadata, saveImage } from './imageStorage'
 
-=======
->>>>>>> sherif
 
 type InstitutionStore = {
     name: string
     email: string
-<<<<<<<<< Temporary merge branch 1
     password: string
     confirm_password: string
     is_verified: boolean
     is_payment_success: boolean
     current_step: number
     credits: number
-    logo?: string
+    logoData: FileData | null
+    logoStorageKey: string
+    hmac: string | null
     reset: () => void
-    setIsPaymentSuccess: (isVerified: boolean) => void
+    setLogo: (Logo: File) => Promise<void>
+    // getFile: () => Promise<File | null>
+    getLogoName: () => Promise<ImageMetadata | null>
+    setCredits: (credits: number) => void
     addCreds: (name: string, email: string, password: string, confirm_password: string) => void
     setIsVerified: () => void
     setCurrentStep: () => void
@@ -31,11 +33,12 @@ type InstitutionStore = {
 >>>>>>>>> Temporary merge branch 2
 }
 
-const initialState: Pick<InstitutionStore, 'name' | 'email' | 'password' | 'confirm_password' | 'isEmailVerified' | 'isPaymentSuccess' | 'isRegistrationSuccess' | 'current_step' | 'credits' | 'logoData' | 'hmac'> = {
+const initialState: Pick<InstitutionStore, 'name' | 'email' | 'password' | 'confirm_password' | 'isEmailVerified' | 'isPaymentSuccess' | 'isRegistrationSuccess' | 'current_step' | 'credits' | 'logoData' | 'hmac' | "logoStorageKey"> = {
     name: '',
     email: '',
 <<<<<<<<< Temporary merge branch 1
     password: '',
+    logoStorageKey: '',
     confirm_password: '',
     is_verified: false,
     is_payment_success: false,
@@ -59,9 +62,30 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
                 set({ name, email, password, confirm_password });
                 get().setCurrentStep();
             },
-            setIsPaymentSuccess: (isVerified: boolean) => {
-                set({ is_payment_success: isVerified });
-                get().setCurrentStep();
+            setLogo: async (Logo: File) => {
+                const imageKey = `image_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+                await saveImage(Logo, imageKey)
+                set({
+                    logoData: {
+                        name: Logo.name,
+                        lastModified: Logo.lastModified,
+                        size: Logo.size,
+                        type: Logo.type
+                    },
+                    logoStorageKey: imageKey
+                })
+            },
+            getLogoName: async () => {
+                return await getImageMetadata("123")
+            },
+            // getFile: async () => {
+
+            // },
+            setHmac: (hmac: string) => {
+                set({ hmac });
+            },
+            setCredits: (credits: number) => {
+                set({ credits });
             },
             reset: () => {
                 set(initialState);
@@ -90,20 +114,3 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
 
 // Run setCurrentStep on initialization
 useInstitutionRegistrationStore.getState().setCurrentStep();
-=========
-    signIn: () => { },
-}
-
-export const useBearStore = create<InstitutionStore>()(
-    persist(
-        (set) => ({
-            ...initialState,
-            signIn: (name, email) => set({ name: name, email: email }),
-        }),
-        {
-            name: 'institution-registration', // name of the item in the storage (must be unique)
-            storage: createJSONStorage(() => localStorage), // (optional) by default, 'localStorage' is used
-        },
-    ),
-)
->>>>>>>>> Temporary merge branch 2

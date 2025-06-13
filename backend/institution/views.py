@@ -9,7 +9,8 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
 
 # Institution Serializers
-from institution.serializers import InstitutionRegisterSeralizer, InstitutionUserSeralizer
+from institution.filter import InstituionUserFilter
+from institution.serializers import InstitutionRegisterSeralizer, InstitutionUserSeralizer, InstitutionUserCreationSerializer
 
 # Permissions
 from users.permissions import isInstitution
@@ -17,7 +18,6 @@ from users.permissions import isInstitution
 # Python
 import io
 import csv
-import secrets
 
 
 User = get_user_model()
@@ -108,6 +108,7 @@ class BulkUserImportView(generics.CreateAPIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
+# TODO: move this in separate file
 class Pagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
@@ -125,13 +126,39 @@ class Pagination(PageNumberPagination):
 
 
 class InstitutionUserView(generics.ListCreateAPIView):
-    # model = User
-    # queryset = User.objects.all()
-    serializer_class = InstitutionUserSeralizer
+    serializer_class = InstitutionUserCreationSerializer
     permission_classes = [isInstitution]
     pagination_class = Pagination
-    filterset_fields = ['id', 'first_name', 'middle_name', 'last_name', 'email',
-                        'role', 'institution', 'national_id']
+    filterset_class = InstituionUserFilter
+
+    def get_queryset(self):
+        user = self.request.user
+        return User.objects.filter(institution=user)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return InstitutionUserCreationSerializer
+        return InstitutionUserSeralizer
+
+    # def create(self, request, *args, **kwargs):
+    #     """
+    #     Add a single user to the institution
+    #     """
+    #     serializer = self.get_serializer(data=request.data)
+    #     if serializer.is_valid():
+    #         user = serializer.save()
+    #         return Response(
+    #             serializer.data,
+    #             status=status.HTTP_201_CREATED
+    #         )
+    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class InstitutionUserUpdateDeleteView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = InstitutionUserSeralizer
+    permission_classes = [isInstitution]
+    lookup_url_kwarg = 'user_id'
+    lookup_field = 'id'
 
     def get_queryset(self):
         user = self.request.user

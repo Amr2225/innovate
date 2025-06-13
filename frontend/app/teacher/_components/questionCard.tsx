@@ -11,7 +11,7 @@ import TypedSelectItem from "./typedSelectItem";
 import { Question } from "@/types/assessment.type";
 
 // Store
-import { useAssessmentStore } from "@/store/assessmentStore";
+// import { useAssessmentStore } from "@/store/assessmentStore";
 
 // Utils
 import { cn } from "@/lib/utils";
@@ -25,8 +25,12 @@ import HandWrittenQuestion from "./QuestionTypes/handwrittenQuestion";
 import CodeQuestion from "./QuestionTypes/codeQuestion";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Info } from "lucide-react";
+import { useParams } from "next/navigation";
+import { createAssessmentStore } from "@/store/assessmentStore";
 
 export default function QuestionCard({ question }: { question: Question }) {
+  const { courseId } = useParams();
+  const useAssessmentStore = createAssessmentStore(courseId as string);
   const { updateQuestion } = useAssessmentStore();
 
   return (
@@ -44,7 +48,7 @@ export default function QuestionCard({ question }: { question: Question }) {
 
         <div className='flex w-[20%] justify-end gap-3 items-center'>
           <Select
-            value={question.questionType as string}
+            value={question.questionType || ""}
             onValueChange={(value) => updateQuestion(question.id, "questionType", value)}
           >
             <SelectTrigger>
@@ -59,7 +63,7 @@ export default function QuestionCard({ question }: { question: Question }) {
                 AI Generatd MCQ
               </TypedSelectItem>
               <TypedSelectItem<Question["questionType"]> value='handWritten'>
-                HandWritten
+                Hand Written
               </TypedSelectItem>
               <TypedSelectItem<Question["questionType"]> value='code'>Code</TypedSelectItem>
             </SelectContent>
@@ -139,6 +143,8 @@ export function CustomEditInput({
 }
 
 function QuestionTitle({ question }: { question: Question }) {
+  const { courseId } = useParams();
+  const useAssessmentStore = createAssessmentStore(courseId as string);
   const { updateQuestion } = useAssessmentStore();
 
   if (question.questionType === "aiMcq") {

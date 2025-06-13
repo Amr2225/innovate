@@ -7,7 +7,8 @@ export const BASE_URL = process.env.NEXT_PUBLIC_API_URL
 export const api = axios.create({
     baseURL: BASE_URL,
     headers: {
-        'Content-Type': "application/json"
+        'Content-Type': "application/json",
+        "ngrok-skip-browser-warning": true
     },
     validateStatus: status => status < 500
 })
@@ -20,6 +21,11 @@ export const refreshToken = async () => {
 
         const response = await axios.post(`${BASE_URL}/auth/token/refresh/`, {
             refresh: session.refreshToken,
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                "ngrok-skip-browser-warning": "on"
+            }
         });
 
         await setSession("innovate-auth", {

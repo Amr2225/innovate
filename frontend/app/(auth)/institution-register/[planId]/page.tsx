@@ -52,24 +52,16 @@ export default function InstitutionRegisterPage() {
     isPaymentSuccess,
 
     email,
-    getFile,
   } = useInstitutionRegistrationStore();
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const [isPending, setIsPending] = useState(false);
-  const [logo, setLogo] = useState<File | null>(null);
+  // const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
   const { planId }: { planId: string } = useParams();
 
   const hmac = useMemo(() => searchParams.get("hmac"), [searchParams]);
-
-  useEffect(() => {
-    const loadFile = async () => {
-      const file = await getFile();
-      setLogo(file);
-    };
-    loadFile();
-  }, [getFile]);
 
   // Remove all query parameters without refresh
   useEffect(() => {
@@ -88,7 +80,7 @@ export default function InstitutionRegisterPage() {
   const isVerifyingPayment = useVerifyPayment();
 
   // Handle registration callback
-  const isRegistering = useRegister({ logo });
+  const isRegistering = useRegister();
 
   const setPendingCallback = useCallback(
     (pending: boolean) => {
@@ -151,7 +143,6 @@ export default function InstitutionRegisterPage() {
   return (
     <div className='h-full'>
       <div className='lg:w-[50%] md:w-[70%] w-[90%] mx-auto mt-2'>
-        {logo?.name} {logo instanceof File ? "true" : "false"}
         <StepsProgress currentStep={current_step} steps={STEPS} className='mb-5 md:mb-12' />
         <AnimatePresence mode='wait'>
           <motion.div

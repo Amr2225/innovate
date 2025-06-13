@@ -1,4 +1,5 @@
-import React from "react";
+"use client";
+import React, { useRef } from "react";
 
 // Components
 import { Button } from "@/components/ui/button";
@@ -14,17 +15,35 @@ type EditInputProps = {
 };
 
 function EditInput({ isEditing, closeEditing, value, setValue, textStyle }: EditInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (e.target.value.trim() === "") return;
+
+    setValue(e.target.value);
+    closeEditing();
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const inputValue = inputRef.current?.value;
+    if (!inputValue) return;
+    if (inputValue.trim() === "") return;
+
+    setValue(inputValue);
+    closeEditing();
+  };
+
   return (
     <span className='font-bold '>
       {isEditing ? (
-        <form
-          className='flex items-center gap-2'
-          onSubmit={(e) => {
-            e.preventDefault();
-            closeEditing();
-          }}
-        >
-          <Input className='w-full' value={value} onChange={(e) => setValue(e.target.value)} />
+        <form className='flex items-center gap-2' onSubmit={handleSubmit}>
+          <Input
+            ref={inputRef}
+            className='w-full'
+            defaultValue={value}
+            onBlur={handleBlur}
+            autoFocus
+          />
           <Button variant='secondary' type='submit' className='py-3 px-4 font-semibold'>
             Save
           </Button>

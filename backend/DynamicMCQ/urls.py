@@ -7,8 +7,14 @@ from .views import (
 )
 
 urlpatterns = [
-    path('assessments/<uuid:assessment_id>/', DynamicMCQListCreateAPIView.as_view(), name='dynamic-mcq-list-create'),
-    path('assessments/<uuid:assessment_id>/<uuid:pk>/', DynamicMCQDetailAPIView.as_view(), name='dynamic-mcq-detail'),
-    path('assessments/<uuid:assessment_id>/<uuid:dynamic_mcq_id>/questions/', DynamicMCQQuestionsListCreateAPIView.as_view(), name='dynamic-mcq-questions-list-create'),
-    path('assessments/<uuid:assessment_id>/<uuid:dynamic_mcq_id>/questions/<uuid:pk>/', DynamicMCQQuestionsDetailAPIView.as_view(), name='dynamic-mcq-questions-detail'),
-] 
+    path('<uuid:assessment_id>/',
+         DynamicMCQListCreateAPIView.as_view(), name='dynamic-mcq-list-create'),
+
+    # TODO: will be deleted
+    path('assessments/<uuid:assessment_id>/<uuid:pk>/',
+         DynamicMCQDetailAPIView.as_view(), name='dynamic-mcq-detail'),
+    path('assessments/<uuid:assessment_id>/<uuid:dynamic_mcq_id>/questions/',
+         DynamicMCQQuestionsListCreateAPIView.as_view(), name='dynamic-mcq-questions-list-create'),
+    path('assessments/<uuid:assessment_id>/<uuid:dynamic_mcq_id>/questions/<uuid:pk>/',
+         DynamicMCQQuestionsDetailAPIView.as_view(), name='dynamic-mcq-questions-detail'),
+]

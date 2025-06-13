@@ -2,8 +2,14 @@ import { api } from "@/apiService/api"
 import { Chapter, Course, Lecture, CreateLecture } from "@/types/course.type"
 
 interface GetCoursesResponse<T> {
-    data: T
+    data: T[]
     message?: string
+    previous: number | null
+    next: number | null
+    page: number
+    page_size: number
+    total_pages: number
+    total_items: number,
 }
 
 // interface ErrorrResponseType {
@@ -11,22 +17,35 @@ interface GetCoursesResponse<T> {
 // }
 
 // Get all courses for institution and student and teacher each based on their roles
-export const getCourses = async <T = Course>({ page_size, pageParam }: { page_size?: number, pageParam?: number }): Promise<T> => {
+export const getCourses = async <T = Course>({ page_size, pageParam, name, instructor }: { page_size?: number, pageParam?: number, name?: string, instructor?: string }): Promise<GetCoursesResponse<T>> => {
     const res = await api.get<GetCoursesResponse<T>>("/courses/", {
-        params: { page_size, page: pageParam },
+        params: { page_size, page: pageParam, name, instructor },
     });
 
     // console.log(res);
 
     if (res.status === 200) return res.data
-    throw new Error(res.data.message || "Failed to get courses")
+    throw new Error(res.data?.message || "Failed to get courses")
 }
 
-export const createCourse = async (course: Course): Promise<Course> => {
+export const createCourse = async (course: Omit<Course, "id">): Promise<Course> => {
     const res = await api.post<Course>("/courses/", course)
 
     if (res.status === 201) return res.data
-    throw new Error(res.data.name[0] || "Failed to create course")
+    throw new Error(res.data?.name?.[0] || "Failed to create course")
+}
+
+export const updateCourse = async (course: Course): Promise<Course> => {
+    const res = await api.put<Course>(`/courses/${course.id}/`, course)
+
+    if (res.status === 200) return res.data
+    throw new Error(res.data?.name?.[0] || "Failed to update course")
+}
+export const deleteCourse = async (courseId: string): Promise<boolean> => {
+    const res = await api.delete<{ message: string }>(`/courses/${courseId}/`)
+
+    if (res.status === 204) return true
+    throw new Error(res.data?.message || "Failed to delete course")
 }
 
 export const createChapterService = async (chapterData: FormData): Promise<Chapter[]> => {

@@ -3,5 +3,4 @@ export type FileData = {
     type: string;
     size: number;
     lastModified: number;
-    arrayBuffer: string;
 }

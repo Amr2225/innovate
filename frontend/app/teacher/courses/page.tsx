@@ -12,7 +12,7 @@ import React from "react";
 import { Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { getCourses } from "@/apiService/courseService";
-import { Course } from "@/types/course.type";
+// import { Course } from "@/types/course.type";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
@@ -25,14 +25,14 @@ import {
 import Link from "next/link";
 import { useBreadcrumb } from "@/context/breadcrumbsContext";
 
-interface TeacherCourseType {
-  data: Course[];
-  next: number | null;
-  previous: number | null;
-  page_size: number;
-  total_pages: number;
-  total_items: number;
-}
+// interface TeacherCourseType {
+//   data: Course[];
+//   next: number | null;
+//   previous: number | null;
+//   page_size: number;
+//   total_pages: number;
+//   total_items: number;
+// }
 
 export default function TeacherCourses() {
   const {
@@ -44,7 +44,7 @@ export default function TeacherCourses() {
     fetchPreviousPage,
   } = useInfiniteQuery({
     queryKey: ["teacher-courses"],
-    queryFn: ({ pageParam }) => getCourses<TeacherCourseType>({ page_size: 10, pageParam }),
+    queryFn: ({ pageParam }) => getCourses({ page_size: 10, pageParam }),
     initialPageParam: 1,
     maxPages: 1,
     getNextPageParam: (lastPage) => lastPage.next,
@@ -183,7 +183,9 @@ function ActionsDropdown({ courseId, courseName }: { courseId: string; courseNam
         </DropdownMenuItem>
         <DropdownMenuItem>Add Quiz</DropdownMenuItem>
         <DropdownMenuItem>Add Exam</DropdownMenuItem>
-        <DropdownMenuItem>Add Material</DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/teacher/courses/add-materials/${courseId}`}>Add Material</Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

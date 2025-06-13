@@ -3,9 +3,10 @@ import { institutionRegister } from "@/actions/register";
 
 import { useInstitutionRegistrationStore } from "@/store/institutionRegistrationStore";
 import { toast } from "sonner";
+import { getImage } from "@/store/imageStorage";
 
-export default function useRegister({ logo }: { logo: File | null }) {
-    const { isPaymentSuccess, name, email, password, confirm_password, credits, reset, hmac, setStatus } = useInstitutionRegistrationStore()
+export default function useRegister() {
+    const { isPaymentSuccess, name, email, password, confirm_password, credits, reset, hmac, setStatus, logoStorageKey } = useInstitutionRegistrationStore()
     const [isPending, startTransition] = useTransition();
 
 
@@ -21,7 +22,10 @@ export default function useRegister({ logo }: { logo: File | null }) {
             formData.append("credits", credits.toString());
             formData.append("hmac", hmac);
 
-            if (logo instanceof File) {
+            const logo = await getImage(logoStorageKey)
+
+            if (logo) {
+                console.log("Logo sent");
                 formData.append("logo", logo);
             }
 
@@ -42,7 +46,7 @@ export default function useRegister({ logo }: { logo: File | null }) {
             }
         });
 
-    }, [isPaymentSuccess, hmac, name, email, password, confirm_password, credits, logo, reset, setStatus]);
+    }, [isPaymentSuccess, hmac, name, email, password, confirm_password, credits, logoStorageKey, reset, setStatus]);
 
     useEffect(() => {
         if (isPaymentSuccess) {

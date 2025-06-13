@@ -1,12 +1,16 @@
 "use client";
 import {
   Home,
-  Inbox,
   Search,
   Settings,
-  UserRoundPlus,
   NotebookPen,
-  ChevronRight,
+  GraduationCap,
+  BarChart4,
+  Calendar,
+  FileText,
+  CreditCard,
+  UserRoundPen,
+  UsersRound,
 } from "lucide-react";
 
 import {
@@ -14,49 +18,77 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  // SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
 import UserProfile from "@/components/user-profile";
 import { redirect, usePathname } from "next/navigation";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Image from "next/image";
 import { Session } from "@/types/auth.type";
 
-// Menu items.
-const items = [
+// Home
+const mainNavItems = [
   {
-    title: "Home",
+    title: "Dashboard",
     url: "/dashboard",
     icon: Home,
   },
   {
-    title: "Inbox",
-    url: "/inbox",
-    icon: Inbox,
+    title: "Analytics",
+    url: "/analytics",
+    icon: BarChart4,
   },
   {
-    title: "Students",
-    url: "/students",
-    icon: UserRoundPlus,
-  },
-  {
-    title: "Add Students",
-    url: "/students/add",
-    icon: UserRoundPlus,
+    title: "Calendar",
+    url: "/calendar",
+    icon: Calendar,
   },
   {
     title: "Search",
     url: "/dashboard/search",
     icon: Search,
+  },
+];
+
+// Users management items
+const studentItems = [
+  {
+    title: "All Users",
+    url: "/students", // TODO: Change to /users
+    icon: UsersRound,
+  },
+];
+
+// Course management items
+const courseItems = [
+  {
+    title: "All Courses",
+    url: "/courses",
+    icon: NotebookPen,
+  },
+  {
+    title: "Assessments",
+    url: "/assessments",
+    icon: FileText,
+  },
+  {
+    title: "Grades",
+    url: "/courses/grades",
+    icon: GraduationCap,
+  },
+];
+
+// Settings and notifications
+const utilityItems = [
+  {
+    title: "Billing",
+    url: "/billing",
+    icon: CreditCard,
   },
   {
     title: "Settings",
@@ -64,9 +96,9 @@ const items = [
     icon: Settings,
   },
   {
-    title: "Courses",
-    url: "/courses",
-    icon: NotebookPen,
+    title: "Profile",
+    url: "/profile",
+    icon: UserRoundPen,
   },
 ];
 
@@ -87,7 +119,7 @@ export function AppSidebar({ session }: { session: Session }) {
               variant='default'
               isActive={false}
             >
-              <div>
+              <div className='flex items-center gap-2'>
                 <Image src='/logo.png' alt='logo' width={35} height={35} />
                 <h1 className='text-2xl font-bold text-white'>Innovate</h1>
               </div>
@@ -96,15 +128,16 @@ export function AppSidebar({ session }: { session: Session }) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
+        {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel>Teachers</SidebarGroupLabel>
+          <SidebarGroupLabel>Home</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {mainNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={pathname.endsWith(item.url)}>
                     <Link href={currentPath + item.url}>
-                      <item.icon />
+                      <item.icon className='h-5 w-5' />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -114,64 +147,62 @@ export function AppSidebar({ session }: { session: Session }) {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {/* Student Management */}
         <SidebarGroup>
-          <SidebarGroupLabel>Students</SidebarGroupLabel>
+          <SidebarGroupLabel>Student Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {studentItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild isActive={pathname.endsWith(item.url)}>
                     <Link href={currentPath + item.url}>
-                      <item.icon />
+                      <item.icon className='h-5 w-5' />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
-
-                  <SidebarMenuSub>
-                    <SidebarMenuSubItem>
-                      <SidebarMenuButton>Button</SidebarMenuButton>
-                    </SidebarMenuSubItem>
-                  </SidebarMenuSub>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <Collapsible defaultOpen className='group/collapsible'>
-          <SidebarGroup>
-            <SidebarGroupLabel
-              asChild
-              className='group/label text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-            >
-              <CollapsibleTrigger>
-                Courses
-                <ChevronRight className='ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90' />
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
+        {/* Course Management */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Course Management</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {courseItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={pathname.endsWith(item.url)}>
+                    <Link href={currentPath + item.url}>
+                      <item.icon className='h-5 w-5' />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {items.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-
-                      {/* <SidebarMenuSub>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuButton>Button</SidebarMenuButton>
-                        </SidebarMenuSubItem>
-                      </SidebarMenuSub> */}
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible>
+        {/* Settings & Utilities */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {utilityItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={pathname.endsWith(item.url)}>
+                    <Link href={currentPath + item.url}>
+                      <item.icon className='h-5 w-5' />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         <UserProfile

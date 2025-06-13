@@ -51,11 +51,11 @@ class ChapterWithLecturesSerializer(serializers.Serializer):
 
             if user.role == "Institution" and course.institution != user:
                 raise serializers.ValidationError(
-                    f"You do not have permission to add a chapter to course: {course.title}")
+                    f"You do not have permission to add a chapter to course: {course.name}")
 
             elif user.role == "Teacher" and course.institution not in user.institution.all():
                 raise serializers.ValidationError(
-                    f"You do not have permission to add a chapter to course: {course.title}")
+                    f"You do not have permission to add a chapter to course: {course.name}")
 
             return course
         except Course.DoesNotExist:
@@ -77,7 +77,6 @@ class ChapterBulkCreateSerializer(serializers.Serializer):
     def create(self, validated_data):
         chapters_data = validated_data.get('chapters')
         created_chapters = []
-        request = self.context.get('request')
 
         for chapter_data in chapters_data:
             course = chapter_data.pop('courseId')

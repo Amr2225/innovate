@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { useParams } from "next/navigation";
 import { Reorder } from "framer-motion";
 
 // Components
@@ -9,16 +10,26 @@ import AssessmentTabs from "@/app/teacher/_components/assessmentTabs";
 import { TabsContent } from "@/components/ui/tabs";
 
 // Store
-import { useAssessmentStore } from "@/store/assessmentStore";
+import { createAssessmentStore } from "@/store/assessmentStore";
 
 // Icons
 import { Plus } from "lucide-react";
 
 export default function AddAssignmentPage() {
-  const { questions, setQuestions, addQuestion, currentSection } = useAssessmentStore();
+  // const [sectionKey, setSectionKey] = useState("");
+  const { courseId } = useParams();
+
+  const useAssessmentStore = createAssessmentStore(courseId as string);
+  const { questions, setQuestions, addQuestion, currentSection, sections } = useAssessmentStore();
+
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     setSectionKey(`section-${currentSection}`);
+  //   }, 200);
+  // }, [currentSection]);
 
   return (
-    <AssessmentTabs>
+    <AssessmentTabs defaultSection={`section-${sections[0].id}`}>
       <TabsContent value={`section-${currentSection}`}>
         <Reorder.Group
           axis='y'

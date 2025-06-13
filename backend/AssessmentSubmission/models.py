@@ -1,15 +1,15 @@
 from django.db import models
-import uuid
 from assessment.models import Assessment
 from enrollments.models import Enrollments
 from Code_Questions.models import CodingQuestion
 from django.core.exceptions import ValidationError
-from django.db.models import Sum
-from decimal import Decimal
 from django.conf import settings
+from django.core.files import File
 import os
 import json
 from Code_Questions.utils.piston import run_code, prepare_code_for_piston
+import uuid
+
 
 class AssessmentSubmission(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -32,15 +32,15 @@ class AssessmentSubmission(models.Model):
     def save(self, *args, **kwargs):
         # First save the model
         super().save(*args, **kwargs)
-        
+
         if self.is_submitted:
             try:
                 # Validate all answers are present
                 self.validate_answers()
-                
+
                 # Create MCQ scores
                 self.create_mcq_scores()
-                
+
                 # Create Handwritten scores
                 self.create_handwritten_scores()
                 
@@ -87,23 +87,29 @@ class AssessmentSubmission(models.Model):
         # Check MCQ answers
         for question in mcq_questions:
             if str(question.id) not in self.mcq_answers:
-                raise ValidationError(f"Missing answer for MCQ question {question.id}")
+                raise ValidationError(
+                    f"Missing answer for MCQ question {question.id}")
             if self.mcq_answers[str(question.id)] not in question.options:
-                raise ValidationError(f"Invalid answer for MCQ question {question.id}")
+                raise ValidationError(
+                    f"Invalid answer for MCQ question {question.id}")
 
         # Check Dynamic MCQ answers
         for question in dynamic_mcq_questions:
             if str(question.id) not in self.mcq_answers:
-                raise ValidationError(f"Missing answer for Dynamic MCQ question {question.id}")
+                raise ValidationError(
+                    f"Missing answer for Dynamic MCQ question {question.id}")
             if self.mcq_answers[str(question.id)] not in question.options:
-                raise ValidationError(f"Invalid answer for Dynamic MCQ question {question.id}")
+                raise ValidationError(
+                    f"Invalid answer for Dynamic MCQ question {question.id}")
 
         # Check Handwritten answers
         for question in handwritten_questions:
             if str(question.id) not in self.handwritten_answers:
-                raise ValidationError(f"Missing answer for Handwritten question {question.id}")
+                raise ValidationError(
+                    f"Missing answer for Handwritten question {question.id}")
             if not self.handwritten_answers[str(question.id)]:
-                raise ValidationError(f"Invalid answer for Handwritten question {question.id}")
+                raise ValidationError(
+                    f"Invalid answer for Handwritten question {question.id}")
             
         for question in code_questions:
             answer = self.codequestions_answers.get(str(question.id), "")
@@ -129,7 +135,7 @@ class AssessmentSubmission(models.Model):
                         created_by=self.enrollment.user
                     )
                     is_dynamic = True
-                
+
                 # Create or update score
                 score_data = {
                     'enrollment': self.enrollment,
@@ -137,12 +143,12 @@ class AssessmentSubmission(models.Model):
                     'is_correct': selected_answer == question.answer_key,
                     'score': question.question_grade if selected_answer == question.answer_key else 0
                 }
-                
+
                 if is_dynamic:
                     score_data['dynamic_question'] = question
                 else:
                     score_data['question'] = question
-                
+
                 MCQQuestionScore.objects.update_or_create(
                     question=question if not is_dynamic else None,
                     dynamic_question=question if is_dynamic else None,
@@ -152,56 +158,65 @@ class AssessmentSubmission(models.Model):
             except (McqQuestion.DoesNotExist, DynamicMCQQuestions.DoesNotExist):
                 raise ValidationError(f"Question {question_id} does not exist")
             except Exception as e:
-                raise ValidationError(f"Error creating score for question {question_id}: {str(e)}")
+                raise ValidationError(
+                    f"Error creating score for question {question_id}: {str(e)}")
 
     def create_handwritten_scores(self):
         """Create HandwrittenQuestionScore records for each answer"""
         from HandwrittenQuestion.models import HandwrittenQuestionScore, HandwrittenQuestion
-        from main.AI import evaluate_handwritten_answer, extract_text_from_image
+        from AI.evaluate_handwritten_answer import evaluate_handwritten_answer
 
-        for question_id, relative_path in self.handwritten_answers.items():
+        for question_id, file_path in self.handwritten_answers.items():
             question = HandwrittenQuestion.objects.get(id=question_id)
-            
+
             try:
-                # Convert relative path to absolute path
-                image_path = os.path.join(settings.MEDIA_ROOT, relative_path)
-                
-                # Open the file as a file object with a path
-                class FileWithPath:
-                    def __init__(self, path):
-                        self.path = path
-                        self._file = open(path, 'rb')
-                    def read(self, size=-1):
-                        return self._file.read(size)
-                    def seek(self, pos):
-                        self._file.seek(pos)
-                    def close(self):
-                        self._file.close()
-                file_obj = FileWithPath(image_path)
-                try:
+                # Get the full path to the file
+                full_path = os.path.join(settings.MEDIA_ROOT, file_path)
+
+                # Open the file
+                with open(full_path, 'rb') as file_obj:
                     # Evaluate the answer using AI
+                    print("Evaluating answer using AI")
                     score, feedback, extracted_text = evaluate_handwritten_answer(
                         question=question.question_text,
                         answer_key=question.answer_key,
                         student_answer_image=file_obj,
                         max_grade=float(question.max_grade)
                     )
-                finally:
-                    file_obj.close()
 
-                # Create or update score
-                HandwrittenQuestionScore.objects.update_or_create(
-                    question=question,
-                    enrollment=self.enrollment,
-                    defaults={
-                        'score': score,
-                        'feedback': feedback,
-                        'answer_image': relative_path,
-                        'extracted_text': extracted_text
-                    }
-                )
+                    print("Creating or updating score")
+                    # Create or update score
+                    score_obj, _ = HandwrittenQuestionScore.objects.update_or_create(
+                        question=question,
+                        enrollment=self.enrollment,
+                        defaults={
+                            'score': score,
+                            'feedback': feedback,
+                            'extracted_text': extracted_text
+                        }
+                    )
+
+                    print("Saving the file using Django's file handling")
+                    # Save the file using Django's file handling
+                    with open(full_path, 'rb') as f:
+                        score_obj.answer_image.save(
+                            os.path.basename(file_path),
+                            File(f),
+                            save=True
+                        )
+                if os.path.exists(full_path):
+                    os.remove(full_path)
+                    print(f"Deleted temporary file: {full_path}")
+
+                    # Delete empty parent directory
+                    dir_path = os.path.dirname(full_path)
+                    if os.path.exists(dir_path) and not os.listdir(dir_path):
+                        os.rmdir(dir_path)
+                        print(f"Deleted empty directory: {dir_path}")
+
             except Exception as e:
-                raise ValidationError(f"Error evaluating handwritten answer: {str(e)}")
+                raise ValidationError(
+                    f"Error evaluating handwritten answer: {str(e)}")
 
     def create_code_scores(self):
         """Create CodingQuestionScore records for each code answer"""
@@ -306,7 +321,7 @@ class AssessmentSubmission(models.Model):
             assessment=self.assessment,
             defaults={'total_score': 0}
         )
-        
+
         # The AssessmentScore's save method will automatically calculate the total score
         assessment_score.save()
 
