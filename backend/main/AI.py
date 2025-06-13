@@ -1017,3 +1017,4 @@ def generate_coding_questions_from_text(text, num_questions=5, difficulty='3', l
     except Exception as e:
         logger.error(f"Coding question generation error: {str(e)}")
         raise ValueError(f"Failed to generate coding questions: {str(e)}")
+

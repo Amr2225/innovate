@@ -5,8 +5,6 @@ from courses.models import Course
 from django.utils import timezone
 from django.db.models import Sum
 from enrollments.models import Enrollments
-from decimal import Decimal
-import json
 from django.core.exceptions import ValidationError
 from django.apps import apps
 
@@ -135,7 +133,6 @@ class Assessment(models.Model):
         2. MCQQuestion app - Get all MCQ questions
         3. HandwrittenQuestion app - Get all handwritten questions
         """
-        DynamicMCQ = apps.get_model('DynamicMCQ', 'DynamicMCQ')
         DynamicMCQQuestions = apps.get_model(
             'DynamicMCQ', 'DynamicMCQQuestions')
         McqQuestion = apps.get_model('mcqQuestion', 'McqQuestion')
@@ -143,7 +140,9 @@ class Assessment(models.Model):
             'HandwrittenQuestion', 'HandwrittenQuestion')
         CodingQuestion = apps.get_model('Code_Questions', 'CodingQuestion')
         Lecture = apps.get_model('lecture', 'Lecture')
-        from main.AI import generate_mcqs_from_multiple_pdfs, generate_mcqs_from_text
+        from DynamicMCQ.models import DynamicMCQ
+        from AI.generate_mcq_from_text import generate_mcqs_from_text
+        from AI.generate_mcqs_from_multiple_pdfs import generate_mcqs_from_multiple_pdfs
 
         questions = {
             'dynamic_mcq': [],
@@ -152,13 +151,10 @@ class Assessment(models.Model):
             'coding': []
         }
 
-        print("self", self)
-        print('student', student)
-
         # 1. Get Dynamic MCQ Questions
         try:
             # Check if there's a DynamicMCQ entry for this assessment
-            dynamic_mcq = DynamicMCQ.objects.filter(assessment=self).first()
+            dynamic_mcq = DynamicMCQ.objects.get(assessment=self)
 
             if dynamic_mcq:
                 # Get existing questions for this student
@@ -172,7 +168,7 @@ class Assessment(models.Model):
                     if dynamic_mcq.context:
                         try:
                             # Generate questions using AI from context
-                            from main.AI import generate_mcqs_from_text
+                            from AI.generate_mcq_from_text import generate_mcqs_from_text
                             generated_questions = generate_mcqs_from_text(
                                 text=dynamic_mcq.context,
                                 num_questions=dynamic_mcq.number_of_questions,
@@ -180,7 +176,8 @@ class Assessment(models.Model):
                                 num_options=dynamic_mcq.num_options  # Pass num_options from model
                             )
                         except Exception as e:
-                            print(f"Error generating questions from context: {str(e)}")
+                            print(
+                                f"Error generating questions from context: {str(e)}")
                             generated_questions = None
                     else:
                         generated_questions = None
@@ -189,7 +186,8 @@ class Assessment(models.Model):
                     if not generated_questions and dynamic_mcq.lecture_ids:
                         try:
                             # Ensure lecture_ids is a list of valid UUIDs
-                            lecture_ids = [str(id) for id in dynamic_mcq.lecture_ids if id]
+                            lecture_ids = [
+                                str(id) for id in dynamic_mcq.lecture_ids if id]
                             if not lecture_ids:
                                 print("No valid lecture IDs found")
                                 return questions
@@ -215,7 +213,7 @@ class Assessment(models.Model):
                                 generated_questions = generate_mcqs_from_multiple_pdfs(
                                     pdf_files=pdf_files,
                                     # Distribute questions evenly
-                                    num_questions_per_pdf=dynamic_mcq.number_of_questions // len(
+                                    number_of_questions=dynamic_mcq.number_of_questions // len(
                                         pdf_files),
                                     difficulty=dynamic_mcq.difficulty,  # Pass the difficulty from DynamicMCQ model
                                     num_options=dynamic_mcq.num_options  # Pass num_options from model
@@ -241,7 +239,8 @@ class Assessment(models.Model):
                                         'difficulty': question.difficulty  # Include difficulty in response
                                     })
                         except Exception as e:
-                            print(f"Error getting dynamic MCQ questions: {str(e)}")
+                            print(
+                                f"Error getting dynamic MCQ questions: {str(e)}")
                     # If no lectures with attachments but context is provided, generate MCQs from the context
                     elif dynamic_mcq.context:
                         # Generate questions using AI from text context with specified difficulty
@@ -346,7 +345,7 @@ class Assessment(models.Model):
         if self.type != 'Dynamic_MCQ':
             return None
 
-        from main.AI import generate_mcqs_from_multiple_pdfs
+        from AI.generate_mcqs_from_multiple_pdfs import generate_mcqs_from_multiple_pdfs
         McqQuestion = apps.get_model('mcqQuestion', 'McqQuestion')
         Enrollments = apps.get_model('enrollments', 'Enrollments')
         Lecture = apps.get_model('lecture', 'Lecture')

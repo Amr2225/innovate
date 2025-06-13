@@ -36,7 +36,7 @@ class CourseSerializer(serializers.ModelSerializer):
         source='prerequisite_course', read_only=True)
     instructors_detials = InstructorSerializer(
         source='instructors', many=True, read_only=True)
-    chapters = ChapterSerializer(many=True, read_only=True)
+    # chapters = ChapterSerializer(many=True, read_only=True)
 
     class Meta:
         model = Course
@@ -52,7 +52,7 @@ class CourseSerializer(serializers.ModelSerializer):
             'credit_hours',
             'semester',
             'level',
-            'chapters'
+            # 'chapters'
         )
 
     def __init__(self, *args, **kwargs):

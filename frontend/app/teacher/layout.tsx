@@ -9,34 +9,38 @@ import { redirect } from "next/navigation";
 import React from "react";
 import { BreadcrumbProvider } from "@/context/breadcrumbsContext";
 
+import { MantineProvider } from "@mantine/core";
+
 export default async function TeacherDashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
   return (
-    <SidebarProvider>
-      <BreadcrumbProvider>
-        <AppSidebar session={session} />
-        <SidebarInset>
-          <header className='flex sticky top-0 bg-background h-16 shrink-0 items-center gap-2 border-b px-4'>
-            <SidebarTrigger className='-ml-1' />
-            <Separator orientation='vertical' className='mr-2 h-4' />
-            <Breadcrumbs />
-            <UserProfile
-              email={session.user.email}
-              name={session.user.name}
-              role={session.user.role}
-              className='ml-auto'
-              variant='icon'
-            />
-          </header>
-          <div className='bg-primary-background h-full'>
-            <div className='container bg-white mx-auto h-full min-h-[85%] mt-12 py-2 px-4'>
-              {children}
+    <MantineProvider>
+      <SidebarProvider>
+        <BreadcrumbProvider>
+          <AppSidebar session={session} />
+          <SidebarInset>
+            <header className='flex sticky top-0 bg-background h-16 shrink-0 items-center gap-2 border-b px-4'>
+              <SidebarTrigger className='-ml-1' />
+              <Separator orientation='vertical' className='mr-2 h-4' />
+              <Breadcrumbs />
+              <UserProfile
+                email={session.user.email}
+                name={session.user.name}
+                role={session.user.role}
+                className='ml-auto'
+                variant='icon'
+              />
+            </header>
+            <div className='bg-primary-background h-full'>
+              <div className='container bg-white mx-auto h-full min-h-[85%] mt-12 py-2 px-4'>
+                {children}
+              </div>
             </div>
-          </div>
-        </SidebarInset>
-      </BreadcrumbProvider>
-    </SidebarProvider>
+          </SidebarInset>
+        </BreadcrumbProvider>
+      </SidebarProvider>
+    </MantineProvider>
   );
 }

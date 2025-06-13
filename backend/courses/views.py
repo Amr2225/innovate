@@ -1,3 +1,4 @@
+from courses.filter import CourseFilterSet
 from courses.serializers import CourseSerializer
 from courses.models import Course
 from enrollments.models import Enrollments
@@ -14,9 +15,9 @@ import csv
 
 
 class CourseListCreateAPIView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
     serializer_class = CourseSerializer
-    filterset_fields = ['id', 'name', 'prerequisite_course',
-                        'instructors', 'total_grade', 'credit_hours', 'semester']
+    filterset_class = CourseFilterSet
 
     def get_queryset(self):
         user = self.request.user

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Question } from "@/types/assessment.type";
+import { type DynamicMCQQuestion } from "@/types/assessment.type";
 import { useForm } from "react-hook-form";
 import {
   Select,
@@ -17,7 +17,6 @@ import CustomDialog from "@/components/CustomDialog";
 import { useState } from "react";
 import { DialogClose } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { useAssessmentStore } from "@/store/assessmentStore";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -29,17 +28,21 @@ import {
 import { getLectures } from "@/apiService/LectureService";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
+import { createAssessmentStore } from "@/store/assessmentStore";
 
-export default function DynamicMCQQuestion({ question }: { question: Question }) {
+export default function DynamicMCQQuestion({ question }: { question: DynamicMCQQuestion }) {
   const [dialogOpen, setDialogOpen] = useState<"addContext" | "addLectures" | null>(null);
 
+  const { courseId } = useParams();
+  const useAssessmentStore = createAssessmentStore(courseId as string);
   const { updateQuestion } = useAssessmentStore();
 
   const form = useForm({
     defaultValues: {
-      difficulty: "",
-      totalGrade: "",
-      numberOfQuestions: "",
+      difficulty: question.difficulty || "",
+      totalGrade: question.totalGrade || "",
+      numberOfQuestions: question.numberOfQuestions || "",
+      numberOfChoices: question.numberOfChoices || "",
     },
   });
   return (
@@ -54,7 +57,12 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
                 <FormItem>
                   <FormLabel>Difficulty</FormLabel>
                   <FormControl>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={(value) =>
+                        updateQuestion<DynamicMCQQuestion>(question.id, "difficulty", value)
+                      }
+                      defaultValue={field.value!}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder='Select Difficulty' />
                       </SelectTrigger>
@@ -78,7 +86,51 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
                 <FormItem>
                   <FormLabel>Number of Questions</FormLabel>
                   <FormControl>
-                    <Input placeholder='Enter Number of Questions' type='number' {...field} />
+                    <Input
+                      placeholder='Enter Number of Questions'
+                      type='number'
+                      {...field}
+                      onBlur={(e) =>
+                        updateQuestion<DynamicMCQQuestion>(
+                          question.id,
+                          "numberOfQuestions",
+                          e.target.value
+                        )
+                      }
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='numberOfChoices'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Number of Choices Per Question</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder='Enter Number of Choices'
+                      type='number'
+                      min={2}
+                      max={6}
+                      {...field}
+                      value={question.numberOfChoices || ""}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (value >= 2 && value <= 6) {
+                          updateQuestion<DynamicMCQQuestion>(
+                            question.id,
+                            "numberOfChoices",
+                            value.toString()
+                          );
+                        }
+                        if (value < 2 || !value) {
+                          updateQuestion<DynamicMCQQuestion>(question.id, "numberOfChoices", "");
+                        }
+                      }}
+                    />
                   </FormControl>
                 </FormItem>
               )}
@@ -112,6 +164,13 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
                       placeholder='Enter Total Grade for all the questions'
                       type='number'
                       {...field}
+                      onBlur={(e) =>
+                        updateQuestion<DynamicMCQQuestion>(
+                          question.id,
+                          "totalGrade",
+                          e.target.value
+                        )
+                      }
                     />
                   </FormControl>
                 </FormItem>
@@ -135,6 +194,7 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
         </Button>
       </div>
 
+      {/* Add Context */}
       <CustomDialog
         title='Add Context'
         description='Add a context for the question'
@@ -144,7 +204,8 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
         <div>
           <Textarea
             onBlur={(e) =>
-              e.target.value.trim() !== "" && updateQuestion(question.id, "context", e.target.value)
+              e.target.value.trim() !== "" &&
+              updateQuestion<DynamicMCQQuestion>(question.id, "context", e.target.value)
             }
             placeholder='Enter Context'
             className='min-h-[200px]'
@@ -162,6 +223,7 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
         </div>
       </CustomDialog>
 
+      {/* Add Lectures */}
       <CustomDialog
         title='Add Lectures'
         description='Add lectures for the question'
@@ -169,7 +231,7 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
         setOpen={(open) => setDialogOpen(open ? "addLectures" : null)}
       >
         <div>
-          <LectureSelector />
+          <LectureSelector question={question} />
         </div>
         <div className='flex justify-between items-center gap-2'>
           <div className='space-x-2'>
@@ -186,11 +248,12 @@ export default function DynamicMCQQuestion({ question }: { question: Question })
   );
 }
 
-function LectureSelector() {
-  const [selectedLectures, setSelectedLectures] = useState<string[]>([]);
-
+function LectureSelector({ question }: { question: DynamicMCQQuestion }) {
   const params = useParams();
   const courseId = params.courseId as string;
+
+  const useAssessmentStore = createAssessmentStore(courseId as string);
+  const { updateQuestion } = useAssessmentStore();
 
   const { data: lectures, isLoading } = useQuery({
     queryKey: ["lectures"],
@@ -205,8 +268,8 @@ function LectureSelector() {
         <Button variant='outline' className='w-full justify-between'>
           Select Lectures
           <span className='ml-2 opacity-70'>
-            {Array.isArray(selectedLectures) && selectedLectures.length > 0
-              ? `${selectedLectures.length} selected`
+            {Array.isArray(question.lectures) && question.lectures.length > 0
+              ? `${question.lectures.length} selected`
               : "None"}
           </span>
         </Button>
@@ -222,13 +285,22 @@ function LectureSelector() {
           <DropdownMenuCheckboxItem
             key={lecture.id}
             className='hover:bg-neutral-100 cursor-pointer'
-            checked={Array.isArray(selectedLectures) && selectedLectures.includes(lecture.id || "")}
+            checked={
+              Array.isArray(question.lectures) && question.lectures.includes(lecture.id || "")
+            }
             onCheckedChange={(checked) => {
-              const currentValues = Array.isArray(selectedLectures) ? selectedLectures : [];
+              const currentValues = Array.isArray(question.lectures) ? question.lectures : [];
               if (checked) {
-                setSelectedLectures([...currentValues, lecture.id]);
+                updateQuestion<DynamicMCQQuestion>(question.id, "lectures", [
+                  ...currentValues,
+                  lecture.id,
+                ]);
               } else {
-                setSelectedLectures(currentValues.filter((id) => id !== lecture.id));
+                updateQuestion<DynamicMCQQuestion>(
+                  question.id,
+                  "lectures",
+                  currentValues.filter((id) => id !== lecture.id)
+                );
               }
             }}
           >

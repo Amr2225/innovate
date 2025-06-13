@@ -1,10 +1,8 @@
 from rest_framework import generics, permissions
 from rest_framework.exceptions import PermissionDenied
-from django.db.models import Q
 from .models import Assessment, AssessmentScore
 from .serializers import AssessmentSerializer, AssessmentScoreSerializer, AssessmentListSerializer
-# from .filters import AssessmentFilterSet
-from courses.models import Course
+from .filters import AssessmentFilterSet
 from enrollments.models import Enrollments
 from mcqQuestion.models import McqQuestion
 from mcqQuestion.serializers import McqQuestionSerializer
@@ -12,16 +10,11 @@ from MCQQuestionScore.models import MCQQuestionScore
 from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Sum
-from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
-from django.db import transaction
-from django.shortcuts import get_object_or_404
 from django.http import Http404
-from django.shortcuts import render
-from HandwrittenQuestion.models import HandwrittenQuestion, HandwrittenQuestionScore
-from django.utils import timezone
+from HandwrittenQuestion.models import HandwrittenQuestionScore
 from AssessmentSubmission.models import AssessmentSubmission
 from django.apps import apps
-from django_filters.rest_framework import DjangoFilterBackend
+from users.permissions import isStudent
 from Code_Questions.models import TestCase
 
 # ----------------------
@@ -119,7 +112,7 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
     """
     serializer_class = AssessmentListSerializer
     permission_classes = [permissions.IsAuthenticated, AssessmentPermission]
-    # filterset_class = AssessmentFilterSet
+    filterset_class = AssessmentFilterSet
 
     def get_queryset(self):
         user = self.request.user
@@ -170,9 +163,10 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
         # Check if user has permission to create assessment for this course
         course = serializer.validated_data['course']
         if user.role == "Teacher" and not course.instructors.filter(id=user.id).exists():
+        if user.role == "Teacher" and not course.instructors.filter(id=user.id).exists():
             raise PermissionDenied(
                 "You can only create assessments for courses you teach")
-        if user.role == "Institution" and course.institution != user:
+        if user.role == "Institution" and course.institution == user.institution:
             raise PermissionDenied(
                 "You can only create assessments for your institution's courses")
 
@@ -594,9 +588,11 @@ class StudentGradesAPIView(generics.GenericAPIView):
                 'CodingQuestion', 'CodingQuestionScore')
 
             # Get all Dynamic MCQ questions for this assessment
-            dynamic_mcqs = DynamicMCQ.objects.filter(assessment=assessment)
+            dynamic_mcq = DynamicMCQ.objects.get(assessment=assessment)
             dynamic_mcq_questions = DynamicMCQQuestions.objects.filter(
-                dynamic_mcq__in=dynamic_mcqs)
+                dynamic_mcq=dynamic_mcq,
+                created_by=request.user
+            )
 
             # Calculate total score of answered questions
             mcq_total = float(mcq_scores.aggregate(
@@ -728,6 +724,7 @@ class StudentGradesAPIView(generics.GenericAPIView):
             response_data = {
                 'assessment_id': str(assessment_score.assessment.id),
                 'assessment_title': assessment_score.assessment.title,
+                'course': assessment_score.assessment.course.name,
                 'questions': questions_data,
                 'total_score': total_answered_score,
                 'total_max_score': float(assessment_score.assessment.grade)
@@ -887,40 +884,7 @@ class AssessmentAllQuestionsAPIView(generics.RetrieveAPIView):
 
 
 class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
-    """
-    API endpoint to get questions for a specific student in an assessment.
-
-    This endpoint returns all questions (MCQ, Dynamic MCQ, and Handwritten) for a specific student
-    in an assessment, including their section numbers and grades.
-
-    GET /api/assessments/{assessment_id}/student-questions/
-
-    Parameters:
-    - assessment_id (UUID): The ID of the assessment
-
-    Returns:
-    ```json
-    {
-        "questions": [
-            {
-                "type": "dynamic_mcq|mcq|handwritten",
-                "id": "uuid",
-                "question": "string",
-                "options": ["string"],  // For MCQ and Dynamic MCQ
-                "grade": "string",  // For MCQ and Dynamic MCQ
-                "max_grade": "string",  // For Handwritten
-                "section_number": "integer"
-            }
-        ]
-    }
-    ```
-
-    Status Codes:
-    - 200: Successfully retrieved questions
-    - 403: Not authorized to view questions
-    - 404: Assessment not found
-    """
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [isStudent]
     serializer_class = AssessmentSerializer
 
     def get_object(self):
@@ -947,9 +911,18 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
     def retrieve(self, request, *args, **kwargs):
         assessment = self.get_object()
 
-        # Check if assessment has started
-        if assessment.start_date > timezone.now():
-            raise PermissionDenied(f"This assessment has not started yet. It will be available on {assessment.start_date.strftime('%Y-%m-%d %H:%M:%S')}")
+        # check if assessment is already submitted
+        enrollment = Enrollments.objects.get(
+            user=request.user,
+            course=assessment.course,
+            is_completed=False
+        )
+        if AssessmentSubmission.objects.filter(
+            enrollment=enrollment,
+            assessment=assessment
+        ).exists():
+            raise PermissionDenied(
+                "You have already submitted this assessment")
 
         try:
             # Get all questions for the student
@@ -1023,7 +996,7 @@ class AssessmentStudentQuestionsAPIView(generics.RetrieveAPIView):
                     'due_date': assessment.due_date,
                     'grade': assessment.grade,
                     'total_grade': assessment.total_grade,
-                    'course_name': assessment.course.name
+                    'course': assessment.course.name
                 },
                 'questions': formatted_questions
             }

@@ -34,7 +34,7 @@ export default function RegistrationForm({
   setIsPending: (isPending: boolean) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { addCreds, setFile } = store();
+  const { addCreds, setLogo } = store();
 
   // TODO: implement logo from store
   const form = useForm<InstitutionRegisterSchemaType>({
@@ -49,25 +49,6 @@ export default function RegistrationForm({
     mode: "onChange",
   });
 
-  // Handle file input state persistence
-  // useEffect(() => {
-  //   const storedLogo = store.getState().logo;
-  //   if (storedLogo && inputRef.current) {
-  //     if (typeof storedLogo === "string") {
-  //       // If it's a string (URL), we don't need to set the file input
-  //       return;
-  //     }
-
-  //     try {
-  //       const dataTransfer = new DataTransfer();
-  //       dataTransfer.items.add(storedLogo as File);
-  //       inputRef.current.files = dataTransfer.files;
-  //     } catch (error) {
-  //       console.error("Error setting file input:", error);
-  //     }
-  //   }
-  // }, []);
-
   const { mutate: sendEmail, isPending } = useMutation({
     mutationFn: ({ email, name }: { email: string; name: string }) =>
       institutionVerificationService.resendVerificationEmail(email, name),
@@ -76,7 +57,7 @@ export default function RegistrationForm({
       const formValues = form.getValues();
       addCreds(formValues.name, formValues.email, formValues.password, formValues.confirm_password);
       if (formValues.logo) {
-        setFile(formValues.logo);
+        setLogo(formValues.logo);
       }
     },
     onError: (error: Error) => {

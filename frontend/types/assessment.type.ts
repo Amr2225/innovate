@@ -1,12 +1,12 @@
 export type Assessment = {
     id: string;
     title: string;
-    type: "assignment" | "quiz" | "exam";
+    type: "Assignment" | "Quiz" | "Exam";
     questions: Question[];
     courseId: string;
     grade: number;
-    dueDate: Date;
-    startDate: Date;
+    due_date: Date;
+    start_date: Date | null;
 }
 
 export type Answer = {
@@ -14,20 +14,89 @@ export type Answer = {
     option: string;
 }
 
-export type Question = {
+export interface QuestionBase {
     id: string;
     title: string;
-    options?: Answer[];
     questionType: "mcq" | "handWritten" | "code" | "dynamicMcq" | "aiMcq" | ""
-    correctOption?: string;
-    mcqAnswer?: string;
-    handWrittenAnswerKey?: string;
-    sectionNumber: number;
-
-    // For Dynamic MCQ
-    context?: string;
-    lectures?: string[];
-    difficulty?: number;
-    totalGrade?: number;
-    numberOfQuestions?: number;
+    totalGrade: number | null;
+    sectionNumber: string;
 }
+
+export interface MCQQuestion extends QuestionBase {
+    questionType: "mcq";
+    mcqAnswer: string;
+    options: Answer[];
+    correctOption: string;
+}
+
+export interface DynamicMCQQuestion extends QuestionBase {
+    questionType: "dynamicMcq";
+    context: string;
+    lectures: string[];
+    difficulty: "1" | "2" | "3" | "4" | "5" | null;
+    numberOfQuestions: number;
+    numberOfChoices: number;
+}
+
+export interface AIGeneratedMCQQuestion extends QuestionBase {
+    questionType: "aiMcq";
+    difficulty: "1" | "2" | "3" | "4" | "5" | null;
+    numberOfQuestions: number;
+    numberOfChoices: number;
+    lectures: string[];
+    questions?: {
+        question: string;
+        options: string[];
+        correct_answer: string;
+        total_grade: number;
+    }[];
+    questionDifficulty?: "Very Easy" | "Easy" | "Medium" | "Hard" | "Very Hard"
+}
+
+export interface HandWrittenQuestion extends QuestionBase {
+    questionType: "handWritten";
+    handWrittenAnswerKey: string;
+}
+
+export interface CodeQuestion extends QuestionBase {
+    questionType: "code";
+    codeAnswerKey: string;
+}
+
+export interface EmptyQuestion extends QuestionBase {
+    questionType: "";
+}
+
+export type Question = MCQQuestion | DynamicMCQQuestion | AIGeneratedMCQQuestion | HandWrittenQuestion | CodeQuestion | EmptyQuestion;
+
+
+
+
+// export type Question = {
+//     id: string;
+//     title: string;
+//     options?: Answer[];
+//     questionType: "mcq" | "handWritten" | "code" | "dynamicMcq" | "aiMcq" | ""
+//     correctOption?: string;
+//     mcqAnswer?: string;
+//     handWrittenAnswerKey?: string;
+//     sectionNumber: number;
+//     totalGrade?: number;
+
+//     // For Dynamic MCQ
+//     context?: string;
+//     lectures?: string[];
+//     difficulty?: "1" | "2" | "3" | "4" | "5" | null;
+//     numberOfQuestions?: number;
+//     numberOfChoices?: number;
+
+
+//     // For AI Generated MCQ
+//     questions?: {
+//         question: string;
+//         options: string[];
+//         correct_answer: string;
+//     }[];
+//     questionDifficulty?: "Very Easy" | "Easy" | "Medium" | "Hard" | "Very Hard"
+
+// }

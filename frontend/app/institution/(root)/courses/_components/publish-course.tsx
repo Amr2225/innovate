@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import {
   Accordion,
@@ -8,13 +9,16 @@ import {
 import { CirclePlay, Paperclip, Clock, Loader2 } from "lucide-react";
 
 // Store
-import { useCourseStore } from "@/store/courseStore";
 import { Button } from "@/components/ui/button";
-import { useUploadCourse } from "@/queryHooks/useUploadCourse";
+import { useEditCourse } from "@/queryHooks/useEditCourse";
+import { createCourseStore } from "@/store/courseStore";
+import { useParams } from "next/navigation";
 
 export default function PublishCoursePage() {
+  const { courseId } = useParams();
+  const useCourseStore = createCourseStore(courseId as string);
   const { course, chapters } = useCourseStore();
-  const { UploadCourse, isCreating } = useUploadCourse();
+  const { UploadCourse, isCreating } = useEditCourse(courseId as string);
 
   return (
     <div className='mt-5'>

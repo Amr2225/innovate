@@ -11,7 +11,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles, LayoutDashboard } from "lucide-react";
+import {
+  ChevronsUpDown,
+  CreditCard,
+  LogOut,
+  LayoutDashboard,
+  Settings,
+  UserRoundPen,
+} from "lucide-react";
 import { logout } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -87,14 +94,6 @@ export default function UserProfile({
         <DropdownMenuSeparator />
 
         <DropdownMenuGroup>
-          <DropdownMenuItem>
-            <Sparkles />
-            Upgrade to Pro
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-
-        <DropdownMenuGroup>
           <DropdownMenuItem asChild>
             <Link
               href={`/${role.toLowerCase()}/dashboard`}
@@ -104,16 +103,33 @@ export default function UserProfile({
               Dashboard
             </Link>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+        </DropdownMenuGroup>
+
+        <DropdownMenuGroup>
+          {role === "Institution" && (
+            <>
+              <DropdownMenuItem asChild>
+                <Link href='/institution/billing'>
+                  <CreditCard />
+                  Billing
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link href='/institution/settings'>
+                  <Settings />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+            </>
+          )}
 
           <DropdownMenuItem asChild>
-            <Link href='/institution/billing'>
-              <CreditCard />
-              Billing
+            <Link href='/institution/profile'>
+              <UserRoundPen />
+              Profile
             </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Bell />
-            Notifications
           </DropdownMenuItem>
         </DropdownMenuGroup>
 

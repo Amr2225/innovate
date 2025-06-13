@@ -1,13 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { useAssessmentStore } from "@/store/assessmentStore";
+import { createAssessmentStore } from "@/store/assessmentStore";
 import { Question } from "@/types/assessment.type";
 import { Reorder, useDragControls } from "framer-motion";
 import { Menu, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 import QuestionCard from "./questionCard";
-
+import { useParams } from "next/navigation";
 export default function QuestionContainer({
   question,
   questionNumber,
@@ -16,6 +16,8 @@ export default function QuestionContainer({
   questionNumber: number;
 }) {
   const controls = useDragControls();
+  const { courseId } = useParams();
+  const useAssessmentStore = createAssessmentStore(courseId as string);
   const { deleteQuestion } = useAssessmentStore();
 
   // const handleUpdateQuestionTitle = useCallback(

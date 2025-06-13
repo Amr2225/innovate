@@ -9,6 +9,17 @@ export interface Course {
     total_grade: number
     semester: number
     instructors: string[]
+    instructors_detials?: {
+        id: string
+        full_name: string
+        email: string
+        avatar: string | null
+    }[]
+    prerequisite_course_detail?: {
+        id: string
+        name: string
+        description: string
+    }
 }
 
 // export interface InstructorCourseType extends Course {
