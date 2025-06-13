@@ -12,6 +12,10 @@ interface GetCoursesResponse<T> {
     total_items: number,
 }
 
+interface GetCourseByIdResponse extends Course {
+    chapters: Chapter[]
+}
+
 // interface ErrorrResponseType {
 //     message?: string
 // }
@@ -26,6 +30,13 @@ export const getCourses = async <T = Course>({ page_size, pageParam, name, instr
 
     if (res.status === 200) return res.data
     throw new Error(res.data?.message || "Failed to get courses")
+}
+
+export const getCourseById = async (courseId: string): Promise<GetCourseByIdResponse> => {
+    const res = await api.get<GetCourseByIdResponse>(`/courses/${courseId}/`)
+
+    if (res.status === 200) return res.data
+    throw new Error(res.data?.name?.[0] || "Something went wrong")
 }
 
 export const createCourse = async (course: Omit<Course, "id">): Promise<Course> => {

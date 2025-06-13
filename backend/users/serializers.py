@@ -1,9 +1,12 @@
 # Django
+from django.core.exceptions import ValidationError
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from django.core.signing import Signer
 
 # DRF
+from requests import Response
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework import serializers
 # Refresh Token
@@ -17,7 +20,7 @@ from courses.models import Course
 from lecture.models import Lecture, LectureProgress
 
 # Validation & Errors & Helpers
-from users.errors import EmailNotVerifiedError, UserAccountDisabledError
+from users.errors import EmailNotVerifiedError, UserAccountDisabledError, NewPasswordMismatchError, OldPasswordIncorrectError, NewPasswordSameAsOldPasswordError
 from users.validation import nationalId_length_validation
 from users.helper import generateOTP, sendEmail
 
@@ -309,5 +312,74 @@ class CustomTokenRefreshSerializer(TokenRefreshSerializer):
 
         # Update the access token in the response
         data['access'] = str(new_access_token.access_token)
+
+        return data
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'first_name',
+            'middle_name',
+            'last_name',
+            'email',
+            'birth_date',
+            'age',
+            'national_id',
+            'semester',
+            'avatar'
+        ]
+        read_only_fields = ['email']  # Email shouldn't be changeable
+
+    def validate_national_id(self, value):
+        if value:
+            # Check if national_id is unique for the user's institution
+            user = self.context['request'].user
+            if User.objects.filter(
+                national_id=value,
+                institution=user.institution.first()
+            ).exclude(id=user.id).exists():
+                raise serializers.ValidationError(
+                    "National ID already exists in your institution")
+        return value
+
+    def validate(self, data):
+        # Add any cross-field validation here
+        if 'birth_date' in data and 'age' in data:
+            # You might want to validate that age matches birth_date
+            pass
+        return data
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+
+    def validate_old_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise OldPasswordIncorrectError()
+        return value
+
+    def validate(self, data):
+        user = self.context['request'].user
+
+        # Check if new password is same as old password
+        if user.check_password(data['new_password']):
+            raise NewPasswordSameAsOldPasswordError()
+
+        # Check if new password and confirm password match
+        if data['new_password'] != data['confirm_password']:
+            raise NewPasswordMismatchError()
+
+        # Validate the new password
+        try:
+            validate_password(data['new_password'], user)
+        except ValidationError as e:
+            raise serializers.ValidationError({
+                "new_password": list(e.messages)
+            })
 
         return data

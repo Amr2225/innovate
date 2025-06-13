@@ -26,6 +26,7 @@ import {
   deleteSolveAssessmentStore,
 } from "@/store/solveAssessmentStore";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AssessmentPage() {
   const { assessmentId } = useParams();
@@ -57,6 +58,18 @@ export default function AssessmentPage() {
       deleteSolveAssessmentStore(assessmentId as string);
     },
   });
+
+  const handleSubmitAssessment = () => {
+    if (
+      Object.keys(mcqAnswers).length + Object.keys(handWrittenAnswers).length !==
+      assessment?.questions.length
+    ) {
+      toast.error("Please answer all of the questions");
+      return;
+    }
+
+    submitAssessmentMutation();
+  };
 
   if (error)
     return (
@@ -110,7 +123,7 @@ export default function AssessmentPage() {
             <Button
               size='lg'
               className='text-base font-semibold w-[20%]'
-              onClick={() => submitAssessmentMutation()}
+              onClick={handleSubmitAssessment}
               disabled={isSubmitting}
             >
               {isSubmitting ? <Loader2 className='animate-spin size-4' /> : "Submit"}

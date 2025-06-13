@@ -8,7 +8,7 @@ import Loader from "@/components/Loader";
 
 export default function StudentsPerCourse() {
   const { data, isLoading } = useQuery({
-    queryKey: ["students-per-course"],
+    queryKey: ["students-course"],
     queryFn: () => getTeacherCourseStudentAnalytics(),
     select: (data) =>
       data.courses.map((item) => ({

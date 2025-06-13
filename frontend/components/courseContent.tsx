@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 
 import {
   Accordion,
@@ -8,21 +8,32 @@ import {
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import { Clock, Video, CheckCheck, Play } from "lucide-react";
+import { Video, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "./ui/progress";
-import { Lecture } from "@/types/course.type";
+import { Chapter, Lecture, LectureResponse } from "@/types/course.type";
 import { createCourseStore } from "@/store/courseStore";
 
 interface CourseContentProps {
-  activeLecture: Lecture | null;
-  setActiveLecture: React.Dispatch<React.SetStateAction<Lecture | null>>;
+  activeLecture: (Lecture & LectureResponse) | null;
+  setActiveLecture: React.Dispatch<React.SetStateAction<(Lecture & LectureResponse) | null>>;
+  incommingChapters?: Chapter[];
 }
 
-export default function CourseContent({ activeLecture, setActiveLecture }: CourseContentProps) {
+export default function CourseContent({
+  activeLecture,
+  setActiveLecture,
+  incommingChapters,
+}: CourseContentProps) {
   const useCourseStore = createCourseStore("new");
   const { chapters } = useCourseStore();
-  if (!activeLecture) return null;
+
+  const currentChapter = useMemo(() => {
+    if (incommingChapters && incommingChapters.length > 0) return incommingChapters;
+    else return chapters;
+  }, [chapters, incommingChapters]);
+
+  // if (!activeLecture) return null;
 
   return (
     <div className='space-y-3'>
@@ -38,7 +49,7 @@ export default function CourseContent({ activeLecture, setActiveLecture }: Cours
         />
       </div>
       <Accordion type='multiple' className='space-y-3'>
-        {chapters.map((chapter) => (
+        {currentChapter.map((chapter) => (
           <AccordionItem
             key={chapter.id}
             value={`item-${chapter.id}`}
@@ -58,10 +69,10 @@ export default function CourseContent({ activeLecture, setActiveLecture }: Cours
             {chapter.lectures.map((lecture, index) => (
               <AccordionContent
                 key={lecture.id}
-                onClick={() => setActiveLecture(lecture)}
+                onClick={() => setActiveLecture(lecture as Lecture & LectureResponse)}
                 className={cn(
                   "border-t py-3.5  hover:bg-primary/10 hover:text-black text-muted-foreground cursor-pointer",
-                  activeLecture.id === lecture.id && "bg-primary/10 text-black"
+                  activeLecture?.id === lecture.id && "bg-primary/10 text-black"
                 )}
               >
                 <div className='flex items-start justify-between gap-2 px-3'>
@@ -95,9 +106,9 @@ export default function CourseContent({ activeLecture, setActiveLecture }: Cours
 function ChapterAttributes({
   chapterName,
   lecturesAmount,
-  totalDuration,
-  completedPercentage,
-}: {
+}: // totalDuration,
+// completedPercentage,
+{
   chapterName: string;
   lecturesAmount: number;
   totalDuration: string;
@@ -111,14 +122,14 @@ function ChapterAttributes({
           <Video className='size-3 text-purple-800' />
           <p className='text-neutral-500'>{lecturesAmount} Lectures</p>
         </span>
-        <span className='flex items-center gap-1'>
+        {/* <span className='flex items-center gap-1'>
           <Clock className='size-3 text-primary' />
           <p className='text-neutral-500'>{totalDuration}</p>
         </span>
         <span className='flex items-center gap-1'>
           <CheckCheck className='size-3 text-green-500' />
           <p className='text-neutral-500'>{completedPercentage} Completed (1/4)</p>
-        </span>
+        </span> */}
       </span>
     </div>
   );

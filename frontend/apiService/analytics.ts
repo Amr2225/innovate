@@ -38,15 +38,26 @@ interface TopStudents {
     }[];
 }
 
+interface StudentDashboard {
+    course_count: number;
+    assignment_count: number;
+    exam_count: number;
+    quiz_count: number;
+    submission_count: number;
+    submitted_assignments_count: number;
+    submitted_exams_count: number;
+    submitted_quizzes_count: number;
+}
+
 export const getTeacherCourseStudentAnalytics = async (): Promise<StudentPerCourse> => {
-    const response = await api.get('/api/teacher-analytics/');
+    const response = await api.get('analytics/');
 
     if (response.status === 200) return response.data;
     throw new Error(response.data.message || "Something went wrong");
 }
 
 export const getCourseAvgScore = async (): Promise<CourseAvgScore> => {
-    const response = await api.get('/api/teacher-analytics/courses-metrics');
+    const response = await api.get('analytics/courses-metrics');
 
     if (response.status === 200) return response.data;
     throw new Error(response.data.message || "Something went wrong");
@@ -54,7 +65,15 @@ export const getCourseAvgScore = async (): Promise<CourseAvgScore> => {
 
 
 export const getTopStudents = async ({ courseId }: { courseId: string }): Promise<TopStudents> => {
-    const response = await api.get(`/api/teacher-analytics/top-students/${courseId}`);
+    const response = await api.get(`analytics/top-students/${courseId}`);
+
+    if (response.status === 200) return response.data;
+    throw new Error(response.data.message || "Something went wrong");
+}
+
+
+export const studentAnalytics = async (): Promise<StudentDashboard> => {
+    const response = await api.get('analytics/student-dashboard/');
 
     if (response.status === 200) return response.data;
     throw new Error(response.data.message || "Something went wrong");

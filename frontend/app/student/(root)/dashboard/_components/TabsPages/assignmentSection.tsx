@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -12,84 +12,137 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 
-import AssignmentCard from "../assignmentCard";
+import AssignmentCard from "../assessmentCard";
 
 import { useQuery } from "@tanstack/react-query";
 import { getAssessment } from "@/apiService/assessmentService";
-import Loader from "@/components/Loader";
+import { studentAnalytics } from "@/apiService/analytics";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useDebounce } from "use-debounce";
+import { DatePickerRange } from "@/components/date-picker";
+
+interface GlobalFilter {
+  title?: string;
+  has_submitted?: boolean;
+  due_date_after?: string;
+  due_date_before?: string;
+  start_date_after?: string;
+  start_date_before?: string;
+}
 
 export default function AssignmentSection() {
+  const [globalFilter, setGlobalFilter] = useState<GlobalFilter>({});
+  const [filter] = useDebounce(globalFilter, 500);
+
   const { data: assignments, isLoading } = useQuery({
-    queryKey: ["assignments"],
-    queryFn: () => getAssessment({ pageParam: 1, page_size: 10, type: "Assignment" }),
+    queryKey: ["assignments", filter],
+    queryFn: () => getAssessment({ pageParam: 1, page_size: 1000, type: "Assignment", ...filter }),
   });
 
-  if (isLoading) return <Loader />;
+  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+    queryKey: ["student-dashboard"],
+    queryFn: () => studentAnalytics(),
+  });
 
   return (
     <div>
-      <h1 className='text-xl font-bold mt-3'>Assignments (10)</h1>
+      {dashboardLoading ? (
+        <Skeleton className='w-full h-[50px]' />
+      ) : (
+        <h1 className='text-xl font-bold mt-3'>Assignments ({dashboardData?.assignment_count})</h1>
+      )}
       <div className='grid grid-cols-5 items-center gap-4 mb-8'>
         <div className='col-span-2'>
           <Label htmlFor='search'>Search:</Label>
-          <Input id='search' placeholder='Search in your courses..' />
-        </div>
-
-        <div>
-          <Label>Sort by:</Label>
-          <Select defaultValue='latest'>
-            <SelectTrigger className='w-full'>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='latest'>Latest</SelectItem>
-              <SelectItem value='earliest'>Earliest</SelectItem>
-              <SelectItem value='alphabetical'>Alphabetical</SelectItem>
-            </SelectContent>
-          </Select>
+          <Input
+            id='search'
+            value={globalFilter.title || ""}
+            onChange={(e) => setGlobalFilter({ ...globalFilter, title: e.target.value })}
+            placeholder='Search in your courses..'
+          />
         </div>
 
         <div>
           <Label htmlFor='sort'>Status:</Label>
-          <Select defaultValue='latest'>
+          <Select
+            defaultValue='all'
+            onValueChange={(value) =>
+              setGlobalFilter({
+                ...globalFilter,
+                has_submitted: value === "all" ? undefined : value === "true",
+              })
+            }
+          >
             <SelectTrigger className='w-full'>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value='latest'>Latest</SelectItem>
-              <SelectItem value='earliest'>Earliest</SelectItem>
-              <SelectItem value='alphabetical'>Alphabetical</SelectItem>
+              <SelectItem value='all'>All</SelectItem>
+              <SelectItem value='true'>Submitted</SelectItem>
+              <SelectItem value='false'>Not Submitted</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         <div>
-          <Label htmlFor='sort'>Teacher:</Label>
-          <Select defaultValue='latest'>
-            <SelectTrigger className='w-full'>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='latest'>Latest</SelectItem>
-              <SelectItem value='earliest'>Earliest</SelectItem>
-              <SelectItem value='alphabetical'>Alphabetical</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label htmlFor='start_date'>Start Date:</Label>
+          <DatePickerRange
+            date={{
+              from: globalFilter.start_date_after
+                ? new Date(globalFilter.start_date_after)
+                : undefined,
+              to: globalFilter.start_date_before
+                ? new Date(globalFilter.start_date_before)
+                : undefined,
+            }}
+            setDate={(value) =>
+              setGlobalFilter({
+                start_date_after: value.from?.toISOString(),
+                start_date_before: value.to?.toISOString(),
+              })
+            }
+          />
+        </div>
+
+        <div>
+          <Label htmlFor='due_date'>Due Date:</Label>
+          <DatePickerRange
+            date={{
+              from: globalFilter.due_date_after ? new Date(globalFilter.due_date_after) : undefined,
+              to: globalFilter.due_date_before ? new Date(globalFilter.due_date_before) : undefined,
+            }}
+            setDate={(value) =>
+              setGlobalFilter({
+                ...globalFilter,
+                due_date_after: value.from?.toISOString(),
+                due_date_before: value.to?.toISOString(),
+              })
+            }
+          />
         </div>
       </div>
 
       <div className='grid grid-cols-4 gap-4 pb-5'>
-        {assignments?.data.map((assignment) => (
-          <AssignmentCard
-            id={assignment.id}
-            key={assignment.id}
-            title={assignment.title}
-            dueDate={assignment.due_date}
-            startDate={assignment.start_date!}
-            hasSubmitted={assignment.has_submitted}
-            courseName={assignment.course}
-          />
-        ))}
+        {isLoading ? (
+          <>
+            <Skeleton className='w-full h-[100px]' />
+            <Skeleton className='w-full h-[100px]' />
+            <Skeleton className='w-full h-[100px]' />
+            <Skeleton className='w-full h-[100px]' />
+          </>
+        ) : (
+          assignments?.data.map((assignment) => (
+            <AssignmentCard
+              id={assignment.id}
+              key={assignment.id}
+              title={assignment.title}
+              dueDate={assignment.due_date}
+              startDate={assignment.start_date!}
+              hasSubmitted={assignment.has_submitted}
+              courseName={assignment.course}
+            />
+          ))
+        )}
       </div>
     </div>
   );

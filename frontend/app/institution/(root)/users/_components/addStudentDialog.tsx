@@ -282,7 +282,7 @@ export default function AddStudentDialog() {
 
               <div className='flex items-center gap-2'>
                 <Button variant='outline' type='button'>
-                  <a href='/templates/users_template.csv' download>
+                  <a href='/users_template.csv' download>
                     Download Template
                   </a>
                 </Button>

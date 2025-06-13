@@ -74,7 +74,6 @@ export default function StudentsPage() {
   const { updateUser } = useAuth();
 
   // Fetch data from API
-  // TODO: fix pagination
   const {
     data,
     // isLoading,
@@ -97,6 +96,7 @@ export default function StudentsPage() {
         email: debouncedFilter.email,
       }),
     initialPageParam: currentPage,
+    maxPages: 1,
     getNextPageParam: (lastPage) => lastPage.next,
     getPreviousPageParam: (firstPage) => firstPage.previous,
   });
@@ -407,9 +407,9 @@ export default function StudentsPage() {
     <div className='container py-8 mx-auto'>
       <div className='flex justify-between items-center mb-8'>
         <div>
-          <h1 className='text-3xl font-bold tracking-tight'>Students</h1>
+          <h1 className='text-3xl font-bold tracking-tight'>Users</h1>
           <p className='text-muted-foreground mt-1'>
-            Manage your institution&apos;s students and users
+            Manage your institution&apos;s students and teachers
           </p>
         </div>
 
@@ -502,7 +502,8 @@ export default function StudentsPage() {
       {/* Pagination controls */}
       <div className='flex items-center justify-between space-x-2 py-4'>
         <div className='text-sm text-muted-foreground'>
-          Showing {users.length > 0 ? 1 : 0} to {users.length} of {users.length} students
+          Showing {users.length > 0 ? 1 : 0} to {users.length} of {data?.pages[0]?.total_items || 0}
+          students
         </div>
         <div className='flex items-center space-x-2'>
           <Button
@@ -510,20 +511,54 @@ export default function StudentsPage() {
             size='sm'
             onClick={() => {
               fetchPreviousPage();
-              setCurrentPage((prev) => prev - 1);
+              setCurrentPage(currentPage - 1);
             }}
             disabled={!hasPreviousPage || isFetchingPreviousPage}
           >
             <ChevronLeft className='h-4 w-4' />
             <span className='sr-only'>Previous Page</span>
           </Button>
-          <div className='text-sm font-medium'>Page {currentPage}</div>
+
+          {data?.pages[0]?.total_pages && (
+            <div className='flex items-center justify-center'>
+              {Array.from({ length: Math.min(5, data.pages[0].total_pages) }, (_, i) => {
+                // Show at most 5 page buttons
+                let pageNumber;
+                if (data.pages[0].total_pages <= 5) {
+                  // If 5 or fewer pages, show all
+                  pageNumber = i + 1;
+                } else if (currentPage <= 3) {
+                  // If on pages 1-3, show pages 1-5
+                  pageNumber = i + 1;
+                } else if (currentPage >= data.pages[0].total_pages - 2) {
+                  // If on last 3 pages, show last 5 pages
+                  pageNumber = data.pages[0].total_pages - 4 + i;
+                } else {
+                  // Otherwise show current page and 2 pages on each side
+                  pageNumber = currentPage - 2 + i;
+                }
+
+                return (
+                  <Button
+                    key={pageNumber}
+                    variant={currentPage === pageNumber ? "default" : "outline"}
+                    size='sm'
+                    onClick={() => setCurrentPage(pageNumber)}
+                    className='w-9 h-9'
+                  >
+                    {pageNumber}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+
           <Button
             variant='outline'
             size='sm'
             onClick={() => {
               fetchNextPage();
-              setCurrentPage((prev) => prev + 1);
+              setCurrentPage(currentPage + 1);
             }}
             disabled={!hasNextPage || isFetchingNextPage}
           >

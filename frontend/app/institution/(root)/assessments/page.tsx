@@ -80,6 +80,7 @@ import {
 import { deleteAssessment as deleteAssessmentApi } from "@/apiService/assessmentService";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 
 interface GlobalFilter {
   type?: string;
@@ -106,6 +107,8 @@ export default function AssessmentsPage() {
   const [deleteAssessment, setDeleteAssessment] = useState<string | null>(null);
 
   const { setNewMetadata } = useBreadcrumb();
+  const { user } = useAuth();
+
   const searchParams = useSearchParams();
   const courseId = searchParams.get("courseId");
 
@@ -135,7 +138,6 @@ export default function AssessmentsPage() {
         pageParam: currentPage,
         page_size: 10,
         type: globalFilter.type,
-        due_date: globalFilter.due_date,
         title: globalFilter.title,
       }),
     maxPages: 1,
@@ -369,7 +371,7 @@ export default function AssessmentsPage() {
                   className='cursor-pointer'
                   asChild
                 >
-                  <Link href={`/institution/assessments/${assessment.id}`}>
+                  <Link href={`/${user?.role.toLowerCase()}/assessments/${assessment.id}`}>
                     <Plus className='mr-2 h-4 w-4' />
                     Add Questions
                   </Link>

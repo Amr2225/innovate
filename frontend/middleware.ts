@@ -3,9 +3,6 @@ import { getSession } from "./lib/session"
 import {
     DEFAULT_LOGIN_REDIRECT,
     authRoutes,
-    teacherRoutes,
-    studentRoutes,
-    institutionRoutes,
     TEACHER_ROUTE,
     STUDENT_ROUTE,
     INSTITUTION_ROUTE,
@@ -33,9 +30,13 @@ export default async function middleware(req: NextRequest) {
     // Routes Specific
     const isAuthRoute = authRoutes.some((route) => nextUrl.pathname.startsWith(route))
 
-    const isTeacherRoute = teacherRoutes.includes(nextUrl.pathname)
-    const isStudentRoute = studentRoutes.includes(nextUrl.pathname)
-    const isInstitutionRoute = institutionRoutes.includes(nextUrl.pathname)
+    // const isTeacherRoute = teacherRoutes.includes(nextUrl.pathname)
+    // const isStudentRoute = studentRoutes.includes(nextUrl.pathname)
+    // const isInstitutionRoute = institutionRoutes.includes(nextUrl.pathname)
+
+    const isTeacherRoute = nextUrl.pathname.startsWith('/teacher')
+    const isStudentRoute = nextUrl.pathname.startsWith('/student')
+    const isInstitutionRoute = nextUrl.pathname.startsWith('/institution')
 
     const isFirstLoginRoute = firstLoginRoutes.includes(nextUrl.pathname)
 

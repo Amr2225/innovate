@@ -14,6 +14,7 @@ class Lecture(models.Model):
         upload_to='lectures/attachments/', blank=True, null=True)
     chapter = models.ForeignKey(
         Chapter, on_delete=models.CASCADE, related_name='lectures')
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.title

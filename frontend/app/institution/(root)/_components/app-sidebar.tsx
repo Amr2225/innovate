@@ -57,8 +57,8 @@ const mainNavItems = [
 // Users management items
 const studentItems = [
   {
-    title: "All Users",
-    url: "/students", // TODO: Change to /users
+    title: "Users",
+    url: "/users",
     icon: UsersRound,
   },
 ];
@@ -66,7 +66,7 @@ const studentItems = [
 // Course management items
 const courseItems = [
   {
-    title: "All Courses",
+    title: "Courses",
     url: "/courses",
     icon: NotebookPen,
   },
@@ -75,11 +75,6 @@ const courseItems = [
     url: "/assessments",
     icon: FileText,
   },
-  // {
-  //   title: "Grades",
-  //   url: "/courses/grades",
-  //   icon: GraduationCap,
-  // },
 ];
 
 // Settings and notifications
@@ -148,7 +143,7 @@ export function AppSidebar({ session }: { session: Session }) {
 
         {/* Student Management */}
         <SidebarGroup>
-          <SidebarGroupLabel>Student Management</SidebarGroupLabel>
+          <SidebarGroupLabel>Users Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {studentItems.map((item) => (

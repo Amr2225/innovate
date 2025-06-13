@@ -126,7 +126,8 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
         if user.role == "Student":
             # Students can only see assessments for courses they are enrolled in
             return base_queryset.filter(
-                course__enrollments__user=user
+                course__enrollments__user=user,
+                course__enrollments__is_completed=False
             ).distinct()
 
         elif user.role == "Teacher":
@@ -164,7 +165,7 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
         if user.role == "Teacher" and not course.instructors.filter(id=user.id).exists():
             raise PermissionDenied(
                 "You can only create assessments for courses you teach")
-        if user.role == "Institution" and course.institution == user.institution:
+        if user.role == "Institution" and course.institution != user:
             raise PermissionDenied(
                 "You can only create assessments for your institution's courses")
 

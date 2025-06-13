@@ -14,6 +14,11 @@ urlpatterns = [
          name='token_refresh'),
 
 
+    path('user/update/', views.UserUpdateView.as_view(), name='user_update'),
+    path('user/change-password/', views.ChangePasswordView.as_view(),
+         name='change_password'),
+
+
     # Google Auth TODO: Implement this
     path("google-auth/", views.GoogleAuthView.as_view(), name="google_auth"),
 

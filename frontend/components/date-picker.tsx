@@ -39,6 +39,69 @@ export default function DatePicker({ date, setDate }: DatePickerProps) {
   );
 }
 
+interface DatePickerRangeProps {
+  date: { from?: Date; to?: Date };
+  setDate: (date: { from?: Date; to?: Date }) => void;
+}
+
+export function DatePickerRange({ date, setDate }: DatePickerRangeProps) {
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: date?.from,
+    to: date?.to,
+  });
+
+  return (
+    <div className='w-full'>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant={"outline"}
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !dateRange.from && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon />
+            {dateRange.from ? (
+              dateRange.to ? (
+                <>
+                  {moment(dateRange.from).format("DD/MM/YYYY")} -{" "}
+                  {moment(dateRange.to).format("DD/MM/YYYY")}
+                </>
+              ) : (
+                moment(dateRange.from).format("DD/MM/YYYY")
+              )
+            ) : (
+              <span>Pick a date range</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className='w-auto p-0' align='start'>
+          <Calendar
+            mode='range'
+            selected={dateRange}
+            onSelect={(range) => {
+              if (!range) {
+                setDateRange({ from: undefined, to: undefined });
+                setDate({ from: undefined, to: undefined });
+                return;
+              }
+
+              if (range?.from && range?.to) {
+                setDateRange({ from: range.from, to: range.to });
+                setDate({ from: range.from, to: range.to });
+              }
+            }}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
 export function BirthDatePicker({ date, setDate, saveButton }: DatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
 

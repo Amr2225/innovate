@@ -1,15 +1,111 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BirthDatePicker } from "@/components/date-picker";
 
 import { Button } from "@/components/ui/button";
-import moment from "moment";
+import { useForm } from "react-hook-form";
+import { UserUpdate } from "@/types/user.types";
+import {
+  Form,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+import { getUserProfileData, updateUserProfileData } from "@/apiService/userService";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import Loader from "@/components/Loader";
+import { changePassword } from "@/actions/changePassword";
+import { toast } from "sonner";
 
 export default function SettingsSection() {
-  const [date, setDate] = useState<Date>(moment().toDate());
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const passwordFormRef = useRef<HTMLFormElement>(null);
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["user"],
+    queryFn: () => getUserProfileData(),
+  });
+
+  const form = useForm<UserUpdate>({
+    defaultValues: {
+      first_name: "",
+      middle_name: "",
+      last_name: "",
+      email: "",
+      birth_date: new Date(),
+      age: 0,
+      avatar: "",
+    },
+  });
+
+  const { mutate: updateUser, isPending: isUpdatingUser } = useMutation({
+    mutationFn: (data: UserUpdate) => updateUserProfileData(data),
+    onSuccess: () => {
+      toast.success("User updated successfully");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      form.reset({
+        first_name: user.first_name,
+        middle_name: user.middle_name,
+        last_name: user.last_name,
+        email: user.email,
+        birth_date: user.birth_date,
+        age: user.age,
+        avatar: user.avatar,
+      });
+    }
+  }, [user, form, isLoading]);
+
+  if (isLoading) return <Loader />;
+
+  const onSubmit = (data: UserUpdate) => {
+    updateUser(data);
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsChangingPassword(true);
+
+    const formData = new FormData(e.currentTarget);
+    const oldPassword = formData.get("old_password") as string;
+    const newPassword = formData.get("new_password") as string;
+    const confirmPassword = formData.get("confirm_password") as string;
+
+    try {
+      const result = await changePassword({
+        oldPassword,
+        newPassword,
+        confirmPassword,
+      });
+
+      if (result.success) {
+        toast.success(result.message);
+        if (passwordFormRef.current) {
+          passwordFormRef.current.reset();
+        }
+      } else {
+        if (result.errors) {
+          Object.entries(result.errors).forEach(([field, message]) => {
+            toast.error(`${field}: ${message}`);
+          });
+        } else {
+          toast.error(result.message);
+        }
+      }
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
 
   return (
     <div>
@@ -23,86 +119,150 @@ export default function SettingsSection() {
         </div>
 
         <div className='w-full'>
-          <form action='' className='space-y-3'>
-            <div className='flex items-center justify-center gap-3'>
-              <div className='w-full'>
-                <Label htmlFor='first_name'>First Name</Label>
-                <Input id='first_name' placeholder='First Name' />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-3'>
+              <div className='flex items-center justify-center gap-3 w-fulll'>
+                <FormField
+                  control={form.control}
+                  name='first_name'
+                  render={({ field }) => (
+                    <FormItem className='w-full'>
+                      <FormLabel>First Name</FormLabel>
+                      <FormControl>
+                        <Input id='first_name' placeholder='First Name' {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='middle_name'
+                  render={({ field }) => (
+                    <FormItem className='w-full'>
+                      <FormLabel>Middle Name</FormLabel>
+                      <FormControl>
+                        <Input id='middle_name' placeholder='Middle Name' {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='last_name'
+                  render={({ field }) => (
+                    <FormItem className='w-full'>
+                      <FormLabel>Last Name</FormLabel>
+                      <FormControl>
+                        <Input id='last_name' placeholder='Last Name' {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
-              <div className='w-full'>
-                <Label htmlFor='middle_name'>Middle Name</Label>
-                <Input id='middle_name' placeholder='Middle Name' />
+              <div className='w-full flex items-center justify-center gap-3'>
+                <FormField
+                  control={form.control}
+                  name='birth_date'
+                  render={({ field }) => (
+                    <FormItem className='w-full'>
+                      <FormLabel>Birth Date</FormLabel>
+                      <FormControl>
+                        <BirthDatePicker
+                          date={field.value || ""}
+                          setDate={(value) => field.onChange(value as Date)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='age'
+                  render={({ field }) => (
+                    <FormItem className='w-full'>
+                      <FormLabel>Age</FormLabel>
+                      <FormControl>
+                        <Input id='age' placeholder='Age' {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
-              <div className='w-full'>
-                <Label htmlFor='last_name'>Last Name</Label>
-                <Input id='last_name' placeholder='Last Name' />
-              </div>
-            </div>
+              <FormField
+                control={form.control}
+                name='email'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input id='email' placeholder='Email' {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <div className='w-full flex items-center justify-center gap-3'>
-              <div className='w-full'>
-                <Label>Birth Date</Label>
-                <BirthDatePicker date={date} setDate={(value) => setDate(value as Date)} />
-              </div>
-              <div className='w-full'>
-                <Label htmlFor='age'>Age</Label>
-                <Input id='age' placeholder='Age' />
-              </div>
-            </div>
-
-            <div className='w-full'>
-              <Label htmlFor='email'>Email</Label>
-              <Input id='email' placeholder='Email' />
-            </div>
-
-            <Button type='submit' className='w-full mt-3'>
-              Save Changes
-            </Button>
-          </form>
+              <Button type='submit' className='w-full mt-3' disabled={isUpdatingUser}>
+                {isUpdatingUser ? "Saving..." : "Save Changes"}
+              </Button>
+            </form>
+          </Form>
         </div>
       </div>
 
       <div className='pb-5'>
         <h1 className='text-xl font-bold mt-3'>Change Password</h1>
-        <form action='' className='space-y-3'>
+        <form ref={passwordFormRef} onSubmit={handlePasswordChange} className='space-y-3'>
           <div>
             <Label htmlFor='old_password'>Old Password</Label>
-            <Input id='old_password' placeholder='Old Password' />
+            <Input
+              id='old_password'
+              name='old_password'
+              type='password'
+              placeholder='Old Password'
+              disabled={isChangingPassword}
+              required
+            />
           </div>
 
           <div>
             <Label htmlFor='new_password'>New Password</Label>
-            <Input id='new_password' placeholder='New Password' />
+            <Input
+              id='new_password'
+              name='new_password'
+              type='password'
+              placeholder='New Password'
+              disabled={isChangingPassword}
+              required
+            />
           </div>
 
           <div>
             <Label htmlFor='confirm_password'>Confirm Password</Label>
-            <Input id='confirm_password' placeholder='Confirm Password' />
+            <Input
+              id='confirm_password'
+              name='confirm_password'
+              type='password'
+              placeholder='Confirm Password'
+              disabled={isChangingPassword}
+              required
+            />
           </div>
 
-          <Button type='submit' className='w-full mt-3'>
-            Change Password
+          <Button type='submit' className='w-full mt-3' disabled={isChangingPassword}>
+            {isChangingPassword ? "Changing Password..." : "Change Password"}
           </Button>
         </form>
-
-        {/* <Calendar
-          //   selected={field.value}
-          //   onSelect={field.onChange}
-          disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-          captionLayout='dropdown'
-          toYear={2010}
-          fromYear={1900}
-          classNames={{
-            day_hidden: "invisible",
-            dropdown:
-              "px-2 py-1.5 rounded-md bg-popover text-popover-foreground text-sm  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background",
-            caption_dropdowns: "flex gap-3",
-            vhidden: "hidden",
-            caption_label: "hidden",
-          }}
-        /> */}
       </div>
     </div>
   );

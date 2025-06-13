@@ -7,3 +7,13 @@ export const getLectures = async ({ chpaterId, page_size, pageParam, courseId }:
     if (res.status === 200) return res.data.data
     throw new Error("Failed to get lectures")
 }
+
+
+export const changeLectureProgress = async ({ lectureId, completed, time_spent }: { lectureId: string, completed: boolean, time_spent: number }): Promise<Lecture> => {
+    const res = await api.post<{ data: Lecture }>("/lecture/progress", { lecture: lectureId, completed, time_spent })
+
+    if (res.status === 200) return res.data.data
+    throw new Error("Failed to change lecture progress")
+}
+
+

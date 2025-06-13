@@ -10,7 +10,7 @@ import CourseContent from "@/components/courseContent";
 import LectureDetails from "@/components/lectureDetails";
 
 // Types
-import { Lecture } from "@/types/course.type";
+import { Lecture, LectureResponse } from "@/types/course.type";
 
 // Icons
 import { Loader2 } from "lucide-react";
@@ -20,7 +20,9 @@ export default function CoursePreviewPage() {
   const useCourseStore = createCourseStore(courseId as string);
   const { chapters } = useCourseStore();
 
-  const [activeLecture, setActiveLecture] = useState<Lecture | null>(chapters[0].lectures[0]);
+  const [activeLecture, setActiveLecture] = useState<(Lecture & LectureResponse) | null>(
+    chapters[0].lectures[0] as Lecture & LectureResponse
+  );
 
   const lectureNumber = useMemo(() => {
     if (!activeLecture) return null;
@@ -52,10 +54,16 @@ export default function CoursePreviewPage() {
   return (
     <div className='grid grid-cols-3 gap-4 pb-5'>
       <section className='col-span-2'>
-        <LectureDetails lecture={activeLecture} lectureNumber={lectureNumber} />
+        <LectureDetails
+          lecture={activeLecture as Lecture & LectureResponse}
+          lectureNumber={lectureNumber}
+        />
       </section>
       <section>
-        <CourseContent activeLecture={activeLecture} setActiveLecture={setActiveLecture} />
+        <CourseContent
+          activeLecture={activeLecture as Lecture & LectureResponse}
+          setActiveLecture={setActiveLecture}
+        />
       </section>
     </div>
   );

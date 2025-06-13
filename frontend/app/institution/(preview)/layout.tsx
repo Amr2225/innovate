@@ -36,7 +36,7 @@ export default async function PreviewCourseLayout({ children }: { children: Reac
         </header>
         <div className='px-8 mt-2'>
           <Button variant='link' className='!pl-0' asChild>
-            <Link href='/institution/courses'>
+            <Link href={`/${session.user.role.toLowerCase()}/courses/`}>
               <ArrowLeft />
               Back to Course Page
             </Link>

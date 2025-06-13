@@ -13,6 +13,16 @@ export interface NewUser {
     national_id: string
 }
 
+export interface UserUpdate {
+    first_name: string
+    middle_name: string
+    last_name: string
+    email: string
+    birth_date: Date
+    age: number
+    avatar: string
+}
+
 
 export interface InstitutionMembersType {
     id: string;

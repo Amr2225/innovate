@@ -22,7 +22,7 @@ class LectureSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lecture
         fields = ('id', 'title', 'video', 'attachment',
-                  'chapter', 'chapter_detials')
+                  'chapter', 'chapter_detials', 'description', 'updated_at')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -45,7 +45,8 @@ class LectureSerializer(serializers.ModelSerializer):
         )
 
         progress_entries = [
-            LectureProgress(enrollment=enrollment, lecture=lecture, completed=False)
+            LectureProgress(enrollment=enrollment,
+                            lecture=lecture, completed=False)
             for enrollment in enrollments
         ]
         LectureProgress.objects.bulk_create(progress_entries)
@@ -142,7 +143,8 @@ class LectureBulkCreateSerializer(serializers.Serializer):
             )
 
             progress_entries = [
-                LectureProgress(enrollment=enrollment, lecture=lecture, completed=False)
+                LectureProgress(enrollment=enrollment,
+                                lecture=lecture, completed=False)
                 for enrollment in enrollments
             ]
             LectureProgress.objects.bulk_create(progress_entries)

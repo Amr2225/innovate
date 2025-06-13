@@ -3,19 +3,11 @@ from .models import Assessment
 from mcqQuestion.models import McqQuestion
 from HandwrittenQuestion.models import HandwrittenQuestion
 from DynamicMCQ.models import DynamicMCQ, DynamicMCQQuestions
+from enrollments.models import Enrollments
+from AssessmentSubmission.models import AssessmentSubmission
 
 
 class AssessmentFilterSet(filters.FilterSet):
-    """
-    Filter set for Assessment model.
-    Allows filtering by:
-    - course: Filter by course ID
-    - title: Filter by assessment title (case-insensitive contains)
-    - type: Filter by assessment type
-    - due_date: Filter by due date
-    - accepting_submissions: Filter by whether assessment is accepting submissions
-    - created_at: Filter by creation date
-    """
     title = filters.CharFilter(lookup_expr='icontains')
     due_date = filters.DateTimeFilter()
     due_date_after = filters.DateTimeFilter(
@@ -28,10 +20,38 @@ class AssessmentFilterSet(filters.FilterSet):
     created_at_before = filters.DateTimeFilter(
         field_name='created_at', lookup_expr='lte')
 
+    has_submitted = filters.BooleanFilter(method='filter_has_submitted')
+
+    def filter_has_submitted(self, queryset, name, value):
+        request = self.request
+        if not request or not request.user.is_authenticated:
+            return queryset
+
+        try:
+            # Get the enrollment for the current user and assessment's course
+            enrollments = Enrollments.objects.filter(
+                user=request.user,
+                is_completed=False
+            )
+
+            # Get submissions for these enrollments
+            submissions = AssessmentSubmission.objects.filter(
+                enrollment__in=enrollments,
+                is_submitted=True
+            ).values_list('assessment_id', flat=True)
+
+            if value:  # If filtering for submitted assessments
+                return queryset.filter(id__in=submissions)
+            else:  # If filtering for non-submitted assessments
+                return queryset.exclude(id__in=submissions)
+
+        except Enrollments.DoesNotExist:
+            return queryset
+
     class Meta:
         model = Assessment
         fields = ['course', 'title', 'type', 'due_date',
-                  'created_at']
+                  'created_at', 'has_submitted']
 
 
 class McqQuestionFilterSet(filters.FilterSet):

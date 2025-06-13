@@ -1,14 +1,5 @@
 "use client";
-import {
-  Home,
-  Inbox,
-  Settings,
-  UserRoundPlus,
-  NotebookPen,
-  Newspaper,
-  BookOpen,
-  SquarePen,
-} from "lucide-react";
+import { Home, Settings, UserRoundPlus, NotebookPen, SquarePen } from "lucide-react";
 
 import {
   Sidebar,
@@ -31,14 +22,9 @@ import { Session } from "@/types/auth.type";
 // Menu items.
 const items = [
   {
-    title: "Home",
+    title: "Dashboard",
     url: "/dashboard",
     icon: Home,
-  },
-  {
-    title: "Inbox",
-    url: "/inbox",
-    icon: Inbox,
   },
   {
     title: "Students",
@@ -51,23 +37,13 @@ const items = [
     icon: NotebookPen,
   },
   {
-    title: "Assignments",
-    url: "/assignments",
+    title: "Assessments",
+    url: "/assessments",
     icon: SquarePen,
   },
   {
-    title: "Quizzes",
-    url: "/quizzes",
-    icon: Newspaper,
-  },
-  {
-    title: "Exams",
-    url: "/exams",
-    icon: BookOpen,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
+    title: "Profile",
+    url: "/profile",
     icon: Settings,
   },
 ];
@@ -99,7 +75,7 @@ export function AppSidebar({ session }: { session: Session }) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Teachers</SidebarGroupLabel>
+          <SidebarGroupLabel>Home</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
@@ -115,65 +91,6 @@ export function AppSidebar({ session }: { session: Session }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {/* <SidebarGroup>
-          <SidebarGroupLabel>Students</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link href={currentPath + item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-
-                  <SidebarMenuSub>
-                    <SidebarMenuSubItem>
-                      <SidebarMenuButton>Button</SidebarMenuButton>
-                    </SidebarMenuSubItem>
-                  </SidebarMenuSub>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup> */}
-
-        {/* <Collapsible defaultOpen className='group/collapsible'>
-          <SidebarGroup>
-            <SidebarGroupLabel
-              asChild
-              className='group/label text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-            >
-              <CollapsibleTrigger>
-                Courses
-                <ChevronRight className='ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90' />
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {items.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton>
-                        <item.icon />
-                        <span>{item.title}</span>
-                      </SidebarMenuButton>
-
-                      <SidebarMenuSub>
-                        <SidebarMenuSubItem>
-                          <SidebarMenuButton>Button</SidebarMenuButton>
-                        </SidebarMenuSubItem>
-                      </SidebarMenuSub>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible> */}
       </SidebarContent>
       <SidebarFooter>
         <UserProfile

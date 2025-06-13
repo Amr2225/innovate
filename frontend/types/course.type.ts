@@ -49,6 +49,22 @@ export interface Lecture {
     chapter: string
 }
 
+export interface LectureResponse {
+    readonly id: string
+    title: string
+    description: string
+    video: string
+    attachments: string
+    updatedAt: string
+}
+
+export interface ChapterResponse {
+    readonly id: string
+    lectures: LectureResponse[]
+    course: string
+    title: string
+}
+
 export interface Chapter {
     id: string
     title: string

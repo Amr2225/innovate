@@ -139,8 +139,29 @@ interface QuestionResponse extends Omit<Question, 'options' | 'questionType'> {
     options: string[];
 }
 
-export const getAssessment = async ({ pageParam, page_size, type, due_date, title }: { pageParam?: number, page_size?: number, type?: string, due_date?: string, title?: string }): Promise<GetAssessmentResponse> => {
-    const response = await api.get<GetAssessmentResponse>(`/assessment/`, { params: { page: pageParam, page_size, type, due_date, title } });
+export const getAssessment = async (
+    { pageParam,
+        page_size,
+        type,
+        due_date_after,
+        due_date_before,
+        title,
+        has_submitted,
+        start_date_after,
+        start_date_before
+    }:
+        {
+            pageParam?: number,
+            page_size?: number,
+            type?: string,
+            due_date_after?: string,
+            due_date_before?: string,
+            start_date_after?: string,
+            start_date_before?: string,
+            title?: string,
+            has_submitted?: boolean
+        }): Promise<GetAssessmentResponse> => {
+    const response = await api.get<GetAssessmentResponse>(`/assessment/`, { params: { page: pageParam, page_size, type, due_date_after, due_date_before, title, has_submitted, start_date_after, start_date_before } });
 
     if (response.status === 200) return response.data;
     throw new Error("Failed to get assessment");

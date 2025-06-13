@@ -31,6 +31,7 @@ class CourseSerializer(serializers.ModelSerializer):
         allow_null=True,
         write_only=True
     )
+    chapters = ChapterSerializer(many=True)
 
     prerequisite_course_detail = PrerequisiteCourseSerializer(
         source='prerequisite_course', read_only=True)
@@ -52,6 +53,7 @@ class CourseSerializer(serializers.ModelSerializer):
             'credit_hours',
             'semester',
             'level',
+            'chapters'
             # 'chapters'
         )
 

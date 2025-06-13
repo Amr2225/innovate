@@ -33,7 +33,14 @@ export default function CustomnLineChart<T>({
         }}
       >
         <CartesianGrid vertical={false} />
-        <YAxis dataKey={dataKeyY} tickLine={false} axisLine={false} tickMargin={10} />
+        <YAxis
+          dataKey={dataKeyY}
+          tickLine={false}
+          axisLine={false}
+          tickMargin={10}
+          domain={[0, "dataMax"]}
+          minTickGap={20}
+        />
         <ChartTooltip
           cursor={true}
           content={
@@ -47,7 +54,7 @@ export default function CustomnLineChart<T>({
         />
         <Line
           dataKey={dataKeyY}
-          type='natural'
+          type='monotone'
           stroke='hsl(var(--primary))'
           strokeWidth={2}
           dot={{

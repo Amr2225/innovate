@@ -115,7 +115,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def clean(self):
         super().clean()
-        if self.role == self.Role.INSTITUTION and not self.institution_type:
+        if self.role == "Institution" and not self.institution_type:
             raise ValidationError({
                 'institution_type': 'This field is required'
             })

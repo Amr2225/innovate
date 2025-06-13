@@ -73,6 +73,7 @@ import Link from "next/link";
 import AddEditCourse from "./_components/addEditCourse";
 import { toast } from "sonner";
 import { useBreadcrumb } from "@/context/breadcrumbsContext";
+import { useAuth } from "@/hooks/useAuth";
 
 // Helper constants for course status mapping
 const COURSE_STATUSES = {
@@ -111,6 +112,8 @@ export default function CoursesPage() {
   const [deleteCourseId, setDeleteCourseId] = useState<string | null>(null);
 
   const { setNewMetadata } = useBreadcrumb();
+  const { user } = useAuth();
+
   const queryClient = useQueryClient();
 
   const handleAlertDialogChange = (newOpenState: boolean, courseId: string) => {
@@ -341,14 +344,19 @@ export default function CoursesPage() {
                   <DialogDescription>Add course materials to {course.name}</DialogDescription>
                 </DialogHeader>
                 <div className='grid grid-cols-2 gap-4 py-4'>
-                  <Button variant='outline' className='h-24 flex flex-col gap-2' asChild>
-                    <Link href={`/institution/courses/${course.id}/`}>
+                  <Button
+                    onClick={() => setNewMetadata(course.id, course.name)}
+                    variant='outline'
+                    className='h-24 flex flex-col gap-2'
+                    asChild
+                  >
+                    <Link href={`/${user?.role.toLowerCase()}/courses/${course.id}/`}>
                       <NotebookPen className='h-6 w-6' />
                       <span>Add Curriculum</span>
                     </Link>
                   </Button>
                   <Button variant='outline' className='h-24 flex flex-col gap-2' asChild>
-                    <Link href={`/institution/assessments?courseId=${course.id}`}>
+                    <Link href={`/${user?.role.toLowerCase()}/assessments?courseId=${course.id}`}>
                       <FileText className='h-6 w-6' />
                       <span>Add Assessment</span>
                     </Link>
@@ -371,16 +379,16 @@ export default function CoursesPage() {
               <DropdownMenuContent align='end'>
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
+                {/* <DropdownMenuItem
                   onClick={() => setNewMetadata(course.id, course.name)}
                   className='cursor-pointer'
                   asChild
                 >
-                  <Link href={`/institution/courses/${course.id}`}>
+                  <Link href={`/${user?.role.toLowerCase()}/courses/${course.id}`}>
                     <Edit className='mr-2 h-4 w-4' />
                     Add Materials
                   </Link>
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setEditCourse(course.id)}

@@ -10,6 +10,7 @@ from enrollments.serializers import EnrollMultipleCoursesSerializer
 from enrollments.serializers import EnrollmentsSerializer
 from lecture.models import Lecture, LectureProgress
 
+
 class EnrolledCoursesAPIView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CourseSerializer
@@ -17,10 +18,12 @@ class EnrolledCoursesAPIView(generics.ListAPIView):
     def get_queryset(self):
         user = self.request.user
         enrolled_course_ids = Enrollments.objects.filter(
-            user=user
+            user=user,
+            is_completed=False
         ).values_list('course_id', flat=True)
 
         return Course.objects.filter(id__in=enrolled_course_ids)
+
 
 class EligibleCoursesAPIView(generics.ListCreateAPIView):
     def get_serializer_class(self):
@@ -45,12 +48,12 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
 
         eligible_courses = potential_courses.filter(
             (Q(prerequisite_course__isnull=True) |
-            Q(prerequisite_course__in=completed_course_ids)) &
+             Q(prerequisite_course__in=completed_course_ids)) &
             Q(semester__lte=user.semester)
         )
 
         return eligible_courses
-    
+
     def create(self, request, *args, **kwargs):
         user = request.user
         print(request.data)
@@ -91,7 +94,8 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
             enrolled_courses.append(enrollment)
 
             lectures = Lecture.objects.filter(chapter__course=course)
-            progress_entries = [LectureProgress(user=user, lecture=lecture) for lecture in lectures]
+            progress_entries = [LectureProgress(
+                user=user, lecture=lecture) for lecture in lectures]
             try:
                 LectureProgress.objects.bulk_create(progress_entries)
             except Exception as e:

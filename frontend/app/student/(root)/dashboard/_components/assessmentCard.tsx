@@ -5,8 +5,9 @@ import moment from "moment";
 import { Check, X } from "lucide-react";
 import Link from "next/link";
 import { useAssessmentNavbar } from "@/context/assessmentNavbarContext";
+import { Badge } from "@/components/ui/badge";
 
-export default function AssignmentCard({
+export default function AssessmentCard({
   id,
   title,
   dueDate,
@@ -25,9 +26,13 @@ export default function AssignmentCard({
 
   return (
     <div className='w-full h-full border border-neutral-200 rounded-md py-2'>
-      {/* <span className='w-[200px] block h-[100px] bg-white rounded-full' /> */}
       <div className='flex flex-col items-start justify-center px-3 py-1'>
-        <h4 className='font-bold text-sm'>{title}</h4>
+        <div className='flex items-center justify-between w-full'>
+          <h4 className='font-bold text-sm'>{title}</h4>
+          <Badge className='font-bold text-center' variant={"secondary"}>
+            {courseName}
+          </Badge>
+        </div>
         <p className='text-sm text-gray-500'>
           <span className='font-bold'>Start Date: </span>
           {startDate ? moment(startDate).format("MMM DD, YYYY") : ""}

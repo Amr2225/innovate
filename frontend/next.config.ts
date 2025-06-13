@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   // TODO: Add the Production Domain
   images: {
-    domains: ["760b-154-177-34-214.ngrok-free.app"],
+    domains: ["8bc3-154-182-238-185.ngrok-free.app"],
   },
   experimental: {
     serverActions: {
