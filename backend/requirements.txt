@@ -15,4 +15,4 @@ channels
 channels-redis
 daphne
 PyPDF2
-
+drf-sse

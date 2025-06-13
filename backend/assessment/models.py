@@ -23,7 +23,7 @@ class Assessment(models.Model):
         ]
     )
     due_date = models.DateTimeField()
-    grade = models.PositiveSmallIntegerField()
+    grade = models.PositiveSmallIntegerField(default=0)
     start_date = models.DateTimeField(default=timezone.now)
     accepting_submissions = models.BooleanField(default=True)
 
@@ -56,12 +56,12 @@ class Assessment(models.Model):
                 )
 
         # Validate that assessment grade matches total question grades
-        if self.pk:  # Only check for existing assessments
-            total_question_grade = self.total_grade
-            if total_question_grade > self.grade:
-                raise ValidationError(
-                    f"Total question grade ({total_question_grade}) exceeds assessment grade ({self.grade})"
-                )
+        # if self.pk:  # Only check for existing assessments
+        #     total_question_grade = self.total_grade
+        #     if total_question_grade > self.grade:
+        #         raise ValidationError(
+        #             f"Total question grade ({total_question_grade}) exceeds assessment grade ({self.grade})"
+        #         )
 
         super().save(*args, **kwargs)
 

@@ -163,7 +163,7 @@ class AssessmentListCreateAPIView(generics.ListCreateAPIView):
         # Check if user has permission to create assessment for this course
         course = serializer.validated_data['course']
         if user.role == "Teacher" and not course.instructors.filter(id=user.id).exists():
-        if user.role == "Teacher" and not course.instructors.filter(id=user.id).exists():
+        # if user.role == "Teacher" and not course.instructors.filter(id=user.id).exists():
             raise PermissionDenied(
                 "You can only create assessments for courses you teach")
         if user.role == "Institution" and course.institution == user.institution:
