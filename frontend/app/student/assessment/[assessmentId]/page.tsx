@@ -58,8 +58,6 @@ export default function AssessmentPage() {
     },
   });
 
-  console.log(error);
-
   if (error)
     return (
       <div className='w-full min-h-screen bg-neutral-50'>

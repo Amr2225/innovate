@@ -6,6 +6,7 @@ from rest_framework import serializers
 from users.permissions import isInstitution, isStudent, isTeacher
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
+from enrollments.models import Enrollments
 
 
 class LectureListCreateAPIView(generics.ListCreateAPIView):
@@ -129,7 +130,8 @@ class LecturesProgressListCreateAPIView(generics.ListCreateAPIView):
     filterset_fields = ['id', 'lecture', 'completed']
 
     def get_queryset(self):
-        return LectureProgress.objects.filter(user=self.request.user)
+        enrollments = Enrollments.objects.filter(user=self.request.user)
+        return LectureProgress.objects.filter(enrollment__in=enrollments)
 
     def perform_create(self, serializer):
         serializer.save()

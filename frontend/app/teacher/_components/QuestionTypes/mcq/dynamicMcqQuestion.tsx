@@ -198,6 +198,7 @@ export default function DynamicMCQQuestion({ question }: { question: DynamicMCQQ
               e.target.value.trim() !== "" &&
               updateQuestion<DynamicMCQQuestion>(question.id, "context", e.target.value)
             }
+            defaultValue={question.context || ""}
             placeholder='Enter Context'
             className='min-h-[200px]'
           />

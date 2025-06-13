@@ -56,7 +56,8 @@ export const dynamicMcqQuestion = async ({ question, assessmentId, sections }: {
         lecture_ids: question.lectures,
         difficulty: question.difficulty,
         total_grade: question.totalGrade,
-        number_of_questions: question.numberOfQuestions
+        number_of_questions: question.numberOfQuestions,
+        context: question.context
     });
 
     if (response.status === 201) return true

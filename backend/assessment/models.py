@@ -166,7 +166,7 @@ class Assessment(models.Model):
                             from AI.generate_mcq_from_text import generate_mcqs_from_text
                             generated_questions = generate_mcqs_from_text(
                                 text=dynamic_mcq.context,
-                                num_questions=dynamic_mcq.number_of_questions,
+                                number_of_questions=dynamic_mcq.number_of_questions,
                                 difficulty=dynamic_mcq.difficulty,
                                 num_options=dynamic_mcq.num_options  # Pass num_options from model
                             )
@@ -241,7 +241,7 @@ class Assessment(models.Model):
                         # Generate questions using AI from text context with specified difficulty
                         generated_questions = generate_mcqs_from_text(
                             text=dynamic_mcq.context,
-                            num_questions=dynamic_mcq.number_of_questions,
+                            number_of_questions=dynamic_mcq.number_of_questions,
                             difficulty=dynamic_mcq.difficulty,
                             num_options=dynamic_mcq.num_options  # Pass num_options from model
                         )

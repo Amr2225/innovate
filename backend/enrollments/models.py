@@ -11,7 +11,8 @@ class Enrollments(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
     enrolled_at = models.DateTimeField(auto_now_add=True)
     is_completed = models.BooleanField(default=False)
-
+    total_grade = models.FloatField(default=0)
+    
     class Meta:
         unique_together = ('user', 'course')
 

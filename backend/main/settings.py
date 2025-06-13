@@ -2,7 +2,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 import os
-load_dotenv(override=True)
+load_dotenv()
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -16,15 +16,12 @@ SITE_ID = 1
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS").split(" ")
 
-# WEBSITE_URL = "http://192.168.1.2:8000"
-WEBSITE_URL = "https://60d3-154-182-238-185.ngrok-free.app"
+WEBSITE_URL = "http://localhost:8000"
 
 AUTH_USER_MODEL = "users.User"
 
 
 # CORS
-# Client URLs
-# Add the backend url only if you want to access the admin panel
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -108,6 +105,8 @@ INSTALLED_APPS = [
     'CodingQuestion',
     'DynamicMCQ',
     'AssessmentSubmission',
+    'teacher_analytics'
+
 ]
 
 ASGI_APPLICATION = 'main.asgi.application'
