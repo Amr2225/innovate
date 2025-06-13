@@ -13,3 +13,4 @@ class InstitutionPolicy(models.Model):
     max_allowed_courses_per_semester = models.IntegerField(default=6, null=True, blank=True)
     year_registration_open = models.BooleanField(default=False)
     summer_registration_open = models.BooleanField(default=False)
+    promotion_time = models.TimeField(null=True, blank=True)

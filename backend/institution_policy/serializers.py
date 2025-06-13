@@ -13,5 +13,6 @@ class InstitutionPolicySerializer(serializers.ModelSerializer):
             'min_attendance_percent',
             'max_allowed_courses_per_semester',
             'year_registration_open',
-            'summer_registration_open'
+            'summer_registration_open',
+            'promotion_time'
         )
