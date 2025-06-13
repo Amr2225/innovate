@@ -15,7 +15,6 @@ urlpatterns = [
     path('chat/', include('chat.urls')),
     path('mcqQuestionScore/', include('MCQQuestionScore.urls')),
     path('handwrittenQuestion/', include('HandwrittenQuestion.urls')),
-    path('codingQuestion/', include('CodingQuestion.urls')),
     path('dynamicMCQ/', include('DynamicMCQ.urls')),
     path('assessmentSubmission/', include('AssessmentSubmission.urls')),
 
