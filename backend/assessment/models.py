@@ -471,11 +471,11 @@ class Assessment(models.Model):
                 print(f"Error finding existing question: {str(e)}")
 
         # Check if adding the new grade would exceed the assessment grade
-        if current_total + new_question_grade > self.grade:
-            raise ValidationError(
-                f"Total grade of questions ({current_total + new_question_grade}) "
-                f"exceeds assessment grade ({self.grade})"
-            )
+        # if current_total + new_question_grade > self.grade:
+        #     raise ValidationError(
+        #         f"Total grade of questions ({current_total + new_question_grade}) "
+        #         f"exceeds assessment grade ({self.grade})"
+        #     )
 
 
 class AssessmentScore(models.Model):
