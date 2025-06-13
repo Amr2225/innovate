@@ -7,7 +7,7 @@ from .serializers import CodingQuestionSerializer, CodingQuestionScoreSerializer
 from .utils.piston import run_code, prepare_code_for_piston
 from enrollments.models import Enrollments
 from assessment.models import Assessment
-from main.AI import generate_coding_questions_from_pdf, generate_coding_questions_from_text
+from AI.generate_code_questions import generate_coding_questions_from_pdf, generate_coding_questions_from_text
 from users.permissions import isTeacher
 from django.core.files.uploadedfile import InMemoryUploadedFile
 import uuid
