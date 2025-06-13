@@ -9,6 +9,7 @@ import base64
 from PIL import Image
 from django.conf import settings
 from huggingface_hub import InferenceClient
+from django.test import Client
 
 logger = logging.getLogger(__name__)
 
@@ -149,6 +150,7 @@ def generate_coding_questions_from_text(text, num_questions=5, difficulty='3', l
 
         # Make API call to generate coding questions
         logger.debug(f"Making API call to generate coding questions with difficulty {difficulty_desc}")
+        client = Client()
         completion = client.chat.completions.create(
             model=settings.AI_MODEL,
             messages=prompt,

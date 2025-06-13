@@ -1,0 +1,14 @@
+/* Restore list styling in the rich text editor */
+.editorContainer :global(ul) {
+  list-style-type: disc !important;
+  padding-left: 2rem !important;
+}
+
+.editorContainer :global(ol) {
+  list-style-type: decimal !important;
+  padding-left: 2rem !important;
+}
+
+.editorContainer :global(li) {
+  display: list-item !important;
+} 

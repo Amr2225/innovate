@@ -408,73 +408,73 @@ class Assessment(models.Model):
             print(f"Error generating dynamic questions: {str(e)}")
             return None
 
-    def validate_question_grade(self, new_question_grade, existing_question_id=None):
-        """
-        Validate that the total grade of all questions doesn't exceed the assessment grade
-        """
-        # Get current total grade excluding the question being updated
-        current_total = 0
+    # def validate_question_grade(self, new_question_grade, existing_question_id=None):
+    #     """
+    #     Validate that the total grade of all questions doesn't exceed the assessment grade
+    #     """
+    #     # Get current total grade excluding the question being updated
+    #     current_total = 0
 
-        # Get regular MCQ questions total
-        mcq_total = self.mcq_questions.aggregate(
-            total=Sum('question_grade'))['total'] or 0
-        current_total += mcq_total
+    #     # Get regular MCQ questions total
+    #     mcq_total = self.mcq_questions.aggregate(
+    #         total=Sum('question_grade'))['total'] or 0
+    #     current_total += mcq_total
 
-        # Get dynamic MCQ questions total
-        DynamicMCQQuestions = apps.get_model(
-            'DynamicMCQ', 'DynamicMCQQuestions')
-        dynamic_mcq_total = DynamicMCQQuestions.objects.filter(
-            dynamic_mcq__assessment=self
-        ).aggregate(total=Sum('question_grade'))['total'] or 0
-        current_total += dynamic_mcq_total
+    #     # Get dynamic MCQ questions total
+    #     DynamicMCQQuestions = apps.get_model(
+    #         'DynamicMCQ', 'DynamicMCQQuestions')
+    #     dynamic_mcq_total = DynamicMCQQuestions.objects.filter(
+    #         dynamic_mcq__assessment=self
+    #     ).aggregate(total=Sum('question_grade'))['total'] or 0
+    #     current_total += dynamic_mcq_total
 
-        # Get handwritten questions total
-        handwritten_total = self.handwritten_questions.aggregate(
-            total=Sum('max_grade'))['total'] or 0
-        current_total += handwritten_total
+    #     # Get handwritten questions total
+    #     handwritten_total = self.handwritten_questions.aggregate(
+    #         total=Sum('max_grade'))['total'] or 0
+    #     current_total += handwritten_total
 
-        # Get coding questions total
-        coding_total = self.coding_questions.aggregate(
-            total=Sum('max_grade'))['total'] or 0
-        current_total += coding_total
+    #     # Get coding questions total
+    #     coding_total = self.coding_questions.aggregate(
+    #         total=Sum('max_grade'))['total'] or 0
+    #     current_total += coding_total
 
-        # If updating an existing question, subtract its grade from the total
-        if existing_question_id:
-            try:
-                # Try to find the question in each type
-                try:
-                    existing_question = self.mcq_questions.get(
-                        id=existing_question_id)
-                    current_total -= existing_question.question_grade
-                except self.mcq_questions.model.DoesNotExist:
-                    try:
-                        existing_question = DynamicMCQQuestions.objects.get(
-                            id=existing_question_id,
-                            dynamic_mcq__assessment=self
-                        )
-                        current_total -= existing_question.question_grade
-                    except DynamicMCQQuestions.DoesNotExist:
-                        try:
-                            existing_question = self.handwritten_questions.get(
-                                id=existing_question_id)
-                            current_total -= existing_question.max_grade
-                        except self.handwritten_questions.model.DoesNotExist:
-                            pass
-                        try:
-                            existing_question = self.coding_questions.get(
-                                id=existing_question_id)
-                            current_total -= existing_question.max_grade
-                        except self.coding_questions.model.DoesNotExist:
-                            pass
-            except Exception as e:
-                print(f"Error finding existing question: {str(e)}")
+    #     # If updating an existing question, subtract its grade from the total
+    #     if existing_question_id:
+    #         try:
+    #             # Try to find the question in each type
+    #             try:
+    #                 existing_question = self.mcq_questions.get(
+    #                     id=existing_question_id)
+    #                 current_total -= existing_question.question_grade
+    #             except self.mcq_questions.model.DoesNotExist:
+    #                 try:
+    #                     existing_question = DynamicMCQQuestions.objects.get(
+    #                         id=existing_question_id,
+    #                         dynamic_mcq__assessment=self
+    #                     )
+    #                     current_total -= existing_question.question_grade
+    #                 except DynamicMCQQuestions.DoesNotExist:
+    #                     try:
+    #                         existing_question = self.handwritten_questions.get(
+    #                             id=existing_question_id)
+    #                         current_total -= existing_question.max_grade
+    #                     except self.handwritten_questions.model.DoesNotExist:
+    #                         pass
+    #                     try:
+    #                         existing_question = self.coding_questions.get(
+    #                             id=existing_question_id)
+    #                         current_total -= existing_question.max_grade
+    #                     except self.coding_questions.model.DoesNotExist:
+    #                         pass
+    #         except Exception as e:
+    #             print(f"Error finding existing question: {str(e)}")
 
-        # Check if adding the new grade would exceed the assessment grade
-        # if current_total + new_question_grade > self.grade:
-        #     raise ValidationError(
-        #         f"Total grade of questions ({current_total + new_question_grade}) "
-        #         f"exceeds assessment grade ({self.grade})"
-        #     )
+    #     # Check if adding the new grade would exceed the assessment grade
+    #     # if current_total + new_question_grade > self.grade:
+    #     #     raise ValidationError(
+    #     #         f"Total grade of questions ({current_total + new_question_grade}) "
+    #     #         f"exceeds assessment grade ({self.grade})"
+    #     #     )
 
 
 class AssessmentScore(models.Model):
