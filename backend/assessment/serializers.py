@@ -20,6 +20,7 @@ class AssessmentListSerializer(serializers.ModelSerializer):
         model = Assessment
         fields = ['id', 'title', 'type', 'start_date',
                   'due_date', 'accepting_submissions', 'has_submitted', 'course', 'course_description', "grade"]
+        read_only_fields = ['id', "grade"]
 
     def get_has_submitted(self, obj):
         request = self.context.get('request')
@@ -52,9 +53,10 @@ class AssessmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assessment
-        fields = ('id', 'course', 'course_name', 'title', 'type', 'due_date', 'grade', 
-                 'start_date', 'accepting_submissions')
-        read_only_fields = ('id', 'course_name', 'accepting_submissions', 'grade')
+        fields = ('id', 'course', 'course_name', 'title', 'type', 'due_date', 'grade',
+                  'start_date', 'accepting_submissions')
+        read_only_fields = ('id', 'course_name',
+                            'accepting_submissions', 'grade')
 
     def validate(self, data):
         # Check if due date is in the future
@@ -70,8 +72,8 @@ class AssessmentScoreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssessmentScore
-        fields = ('id', 'assessment', 'enrollment', 'student_email', 
-                'assessment_title', 'course_name', 'total_score', 
-                'created_at', 'updated_at')
-        read_only_fields = ('id', 'student_email', 'assessment_title', 
-                        'course_name', 'total_score', 'created_at', 'updated_at')
+        fields = ('id', 'assessment', 'enrollment', 'student_email',
+                  'assessment_title', 'course_name', 'total_score',
+                  'created_at', 'updated_at')
+        read_only_fields = ('id', 'student_email', 'assessment_title',
+                            'course_name', 'total_score', 'created_at', 'updated_at')
