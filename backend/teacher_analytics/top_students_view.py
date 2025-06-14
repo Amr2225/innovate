@@ -3,14 +3,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from courses.models import Course
 from enrollments.models import Enrollments
-from django.db.models import F
 
 class TopStudentsView(generics.GenericAPIView):
     """
     API endpoint for top students in a course.
-    
+
     GET /api/teacher-analytics/top-students/{course_id}/ - Returns top 5 students by total grade
-    
+
     Returns:
     {
         "course_id": "uuid",
@@ -27,21 +26,25 @@ class TopStudentsView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, course_id):
-        if request.user.role != "Teacher":
+        user = request.user
+        if user.role == "Teacher":
+            course_filter = {'id': course_id, 'instructors': user}
+        elif user.role == "Institution":
+            course_filter = {'id': course_id, 'institution': user}
+        else:
             return Response(
-                {"detail": "Only teachers can access this endpoint"},
+                {"detail": "Only teachers and institutions can access this endpoint"},
                 status=status.HTTP_403_FORBIDDEN
             )
 
         try:
-            course = Course.objects.get(id=course_id, instructors=request.user)
+            course = Course.objects.get(**course_filter)
         except Course.DoesNotExist:
             return Response(
                 {"detail": "Course not found or you don't have permission to access it"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Get top 5 students by total grade
         top_enrollments = Enrollments.objects.filter(
             course=course
         ).order_by('-total_grade')[:5]
@@ -61,4 +64,4 @@ class TopStudentsView(generics.GenericAPIView):
             "top_students": top_students
         }
 
-        return Response(response_data) 
+        return Response(response_data)
