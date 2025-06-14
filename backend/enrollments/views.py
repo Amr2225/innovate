@@ -52,19 +52,18 @@ class PromoteStudentsAPIView(APIView):
 
         students = User.objects.filter(role="Student", semester=semester, institution=user)
 
-        promoted_students = []
-        retained_students = []
-
         for student in students:
             enrollments = Enrollments.objects.filter(
                 course__institution=user,
                 user=student,
-                is_completed=False
+                is_completed=False,
+                is_summer_enrollment=False
             )
             failed_courses_count = 0
             total_semester_score = 0
             total_semester_grade = 0
             has_summer = False
+            failed_courses = []
 
             for enrollment in enrollments:
                 total_semester_score += enrollment.total_score
@@ -75,6 +74,8 @@ class PromoteStudentsAPIView(APIView):
                     enrollment.is_passed = True
                     enrollment.save()
                 else:
+                    if getattr(user, 'institution_type', None) == "school":
+                        failed_courses.append(enrollment.course.id)
                     has_summer = True
                     failed_courses_count += 1
                     enrollment.save()
@@ -96,7 +97,7 @@ class PromoteStudentsAPIView(APIView):
             if policy and policy.min_passing_percentage:
                 if percentage < policy.min_passing_percentage:
                     should_retain = True
-            
+                    
             if should_retain:
 
                 level_start_semester = ((student.semester - 1) // 2) * 2 + 1
@@ -125,7 +126,6 @@ class PromoteStudentsAPIView(APIView):
                         enrollment.is_completed = True
                         enrollment.save()
 
-                retained_students.append(student.id)
 
             elif not has_summer and getattr(user, 'institution_type', None) == "school":
                 student.semester += 1
@@ -141,15 +141,18 @@ class PromoteStudentsAPIView(APIView):
                         LectureProgress(user=student, lecture=lecture)
                         for lecture in lectures
                     ])
-                promoted_students.append(student.id)
+            elif getattr(user, 'institution_type', None) == "school" and has_summer:
+                matching_courses = Course.objects.filter(
+                    id__in=failed_courses
+                )
+                for course in matching_courses:
+                    Enrollments.objects.create(user=student, course=course, is_summer_enrollment=True)
             elif getattr(user, 'institution_type', None) == "faculty":
                 student.semester += 1
                 student.save()
-                promoted_students.append(student.id)
 
         return Response({
-            "promoted_students": promoted_students,
-            "retained_students": retained_students
+            "message": "Promotion process completed successfully.",
         }, status=200)
 
 
@@ -165,8 +168,6 @@ class PromoteStudentsSummerAPIView(APIView):
 
         students = User.objects.filter(role="Student", semester=semester, institution=user)
 
-        promoted_students = []
-        retained_students = []
 
         for student in students:
             enrollments = Enrollments.objects.filter(
@@ -198,7 +199,6 @@ class PromoteStudentsSummerAPIView(APIView):
                 )
                 for course in matching_courses:
                     Enrollments.objects.create(user=student, course=course)
-                retained_students.append(student.id)
             elif getattr(user, 'institution_type', None) == "school":
                 student.semester += 1
                 student.save()
@@ -213,7 +213,9 @@ class PromoteStudentsSummerAPIView(APIView):
                         LectureProgress(user=student, lecture=lecture)
                         for lecture in lectures
                     ])
-                promoted_students.append(student.id)
+        return Response({
+            "message": "Promotion process completed successfully.",
+        }, status=200)
         
 
 
@@ -236,27 +238,28 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
         
         if policy.year_registration_open:
 
-            all_active_courses = Course.objects.filter(is_active=True, semester=user.semester)
+            previous_courses = Course.objects.filter(is_active=True)
+            current_courses = Course.objects.filter(is_active=True, semester=user.semester)
 
             eligible_courses = []
 
-            for course in all_active_courses:
+            for course in previous_courses:
                 last_enrollment = Enrollments.objects.filter(user=user, course=course).order_by('-enrolled_at').first()
 
                 if last_enrollment:
                     if not last_enrollment.is_passed and last_enrollment.is_completed:
                         eligible_courses.append(course)
-                    continue
-                else:
-                    prereq = course.prerequisite_course
-                    completed_course_ids = Enrollments.objects.filter(
-                        user=user,
-                        is_passed=True,
-                        is_completed=True
-                    ).values_list('course_id', flat=True)
+                
+            for course in current_courses:
+                prereq = course.prerequisite_course
+                completed_course_ids = Enrollments.objects.filter(
+                    user=user,
+                    is_passed=True,
+                    is_completed=True
+                ).values_list('course_id', flat=True)
 
-                    if (not prereq or prereq.id in completed_course_ids) and course.semester <= user.semester:
-                        eligible_courses.append(course)
+                if (not prereq or prereq.id in completed_course_ids) and course.semester <= user.semester:
+                    eligible_courses.append(course)
 
             return eligible_courses
         
@@ -293,6 +296,9 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
             raise PermissionDenied("Registration is not open yet.")
         
         course_ids = request.data.get("courses", [])
+
+        if len(course_ids) > policy.max_allowed_courses_per_semester:
+            return Response({"error": "You can only register up to " + str(policy.max_allowed_courses_per_semester) + " courses"}, status=status.HTTP_400_BAD_REQUEST)
 
         if not isinstance(course_ids, list) or not course_ids:
             return Response({"error": "Please provide a list of course IDs."}, status=status.HTTP_400_BAD_REQUEST)
