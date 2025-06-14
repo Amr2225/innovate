@@ -10,6 +10,12 @@ class StudentSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'first_name', 'middle_name', 'last_name', 'national_id', 'level', 'semester', 'birth_date', 'age', 'date_joined', 'email']
 
+class GradeEntrySerializer(serializers.Serializer):
+    semester = serializers.IntegerField()
+    course = serializers.CharField()
+    grade = serializers.FloatField()
+
+
 class EnrollmentsSerializer(serializers.ModelSerializer):
     user_data = StudentSerializer(source='user', read_only=True)
     course_data = serializers.SerializerMethodField()

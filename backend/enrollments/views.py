@@ -7,6 +7,8 @@ from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
 from users.permissions import isInstitution, isStudent, isTeacher
 from decimal import Decimal
+from collections import defaultdict
+
 
 from courses.models import Course
 from enrollments.models import Enrollments
@@ -44,13 +46,9 @@ class PromoteStudentsAPIView(APIView):
     def post(self, request):
         user = request.user
 
-        semester = request.data.get("semester")
-        if semester is None:
-            return Response({"detail": "Semester is required."}, status=400)
-
         policy = InstitutionPolicy.objects.filter(institution=user).first()
 
-        students = User.objects.filter(role="Student", semester=semester, institution=user)
+        students = User.objects.filter(role="Student", institution=user)
 
         for student in students:
             enrollments = Enrollments.objects.filter(
@@ -162,11 +160,7 @@ class PromoteStudentsSummerAPIView(APIView):
     def post(self, request):
         user = request.user
 
-        semester = request.data.get("semester")
-        if semester is None:
-            return Response({"detail": "Semester is required."}, status=400)
-
-        students = User.objects.filter(role="Student", semester=semester, institution=user)
+        students = User.objects.filter(role="Student", institution=user)
 
 
         for student in students:
@@ -216,8 +210,53 @@ class PromoteStudentsSummerAPIView(APIView):
         return Response({
             "message": "Promotion process completed successfully.",
         }, status=200)
-        
 
+
+
+class AllStudentGradesView(APIView):
+    permission_classes = [isStudent]
+
+    def get(self, request):
+        student = request.user
+
+        student_data = {
+            "student_id": str(student.id),
+            "student_name": f"{student.first_name} {student.middle_name} {student.last_name}",
+            "grades": []
+        }
+
+        enrollments = (
+            Enrollments.objects
+            .filter(user=student)
+            .select_related('course')
+            .order_by('course_id', '-enrolled_at')
+        )
+
+        seen_courses = set()
+
+        for enrollment in enrollments:
+            course_id = enrollment.course.id
+            if course_id in seen_courses:
+                continue
+
+            seen_courses.add(course_id)
+
+            course_name = (
+                f"{enrollment.course.name} (Summer)"
+                if enrollment.is_summer_enrollment else
+                enrollment.course.name
+            )
+
+            student_data["grades"].append({
+                "course_id": str(course_id),
+                "course_name": course_name,
+                "grade": enrollment.total_score,
+                "total_grade": enrollment.course.total_grade,
+                "is_passed": enrollment.is_passed,
+                "semester": enrollment.course.semester
+            })
+
+        return Response(student_data)
 
 
 class EligibleCoursesAPIView(generics.ListCreateAPIView):
