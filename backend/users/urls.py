@@ -43,4 +43,13 @@ urlpatterns = [
 
     path("institution-verify-email/<str:email>/", verificatonViews.InstitutionVerifyEmail.as_view(),
          name="institution-verify-email-with-email"),
+
+     # Institution
+    path('institution/register/', views.InstitutionRegisterView.as_view(),
+         name="institution_register"),
+    path('institution/users/',
+         views.InstitutionUserView.as_view(), name="institution_register_user"),
+    path('institution/users/register/csv/',
+         views.BulkUserImportView.as_view(), name="institution_register_user"),
+    path('add-credentials/', views.UserAddCredentialsView.as_view(), name="add_creds"),
 ]

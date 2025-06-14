@@ -64,6 +64,7 @@ def create_users():
             is_email_verified=True,
             is_active=True
         )
+        student.institution.set([institution])
         student.set_password('testpass123')
         student.save()
         students.append(student)
@@ -150,7 +151,7 @@ def create_assessments(courses):
                 title=f'{assessment_types[i]} {i+1} - {course.name}',
                 type=assessment_types[i],
                 due_date=timezone.now() + timedelta(days=30),
-                grade=random.randint(10, 20),
+                grade=random.randint(40, 70),
                 start_date=timezone.now() - timedelta(days=1)
             )
             assessments.append(assessment)
@@ -164,9 +165,10 @@ def create_mcq_questions(assessments, teachers):
             question = McqQuestion.objects.create(
                 assessment=assessment,
                 question=f'Question {i+1} for {assessment.title}',
-                answer=options,
+                options=options,
                 answer_key=options[0],  # First option is correct
                 created_by=random.choice(teachers),
+                section_number=random.randint(1, 5),
                 question_grade=Decimal('2.00')
             )
             questions.append(question)
@@ -195,7 +197,7 @@ def create_mcq_scores(questions, enrollments):
                 MCQQuestionScore.objects.create(
                     question=question,
                     enrollment=enrollment,
-                    selected_answer=random.choice(question.answer)
+                    selected_answer=random.choice(question.options)
                 )
 
 def create_handwritten_scores(questions, enrollments):
@@ -217,8 +219,8 @@ def create_assessment_scores(assessments, enrollments):
     for enrollment in enrollments:
         for assessment in assessments:
             if assessment.course == enrollment.course:
-                # Calculate total score from MCQ and Handwritten scores
-                mcq_total = assessment.mcqquestion_set.filter(
+                # Calculate total score
+                mcq_total = assessment.mcq_questions.filter(
                     scores__enrollment=enrollment
                 ).aggregate(total=models.Sum('scores__score'))['total'] or 0
                 
@@ -228,10 +230,11 @@ def create_assessment_scores(assessments, enrollments):
                 
                 total_score = mcq_total + handwritten_total
                 
-                AssessmentScore.objects.create(
+                # Use get_or_create to avoid duplicates
+                AssessmentScore.objects.get_or_create(
                     enrollment=enrollment,
                     assessment=assessment,
-                    total_score=total_score
+                    defaults={'total_score': total_score}
                 )
 
 def main():

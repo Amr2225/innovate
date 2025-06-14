@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     # Third-Party Apps
     "django_extensions",
     "django_filters",
+    'django_celery_beat',
     "nanoid_field",
     "drf_spectacular",
     'channels',
@@ -97,16 +98,14 @@ INSTALLED_APPS = [
     'enrollments',
     'chapter',
     'lecture',
-    'assessment',
     'mcqQuestion',
-    'chat',
     'MCQQuestionScore',
     'HandwrittenQuestion',
-    'CodingQuestion',
     'DynamicMCQ',
+    'assessment',
     'AssessmentSubmission',
-    'teacher_analytics'
-
+    'teacher_analytics',
+    'institution_policy',
 ]
 
 ASGI_APPLICATION = 'main.asgi.application'

@@ -18,16 +18,24 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='course',
             name='institution',
-            field=models.ForeignKey(limit_choices_to={'role': 'Institution'}, on_delete=django.db.models.deletion.CASCADE, related_name='courses', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(limit_choices_to={
+                                    'role': 'Institution'}, on_delete=django.db.models.deletion.CASCADE, related_name='courses', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
             model_name='course',
             name='instructors',
-            field=models.ManyToManyField(limit_choices_to={'role': 'Teacher'}, related_name='courses_taught', to=settings.AUTH_USER_MODEL),
+            field=models.ManyToManyField(limit_choices_to={
+                                         'role': 'Teacher'}, related_name='courses_taught', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
             model_name='course',
             name='prerequisite_course',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='dependent_courses', to='courses.course'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL,
+                                    related_name='dependent_courses', to='courses.course'),
+        ),
+        migrations.AddConstraint(
+            model_name='course',
+            constraint=models.UniqueConstraint(
+                fields=('name', 'institution'), name='unique_course_per_institution'),
         ),
     ]

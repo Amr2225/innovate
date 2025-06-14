@@ -15,4 +15,6 @@ channels
 channels-redis
 daphne
 PyPDF2
-
+celery
+drf_sse
+django_celery_beat

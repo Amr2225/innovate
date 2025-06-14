@@ -15,12 +15,18 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Course',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('name', models.CharField(max_length=255, unique=True)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
+                ('name', models.CharField(max_length=255)),
                 ('description', models.TextField(blank=True, null=True)),
                 ('semester', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('credit_hours', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('total_grade', models.PositiveSmallIntegerField(blank=True, null=True)),
+                ('passing_grade', models.FloatField(
+                    blank=True, default=50.0, null=True)),
+                ('is_active', models.BooleanField(default=False)),
+                ('credit_hours', models.PositiveSmallIntegerField(
+                    blank=True, null=True)),
+                ('total_grade', models.PositiveSmallIntegerField(
+                    blank=True, null=True)),
             ],
         ),
     ]

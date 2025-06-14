@@ -17,7 +17,8 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='chapter',
             name='course',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chapters', to='courses.course'),
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, related_name='chapters', to='courses.course'),
         ),
         migrations.AlterUniqueTogether(
             name='chapter',
