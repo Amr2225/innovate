@@ -73,7 +73,7 @@ class AssessmentSubmission(models.Model):
         )
 
         # Check if there are any questions
-        if not mcq_questions.exists() and not dynamic_mcq_questions.exists() and not handwritten_questions.exists():
+        if not mcq_questions.exists() and not handwritten_questions.exists():
             raise ValidationError("No questions found for this assessment")
 
         # Check MCQ answers

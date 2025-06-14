@@ -18,23 +18,30 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Lecture',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
                 ('title', models.CharField(max_length=255)),
                 ('description', models.TextField(blank=True)),
-                ('video', models.FileField(blank=True, null=True, upload_to='lectures/videos/')),
-                ('attachment', models.FileField(blank=True, null=True, upload_to='lectures/attachments/')),
+                ('video', models.FileField(blank=True,
+                 null=True, upload_to='lectures/videos/')),
+                ('attachment', models.FileField(blank=True,
+                 null=True, upload_to='lectures/attachments/')),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('chapter', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='lectures', to='chapter.chapter')),
+                ('chapter', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='lectures', to='chapter.chapter')),
             ],
         ),
         migrations.CreateModel(
             name='LectureProgress',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
                 ('completed', models.BooleanField(default=False)),
                 ('time_spent', models.FloatField(blank=True, null=True)),
-                ('enrollment', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='enrollments.enrollments')),
-                ('lecture', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='lecture.lecture')),
+                ('enrollment', models.ForeignKey(blank=True, null=True,
+                 on_delete=django.db.models.deletion.CASCADE, to='enrollments.enrollments')),
+                ('lecture', models.ForeignKey(
+                    on_delete=django.db.models.deletion.CASCADE, to='lecture.lecture')),
             ],
             options={
                 'unique_together': {('enrollment', 'lecture')},

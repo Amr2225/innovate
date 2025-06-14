@@ -75,10 +75,10 @@ class HandwrittenQuestion(models.Model):
 
     def save(self, *args, **kwargs):
         # Validate that question grade doesn't exceed assessment grade
-        self.assessment.validate_question_grade(
-            new_question_grade=self.max_grade,
-            existing_question_id=self.id if self.pk else None
-        )
+        # self.assessment.validate_question_grade(
+        #     new_question_grade=self.max_grade,
+        #     existing_question_id=self.id if self.pk else None
+        # )
         super().save(*args, **kwargs)
 
 

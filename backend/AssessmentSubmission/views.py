@@ -14,6 +14,7 @@ from MCQQuestionScore.models import MCQQuestionScore
 from users.permissions import isStudent
 from django.conf import settings
 import os
+import json
 
 
 class AssessmentSubmissionPermission(permissions.BasePermission):
@@ -337,6 +338,14 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     response_data['max_score'] += float(question.max_grade)
                     response_data['questions'].append(question_data)
 
+                    # Add student's answer if available
+                    if str(question.id) in submission.codequestions_answers:
+                        question_data.update({
+                            'code_answer': submission.codequestions_answers[str(question.id)]
+                        })
+                    response_data['total_score'] += float(question.max_grade)
+                    response_data['questions'].append(question_data)
+
             # Calculate percentage score
             if response_data['max_score'] > 0:
                 response_data['percentage_score'] = f"{(response_data['total_score'] / response_data['max_score']) * 100:.2f} %"
@@ -441,10 +450,18 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                 assessment=assessment)
 
             # Log the number of questions found
-            print(f"Found {mcq_questions.count()} MCQ questions, {dynamic_mcq_questions.count()} dynamic MCQ questions, and {handwritten_questions.count()} handwritten questions")
-
+            print(f"Found {mcq_questions.count()} MCQ questions, {dynamic_mcq_questions.count()} dynamic MCQ questions, {handwritten_questions.count()} handwritten questions")
+            print("Type mcq_questions:", type(mcq_questions))
+            print("Type dynamic_mcq_questions:", type(dynamic_mcq_questions))
+            print("Type handwritten_questions:", type(handwritten_questions))
             # Check if there are any questions at all
-            if not mcq_questions.exists() and not dynamic_mcq_questions.exists() and not handwritten_questions.exists():
+            print("Final counts before error:",
+                  mcq_questions.count(),
+                  dynamic_mcq_questions.count(),
+                  handwritten_questions.count(),
+                  )
+
+            if not (mcq_questions.exists() or dynamic_mcq_questions.exists() or handwritten_questions.exists()):
                 print("No questions found for assessment")
                 return Response(
                     {"detail": "No questions found for this assessment"},
@@ -478,7 +495,6 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                     }
 
                 if isinstance(mcq_data, str):
-                    import json
                     try:
                         mcq_data = json.loads(mcq_data)
                     except json.JSONDecodeError:
@@ -545,7 +561,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
             if not mcq_answers and not handwritten_answers:
                 print("No answers provided")
                 return Response(
-                    {"detail": "At least one answer (MCQ or handwritten) must be provided"},
+                    {"detail": "At least one answer (MCQ or handwritten or coding) must be provided"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -570,7 +586,7 @@ class AssessmentSubmissionAPIView(generics.CreateAPIView):
                 "message": "Assessment submitted successfully",
                 "submission_details": {
                     "mcq_answers_count": len(mcq_answers) if mcq_answers else 0,
-                    "handwritten_answers_count": len(handwritten_answers) if handwritten_answers else 0
+                    "handwritten_answers_count": len(handwritten_answers) if handwritten_answers else 0,
                 }
             }
 

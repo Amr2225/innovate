@@ -35,10 +35,10 @@ class McqQuestion(models.Model):
             assessment = Assessment.objects.get(id=self.assessment_id)
             
             # Validate that question grade doesn't exceed assessment grade
-            assessment.validate_question_grade(
-                new_question_grade=self.question_grade,
-                existing_question_id=self.id if self.pk else None
-            )
+            # assessment.validate_question_grade(
+            #     new_question_grade=self.question_grade,
+            #     existing_question_id=self.id if self.pk else None
+            # )
             super().save(*args, **kwargs)
         except Exception as e:
             logger.error(f"Error saving MCQ question: {str(e)}")

@@ -17,15 +17,19 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='McqQuestion',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
                 ('question', models.CharField(max_length=1000)),
                 ('options', models.JSONField(help_text='List of possible answers')),
                 ('answer_key', models.CharField(max_length=255)),
-                ('question_grade', models.DecimalField(decimal_places=2, default=0.0, max_digits=5)),
-                ('section_number', models.PositiveSmallIntegerField(help_text='Section number within the assessment')),
+                ('question_grade', models.DecimalField(
+                    decimal_places=2, default=0.0, max_digits=5)),
+                ('section_number', models.PositiveSmallIntegerField(
+                    help_text='Section number within the assessment')),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
-                ('assessment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='mcq_questions', to='assessment.assessment')),
+                ('assessment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='mcq_questions', to='assessment.assessment')),
             ],
             options={
                 'ordering': ['-created_at'],

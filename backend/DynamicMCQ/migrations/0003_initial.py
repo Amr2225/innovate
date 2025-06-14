@@ -18,11 +18,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='dynamicmcqquestions',
             name='created_by',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='dynamic_mcq_questions', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='dynamic_mcq_questions', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
             model_name='dynamicmcqquestions',
             name='dynamic_mcq',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='questions', to='DynamicMCQ.dynamicmcq'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='questions', to='DynamicMCQ.dynamicmcq'),
         ),
     ]

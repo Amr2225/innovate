@@ -16,19 +16,24 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Assessment',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
                 ('title', models.CharField(max_length=255)),
-                ('type', models.CharField(choices=[('Exam', 'Exam'), ('Assignment', 'Assignment'), ('Quiz', 'Quiz')], max_length=50)),
+                ('type', models.CharField(choices=[
+                 ('Exam', 'Exam'), ('Assignment', 'Assignment'), ('Quiz', 'Quiz')], max_length=50)),
                 ('due_date', models.DateTimeField()),
                 ('grade', models.PositiveSmallIntegerField()),
-                ('start_date', models.DateTimeField(default=django.utils.timezone.now)),
+                ('start_date', models.DateTimeField(
+                    default=django.utils.timezone.now)),
             ],
         ),
         migrations.CreateModel(
             name='AssessmentScore',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('total_score', models.DecimalField(decimal_places=2, default=0, max_digits=5)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
+                ('total_score', models.DecimalField(
+                    decimal_places=2, default=0, max_digits=5)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
             ],

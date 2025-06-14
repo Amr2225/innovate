@@ -4,7 +4,7 @@ import { api } from "./api";
 //------------------------
 //  Creating Assessment
 //------------------------
-export const createAssessment = async (assessment: Pick<Assessment, "courseId" | "title" | "type" | "due_date" | "start_date" | "grade">) => {
+export const createAssessment = async (assessment: Pick<Assessment, "courseId" | "title" | "type" | "due_date" | "start_date">) => {
     const response = await api.post<{ detail?: string }>("/assessment/", {
         ...assessment,
         courseId: undefined,
@@ -15,14 +15,14 @@ export const createAssessment = async (assessment: Pick<Assessment, "courseId" |
     throw new Error(response.data?.detail || "Failed to create assessment");
 };
 
-export const updateAssessment = async (assessment: Pick<Assessment, "id" | "courseId" | "title" | "type" | "start_date" | "due_date" | "grade">) => {
+export const updateAssessment = async (assessment: Pick<Assessment, "id" | "courseId" | "title" | "type" | "start_date" | "due_date">) => {
     const response = await api.put<{ message: string }>(`/assessment/${assessment.id}/`, {
         course: assessment.courseId,
         title: assessment.title,
         type: assessment.type,
         start_date: assessment.start_date,
         due_date: assessment.due_date,
-        grade: assessment.grade
+        // grade: assessment.grade
     });
 
     if (response.status === 200) return true;

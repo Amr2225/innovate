@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='dynamicmcq',
             name='assessment',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='dynamic_mcqs', to='assessment.assessment'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='dynamic_mcqs', to='assessment.assessment'),
         ),
     ]

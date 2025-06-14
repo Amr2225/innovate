@@ -19,33 +19,40 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='handwrittenquestion',
             name='created_by',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='created_handwritten_questions', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='created_handwritten_questions', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
             model_name='handwrittenquestionscore',
             name='enrollment',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='handwritten_scores', to='enrollments.enrollments'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='handwritten_scores', to='enrollments.enrollments'),
         ),
         migrations.AddField(
             model_name='handwrittenquestionscore',
             name='question',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='scores', to='HandwrittenQuestion.handwrittenquestion'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='scores', to='HandwrittenQuestion.handwrittenquestion'),
         ),
         migrations.AddIndex(
             model_name='handwrittenquestion',
-            index=models.Index(fields=['assessment'], name='Handwritten_assessm_ed2795_idx'),
+            index=models.Index(fields=['assessment'],
+                               name='Handwritten_assessm_ed2795_idx'),
         ),
         migrations.AddIndex(
             model_name='handwrittenquestion',
-            index=models.Index(fields=['created_by'], name='Handwritten_created_c500ef_idx'),
+            index=models.Index(fields=['created_by'],
+                               name='Handwritten_created_c500ef_idx'),
         ),
         migrations.AddIndex(
             model_name='handwrittenquestionscore',
-            index=models.Index(fields=['question', 'enrollment'], name='Handwritten_questio_66c38e_idx'),
+            index=models.Index(
+                fields=['question', 'enrollment'], name='Handwritten_questio_66c38e_idx'),
         ),
         migrations.AddIndex(
             model_name='handwrittenquestionscore',
-            index=models.Index(fields=['submitted_at'], name='Handwritten_submitt_aca187_idx'),
+            index=models.Index(fields=['submitted_at'],
+                               name='Handwritten_submitt_aca187_idx'),
         ),
         migrations.AlterUniqueTogether(
             name='handwrittenquestionscore',

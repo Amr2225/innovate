@@ -23,7 +23,7 @@ urlpatterns = [
     path("google-auth/", views.GoogleAuthView.as_view(), name="google_auth"),
 
     # Token
-    #     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
     # Email Verification
     path('verify-email/<str:token>/',
@@ -44,7 +44,7 @@ urlpatterns = [
     path("institution-verify-email/<str:email>/", verificatonViews.InstitutionVerifyEmail.as_view(),
          name="institution-verify-email-with-email"),
 
-     # Institution
+    # Institution
     path('institution/register/', views.InstitutionRegisterView.as_view(),
          name="institution_register"),
     path('institution/users/',

@@ -8,7 +8,7 @@ from rest_framework.parsers import JSONParser
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 import logging
-from .validation import validate_question_grade, validate_mcq_structure
+from .validation import  validate_mcq_structure, validate_question_grade
 from .permission import McqQuestionPermission
 
 # Models
@@ -307,7 +307,7 @@ class SaveGeneratedMCQsView(generics.GenericAPIView):
                         'id': str(question.id),
                         'question': question.question,
                         'options': question.options,
-                        'answer': question.answer_key,
+                        'answer_key': question.answer_key,
                         'question_grade': str(question.question_grade),
                         'section_number': question.section_number
                     })

@@ -43,7 +43,8 @@ export default function AssessmentTabs({
   const { assessmentId } = useParams();
 
   const useAssessmentStore = createAssessmentStore(assessmentId as string);
-  const { sections, setCurrentSection, addSection, deleteSection } = useAssessmentStore();
+  const { sections, setCurrentSection, addSection, deleteSection, getTotalGrade } =
+    useAssessmentStore();
 
   return (
     <motion.section
@@ -53,7 +54,12 @@ export default function AssessmentTabs({
       className='p-4 w-full h-full'
     >
       <div className='flex flex-col md:flex-row items-center md:items-center justify-between w-full mb-5'>
-        <h1 className='text-2xl font-bold mb-4 whitespace-nowrap'>Add Questions</h1>
+        <div>
+          <h1 className='text-2xl font-bold mb-2 whitespace-nowrap'>Add Questions</h1>
+          <div className='text-sm font-medium text-muted-foreground mb-2'>
+            Assessment Total Grade: {getTotalGrade()}
+          </div>
+        </div>
 
         <div>
           <AlertDialog>

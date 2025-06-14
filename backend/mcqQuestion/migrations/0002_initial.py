@@ -18,14 +18,17 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='mcqquestion',
             name='created_by',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='mcq_questions_created', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL,
+                                    related_name='mcq_questions_created', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddIndex(
             model_name='mcqquestion',
-            index=models.Index(fields=['assessment'], name='mcqQuestion_assessm_68dd1d_idx'),
+            index=models.Index(fields=['assessment'],
+                               name='mcqQuestion_assessm_68dd1d_idx'),
         ),
         migrations.AddIndex(
             model_name='mcqquestion',
-            index=models.Index(fields=['created_by'], name='mcqQuestion_created_221ed9_idx'),
+            index=models.Index(fields=['created_by'],
+                               name='mcqQuestion_created_221ed9_idx'),
         ),
     ]

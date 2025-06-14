@@ -15,7 +15,8 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Offer',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
                 ('discount_percentage', models.PositiveIntegerField()),
                 ('valid_from', models.DateTimeField(auto_now_add=True)),
                 ('valid_to', models.DateTimeField(blank=True, null=True)),
@@ -24,24 +25,29 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Payment',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
                 ('valid_from', models.DateTimeField(auto_now_add=True)),
                 ('valid_to', models.DateTimeField(blank=True, null=True)),
                 ('is_current', models.BooleanField(default=True)),
                 ('credits_amount', models.PositiveIntegerField()),
                 ('transaction_id', models.PositiveIntegerField(blank=True, null=True)),
                 ('order_id', models.PositiveIntegerField(blank=True, null=True)),
-                ('payment_status', models.CharField(blank=True, max_length=255, null=True)),
+                ('payment_status', models.CharField(
+                    blank=True, max_length=255, null=True)),
             ],
         ),
         migrations.CreateModel(
             name='Plan',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
                 ('currency', models.CharField(max_length=3)),
-                ('credit_price', models.DecimalField(decimal_places=2, max_digits=10)),
+                ('credit_price', models.DecimalField(
+                    decimal_places=2, max_digits=10)),
                 ('students_limit', models.PositiveIntegerField()),
-                ('type', models.CharField(choices=[('Gold', 'Gold'), ('Silver', 'Silver'), ('Diamond', 'Diamond')], max_length=10, unique=True)),
+                ('type', models.CharField(choices=[
+                 ('Gold', 'Gold'), ('Silver', 'Silver'), ('Diamond', 'Diamond')], max_length=10, unique=True)),
                 ('description', models.JSONField()),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),

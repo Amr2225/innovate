@@ -18,16 +18,19 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='payment',
             name='institution',
-            field=models.ForeignKey(limit_choices_to={'role': 'Institution'}, on_delete=django.db.models.deletion.CASCADE, related_name='institution_payments', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(limit_choices_to={
+                                    'role': 'Institution'}, on_delete=django.db.models.deletion.CASCADE, related_name='institution_payments', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
             model_name='payment',
             name='plan',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='plan_payments', to='institution.plan'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='plan_payments', to='institution.plan'),
         ),
         migrations.AddField(
             model_name='offer',
             name='plan',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='plan_offers', to='institution.plan', to_field='type'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='plan_offers', to='institution.plan', to_field='type'),
         ),
     ]

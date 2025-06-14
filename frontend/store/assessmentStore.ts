@@ -12,6 +12,7 @@ export type AssessmentStore = Assessment & {
 
     // Assessment
     updateAssessment: (key: keyof Assessment, value: string) => void;
+    getTotalGrade: () => number;
 
     // Questions
     addQuestion: () => void;
@@ -66,7 +67,7 @@ export const createAssessmentStore = (assessmentId: string) => {
 
     const assessmentStore = create<AssessmentStore>()(
         persist(
-            (set) => ({
+            (set, get) => ({
                 ...initialState,
                 setCourseId: (courseId: string) => {
                     set({ courseId })
@@ -75,6 +76,9 @@ export const createAssessmentStore = (assessmentId: string) => {
                     set(() => ({
                         [key]: value
                     }))
+                },
+                getTotalGrade: () => {
+                    return get().questions.reduce((acc, question) => acc + (+question.totalGrade! || 0), 0)
                 },
                 addQuestion: () => {
                     set((state) => ({

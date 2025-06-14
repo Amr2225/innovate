@@ -10,9 +10,8 @@ type InstitutionStore = {
     email: string
     password: string
     confirm_password: string
-    isEmailVerified: boolean
-    isPaymentSuccess: boolean
-    isRegistrationSuccess: boolean
+    is_verified: boolean
+    is_payment_success: boolean
     current_step: number
     credits: number
     logoData: FileData | null
@@ -24,26 +23,34 @@ type InstitutionStore = {
     getLogoName: () => Promise<ImageMetadata | null>
     setCredits: (credits: number) => void
     addCreds: (name: string, email: string, password: string, confirm_password: string) => void
+    setIsVerified: () => void
     setCurrentStep: () => void
-    setStatus: (key: keyof Pick<InstitutionStore, 'isRegistrationSuccess' | 'isEmailVerified' | 'isPaymentSuccess'>, value: boolean) => void
     goBack: () => void
-    setHmac: (hmac: string) => void
-    verficationFailedCallback: () => void
+    verifcationFaildCallback: () => void
+=========
+    signIn: (name: string, email: string) => void
+    logo?: string
+>>>>>>>>> Temporary merge branch 2
 }
 
 const initialState: Pick<InstitutionStore, 'name' | 'email' | 'password' | 'confirm_password' | 'isEmailVerified' | 'isPaymentSuccess' | 'isRegistrationSuccess' | 'current_step' | 'credits' | 'logoData' | 'hmac' | "logoStorageKey"> = {
     name: '',
     email: '',
+<<<<<<<<< Temporary merge branch 1
     password: '',
     logoStorageKey: '',
     confirm_password: '',
-    isEmailVerified: false,
-    isPaymentSuccess: false,
-    isRegistrationSuccess: false,
+    is_verified: false,
+    is_payment_success: false,
     current_step: 1,
     credits: 0,
-    logoData: null,
-    hmac: null,
+    reset: () => { },
+    setIsPaymentSuccess: () => { },
+    addCreds: () => { },
+    setIsVerified: () => { },
+    setCurrentStep: () => { },
+    goBack: () => { },
+    verifcationFaildCallback: () => { }
 }
 
 
@@ -81,24 +88,22 @@ export const useInstitutionRegistrationStore = create<InstitutionStore>()(
                 set({ credits });
             },
             reset: () => {
-                set({ ...initialState });
-                get().setCurrentStep();
+                set(initialState);
             },
-            setStatus: (key, value) => {
-                set({ [key]: value });
+            setIsVerified: () => {
+                set({ is_verified: true });
                 get().setCurrentStep();
             },
             setCurrentStep: () => {
-                if (get().name && get().email && !get().isEmailVerified) set({ current_step: 2 })
-                if (get().isEmailVerified) set({ current_step: 3 })
-                if (get().credits > 0 && get().isEmailVerified) set({ current_step: 4 })
+                if (get().name && !get().is_verified) set({ current_step: 2 })
+                if (get().is_verified) set({ current_step: 3 })
+                if (get().is_payment_success) set({ current_step: 4 })
             },
             goBack: () => {
-                if (get().current_step === 1) return;
-                if (get().isEmailVerified) return get().reset();
+                if (get().current_step === 1 || get().is_verified) return;
                 set({ current_step: get().current_step - 1 })
             },
-            verficationFailedCallback: () => set({ current_step: 1 })
+            verifcationFaildCallback: () => set({ current_step: 1 })
         }),
         {
             name: 'institution-registration',

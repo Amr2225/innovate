@@ -15,12 +15,17 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='DynamicMCQ',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('section_number', models.PositiveSmallIntegerField(help_text='Section number within the assessment')),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
+                ('section_number', models.PositiveSmallIntegerField(
+                    help_text='Section number within the assessment')),
                 ('context', models.TextField(blank=True, null=True)),
-                ('lecture_ids', models.JSONField(default=list, help_text='Array of lecture UUIDs')),
-                ('difficulty', models.CharField(choices=[('1', 'Very Easy'), ('2', 'Easy'), ('3', 'Medium'), ('4', 'Hard'), ('5', 'Very Hard')], default='3', max_length=1)),
-                ('num_options', models.PositiveSmallIntegerField(default=4, help_text='Number of options per question (2-6)')),
+                ('lecture_ids', models.JSONField(
+                    default=list, help_text='Array of lecture UUIDs')),
+                ('difficulty', models.CharField(choices=[('1', 'Very Easy'), ('2', 'Easy'), (
+                    '3', 'Medium'), ('4', 'Hard'), ('5', 'Very Hard')], default='3', max_length=1)),
+                ('num_options', models.PositiveSmallIntegerField(
+                    default=4, help_text='Number of options per question (2-6)')),
                 ('total_grade', models.PositiveSmallIntegerField()),
                 ('number_of_questions', models.PositiveSmallIntegerField()),
             ],
@@ -33,12 +38,17 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='DynamicMCQQuestions',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
                 ('question', models.TextField()),
-                ('options', models.JSONField(help_text='List of options for the question')),
-                ('answer_key', models.CharField(help_text='The correct answer from the options', max_length=255)),
-                ('question_grade', models.DecimalField(decimal_places=2, default=0.0, max_digits=5)),
-                ('difficulty', models.CharField(choices=[('1', 'Very Easy'), ('2', 'Easy'), ('3', 'Medium'), ('4', 'Hard'), ('5', 'Very Hard')], default='3', max_length=1)),
+                ('options', models.JSONField(
+                    help_text='List of options for the question')),
+                ('answer_key', models.CharField(
+                    help_text='The correct answer from the options', max_length=255)),
+                ('question_grade', models.DecimalField(
+                    decimal_places=2, default=0.0, max_digits=5)),
+                ('difficulty', models.CharField(choices=[('1', 'Very Easy'), ('2', 'Easy'), (
+                    '3', 'Medium'), ('4', 'Hard'), ('5', 'Very Hard')], default='3', max_length=1)),
             ],
             options={
                 'verbose_name': 'Dynamic MCQ Question',

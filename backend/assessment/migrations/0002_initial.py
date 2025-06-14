@@ -17,11 +17,13 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='assessment',
             name='course',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assessments', to='courses.course'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='assessments', to='courses.course'),
         ),
         migrations.AddField(
             model_name='assessmentscore',
             name='assessment',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='scores', to='assessment.assessment'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='scores', to='assessment.assessment'),
         ),
     ]

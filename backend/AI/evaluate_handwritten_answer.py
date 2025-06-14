@@ -110,6 +110,10 @@ def evaluate_handwritten_answer(question, answer_key, student_answer_image, max_
                         3. If the extracted text is not clear, just say "The text is not clear" and assign a score of 0
                         4. Compare it with this answer key: {answer_key if answer_key else 'No answer key provided. Please solve the question first.'}
                         5. Evaluate the answer and provide feedback
+                        6. MUST: Provide comprehensive feedback that:
+                           - Analyzes how well the answer addresses the original question
+                           - Compares the student's response with the provided answer key
+                           - Highlights key strengths and areas for improvement
 
                         The maximum grade for this question is {max_grade}.
 

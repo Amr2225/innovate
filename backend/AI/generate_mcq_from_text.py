@@ -76,15 +76,17 @@ def generate_mcqs_from_text(text, number_of_questions=10, difficulty='3', num_op
         7. Each question MUST have EXACTLY {num_options} options - no more, no less
         8. Double check the number of options is {num_options} - no more, no less
         9. The correct_answer MUST match EXACTLY one of the options
-        10. you MUST Double check the correct answer is in the options
-        11. Each option MUST be a string
-        12. The options array MUST contain EXACTLY {num_options} strings
-        13. Do not include any explanations or additional text
-        14. Ensure the JSON is valid and properly formatted
-        15. Use double quotes for all strings
-        16. Do not include any trailing commas
-        17. Do not include any comments or markdown formatting
-        18. IMPORTANT: You MUST generate EXACTLY {num_options} options for each question
+        10. Double check the correct answer is in the options
+        11. you MUST Double check the correct answer is in the options
+        12. Each option MUST be a string
+        13. The options array MUST contain EXACTLY {num_options} strings
+        14. Do not include any explanations or additional text
+        15. Ensure the JSON is valid and properly formatted
+        16. Use double quotes for all strings
+        17. Do not include any trailing commas
+        18. Do not include any comments or markdown formatting
+        19. IMPORTANT: You MUST generate EXACTLY {num_options} options for each question
+        20. DOUBLE CHECK: You MUST generate EXACTLY {num_options} options for each question
 
         DIFFICULTY REQUIREMENTS:
         For {difficulty_desc} level questions:
@@ -103,8 +105,8 @@ def generate_mcqs_from_text(text, number_of_questions=10, difficulty='3', num_op
         [
             {{
                 "question": "What is the capital of France?",
-                "options": ["London", "Berlin", "Paris", "Madrid", "Rome", "Vienna"][:num_options],
-                "correct_answer": "Paris"
+                "options": ["a) London", "b) Berlin", "c) Paris", "d) Madrid", "e) Rome", "f) Vienna"][:num_options],
+                "correct_answer": "c) Paris"
             }}
         ]
         """

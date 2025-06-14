@@ -104,7 +104,7 @@ INSTALLED_APPS = [
     'DynamicMCQ',
     'assessment',
     'AssessmentSubmission',
-    'teacher_analytics',
+    'analytics',
     'institution_policy',
 ]
 
@@ -210,7 +210,9 @@ USE_TZ = True
 STATIC_URL = 'static/'
 MEDIA_URL = '/uploads/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
-
+MEDIA_URL = '/uploads/'
+MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
+# Assessment Uploads Configuration
 # ASSESSMENT_UPLOADS_DIR = 'AssessmentUploads'
 # ASSESSMENT_UPLOADS_PATH = os.path.join(MEDIA_ROOT, ASSESSMENT_UPLOADS_DIR)
 
@@ -301,3 +303,4 @@ CLIENT_URL = os.environ.get('CLIENT_URL')
 AI_API_KEY = os.environ.get('AI_API_KEY')
 AI_PROVIDER = os.environ.get('AI_PROVIDER')
 AI_MODEL = os.environ.get('AI_MODEL')
+CODER_AI_MODEL = os.environ.get('CODER_AI_MODEL')

@@ -23,6 +23,7 @@ class AssessmentListSerializer(serializers.ModelSerializer):
         model = Assessment
         fields = ['id', 'title', 'type', 'start_date',
                   'due_date', 'accepting_submissions', 'has_submitted', 'course', 'course_description', "grade", "courseId"]
+        read_only_fields = ['id', "grade"]
 
     def get_has_submitted(self, obj):
         request = self.context.get('request')
@@ -59,7 +60,8 @@ class AssessmentSerializer(serializers.ModelSerializer):
         fields = ('id', 'course', 'course_name', 'title', 'type', 'due_date', 'grade',
                   'start_date', 'accepting_submissions')
         read_only_fields = ('id', 'course_name',
-                            'accepting_submissions')
+
+                            'accepting_submissions', 'grade')
 
     def to_internal_value(self, data):
         # If start_date is explicitly set to null, use the default value

@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='handwrittenquestion',
             name='assessment',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='handwritten_questions', to='assessment.assessment'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                                    related_name='handwritten_questions', to='assessment.assessment'),
         ),
     ]

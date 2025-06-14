@@ -17,13 +17,16 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='Enrollments',
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ('id', models.UUIDField(default=uuid.uuid4,
+                 editable=False, primary_key=True, serialize=False)),
                 ('enrolled_at', models.DateTimeField(auto_now_add=True)),
                 ('is_completed', models.BooleanField(default=False)),
                 ('is_passed', models.BooleanField(default=False)),
                 ('is_summer_enrollment', models.BooleanField(default=False)),
-                ('total_score', models.DecimalField(decimal_places=2, default=0, max_digits=5)),
-                ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='enrollments', to='courses.course')),
+                ('total_score', models.DecimalField(
+                    decimal_places=2, default=0, max_digits=5)),
+                ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE,
+                 related_name='enrollments', to='courses.course')),
             ],
         ),
     ]

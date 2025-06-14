@@ -17,7 +17,7 @@ class AssessmentSubmissionSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'assessment_id', 'enrollment_id', 'student_email',
             'assessment_title', 'course_name', 'mcq_answers',
-            'handwritten_answers', 'submitted_at', 'is_submitted'
+            'handwritten_answers', 'codequestions_answers', 'submitted_at', 'is_submitted'
         )
         read_only_fields = (
             'id', 'student_email', 'assessment_title',
@@ -86,4 +86,11 @@ class AssessmentSubmissionSerializer(serializers.ModelSerializer):
                 raise ValidationError(
                     f"Invalid Handwritten question ID: {question_id}")
 
-        return data
+        # Validate Coding answers
+        for question_id, code_answer in data.get('codequestions_answers', {}).items():
+            try:
+                question = data['assessment'].coding_questions.get(id=question_id)
+            except Exception as e:
+                raise ValidationError(f"Invalid Coding question ID: {question_id}")
+
+        return data 

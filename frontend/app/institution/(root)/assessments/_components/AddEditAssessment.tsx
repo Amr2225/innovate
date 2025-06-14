@@ -64,7 +64,7 @@ export default function AddEditAssessment({
         type: assessment.type,
         due_date: assessment.due_date,
         start_date: assessment.start_date,
-        grade: assessment.total_grade,
+        // grade: assessment.total_grade,
       }),
     onSuccess: () => {
       toast.success("Assessment created successfully");
@@ -88,7 +88,7 @@ export default function AddEditAssessment({
         type: updatedAssessment.type,
         due_date: updatedAssessment.due_date,
         start_date: updatedAssessment.start_date,
-        grade: updatedAssessment.total_grade,
+        // grade: updatedAssessment.total_grade,
       }),
     onSuccess: () => {
       toast.success("Assessment updated successfully");
@@ -110,7 +110,6 @@ export default function AddEditAssessment({
       type: assessment?.type || "Assignment",
       due_date: assessment?.due_date ? new Date(assessment.due_date) : new Date(),
       start_date: assessment?.start_date ? new Date(assessment.start_date) : null,
-      total_grade: assessment?.grade || 0,
     },
   });
 
@@ -237,27 +236,6 @@ export default function AddEditAssessment({
                       <SelectItem value='Exam'>Exam</SelectItem>
                     </SelectContent>
                   </Select>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name='total_grade'
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className='after:content-["*"] after:ml-0.5 after:text-red-500'>
-                  Total Grade
-                </FormLabel>
-                <FormControl>
-                  <Input
-                    {...field}
-                    type='number'
-                    placeholder='Total Grade'
-                    onChange={(e) => field.onChange(Number(e.target.value) || "")}
-                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
