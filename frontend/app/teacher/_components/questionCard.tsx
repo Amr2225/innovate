@@ -64,7 +64,6 @@ export default function QuestionCard({ question }: { question: Question }) {
               <TypedSelectItem<Question["questionType"]> value='handWritten'>
                 Hand Written
               </TypedSelectItem>
-              <TypedSelectItem<Question["questionType"]> value='code'>Code</TypedSelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -17,7 +17,7 @@ router = DefaultRouter()
 urlpatterns = [
     path('', include(router.urls)),
     path(
-        '<str:assessment_id>/',
+        '<uuid:assessment_id>/',
         McqQuestionListCreateAPIView.as_view(),
         name='mcq-question-list-create'
     ),

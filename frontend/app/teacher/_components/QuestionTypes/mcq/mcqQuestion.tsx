@@ -8,7 +8,13 @@ import { createAssessmentStore } from "@/store/assessmentStore";
 import { DoubleClickEditInput } from "@/components/doubleClickEditInput";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function MCQQuestion({ question }: { question: MCQQuestion }) {
   const { assessmentId } = useParams();
@@ -64,7 +70,24 @@ export default function MCQQuestion({ question }: { question: MCQQuestion }) {
             <div className='flex-[0.25]'>
               <div>
                 <Label className='mb-1 block'>Correct Answer</Label>
-                <Input
+                <Select
+                  value={question.correctOption || ""}
+                  onValueChange={(value) =>
+                    updateQuestion<MCQQuestion>(question.id, "correctOption", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select Correct Answer' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {question.options?.map((answer) => (
+                      <SelectItem key={answer.id} value={answer.option}>
+                        {answer.option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* <Input
                   value={question.correctOption || ""}
                   type='text'
                   placeholder='Correct Answer'
@@ -81,7 +104,7 @@ export default function MCQQuestion({ question }: { question: MCQQuestion }) {
                       updateQuestion<MCQQuestion>(question.id, "correctOption", "");
                     }
                   }}
-                />
+                /> */}
 
                 <Label className='mt-3 mb-1 block'>Grade</Label>
                 <Input
