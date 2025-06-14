@@ -7,19 +7,26 @@ from lecture.models import Lecture, LectureProgress
 
 class Course(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     prerequisite_course = models.ForeignKey(
     'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='dependent_courses')
     instructors = models.ManyToManyField(User, related_name='courses_taught', limit_choices_to={"role": "Teacher"})
     institution = models.ForeignKey(User, on_delete=models.CASCADE, related_name='courses', limit_choices_to={"role": "Institution"})
     semester = models.PositiveSmallIntegerField(null=True, blank=True)
+    passing_grade = models.FloatField(default=50.0, null=True, blank=True)
+    is_active = models.BooleanField(default=False)
+    total_grade = models.PositiveSmallIntegerField(null=True, blank=True)
+    is_summer_open = models.BooleanField(default=False)
 
     # Faculty fields
     credit_hours = models.PositiveSmallIntegerField(null=True, blank=True)
     
-    # School fields
-    total_grade = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['name', 'institution'], name='unique_course_per_institution')
+        ]
 
     @property
     def level(self):

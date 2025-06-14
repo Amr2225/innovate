@@ -3,6 +3,7 @@ from users.models import User
 from enrollments.models import Enrollments
 from users.serializers import InstitutionUserSeralizer
 from courses.serializers import CourseSerializer
+from assessment.models import AssessmentScore
 
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -12,6 +13,7 @@ class StudentSerializer(serializers.ModelSerializer):
 class EnrollmentsSerializer(serializers.ModelSerializer):
     user_data = StudentSerializer(source='user', read_only=True)
     course_data = serializers.SerializerMethodField()
+    total_score = serializers.DecimalField(max_digits=5, decimal_places=2)
 
     class Meta:
         model = Enrollments
@@ -22,7 +24,10 @@ class EnrollmentsSerializer(serializers.ModelSerializer):
             'course',
             'course_data',
             'enrolled_at',
-            'is_completed'
+            'is_completed',
+            'is_passed',
+            'is_summer_enrollment',
+            'total_score'
         )
 
     def to_representation(self, instance):
@@ -41,3 +46,11 @@ class EnrollMultipleCoursesSerializer(serializers.Serializer):
         allow_empty=False,
         help_text="List of Course IDs to enroll in"
     )
+
+class AssessmentScoreSerializer(serializers.ModelSerializer):
+    assessment_title = serializers.CharField(source='assessment.title')
+    assessment_type = serializers.CharField(source='assessment.type')
+    
+    class Meta:
+        model = AssessmentScore
+        fields = ['id', 'assessment_title', 'assessment_type', 'total_score', 'submitted_at']
