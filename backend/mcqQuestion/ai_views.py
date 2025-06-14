@@ -34,7 +34,7 @@ class GenerateMCQsFromTextView(generics.GenericAPIView):
         "question_grade": "10.00"  // optional, default is 0.00
     }
     """
-    serializer_class = McqQuestionSerializer
+    # serializer_class = McqQuestionSerializer
 
     def save_mcq_questions(self, mcq_data, question_grade):
         saved_questions = []
@@ -141,7 +141,7 @@ class GenerateMCQsFromPDFView(generics.GenericAPIView):
     - question_grade: grade per question (optional, default=0.00)
     """
     parser_classes = (MultiPartParser,)
-    serializer_class = McqQuestionSerializer
+    # serializer_class = McqQuestionSerializer
 
     def save_mcq_questions(self, mcq_data, question_grade):
         saved_questions = []
@@ -232,7 +232,6 @@ class GenerateMCQsFromLecturesView(generics.GenericAPIView):
         "num_options": 4  // optional, default=4 (number of options per question, min=2, max=4)
     }
     """
-    serializer_class = McqQuestionSerializer
     permission_classes = [McqQuestionPermission]
 
     DIFFICULTY_CHOICES = [

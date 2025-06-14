@@ -31,13 +31,17 @@ class CourseSerializer(serializers.ModelSerializer):
         allow_null=True,
         write_only=True
     )
-    chapters = ChapterSerializer(many=True)
+    chapters = ChapterSerializer(many=True, read_only=True)
 
     prerequisite_course_detail = PrerequisiteCourseSerializer(
         source='prerequisite_course', read_only=True)
     instructors_detials = InstructorSerializer(
         source='instructors', many=True, read_only=True)
+    students_count = serializers.SerializerMethodField(read_only=True)
     # chapters = ChapterSerializer(many=True, read_only=True)
+
+    def get_students_count(self, obj):
+        return Enrollments.objects.filter(course=obj, is_completed=False).count()
 
     class Meta:
         model = Course
@@ -53,7 +57,8 @@ class CourseSerializer(serializers.ModelSerializer):
             'credit_hours',
             'semester',
             'level',
-            'chapters'
+            'chapters',
+            'students_count'
             # 'chapters'
         )
 

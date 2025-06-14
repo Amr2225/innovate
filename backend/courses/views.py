@@ -28,20 +28,6 @@ class CourseListCreateAPIView(generics.ListCreateAPIView):
             return Course.objects.filter(instructors=user)
         elif user.role == "Student":
             return Course.objects.none()
-        #     enrollments = Enrollments.objects.filter(user=user)
-
-        #     is_completed_param = self.request.query_params.get('is_completed')
-        #     if is_completed_param is not None:
-        #         if is_completed_param.lower() == 'true':
-        #             enrollments = enrollments.filter(is_completed=True)
-        #         elif is_completed_param.lower() == 'false':
-        #             enrollments = enrollments.filter(is_completed=False)
-
-        #     # Extract course IDs from the filtered enrollments
-        #     course_ids = enrollments.values_list('course_id', flat=True)
-        #     return Course.objects.filter(id__in=course_ids)
-
-            # return Course.objects.none()
 
     def get_permissions(self):
         self.permission_classes = [IsAuthenticated]

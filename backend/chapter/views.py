@@ -6,6 +6,7 @@ from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from enrollments.models import Enrollments
 from users.permissions import isInstitution, isTeacher
 from rest_framework.permissions import IsAuthenticated
 from courses.models import Course
@@ -175,9 +176,16 @@ class ChapterListCreateAPIView(generics.ListCreateAPIView):
             semester=semester
         )
 
+        enrollments = Enrollments.objects.filter(
+            course=course,
+            user__in=students,
+            is_completed=False
+        )
+
         progress_entries = [
-            LectureProgress(user=student, lecture=lecture, completed=False)
-            for student in students
+            LectureProgress(enrollment=enrollment,
+                            lecture=lecture, completed=False)
+            for enrollment in enrollments
         ]
 
         if progress_entries:

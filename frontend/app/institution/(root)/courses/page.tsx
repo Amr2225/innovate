@@ -101,6 +101,10 @@ interface GlobalFilter {
   instructor?: string;
 }
 
+interface CourseResponse extends Course {
+  students_count: number;
+}
+
 export default function CoursesPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -134,7 +138,7 @@ export default function CoursesPage() {
   } = useInfiniteQuery({
     queryKey: ["institution-courses", debouncedFilter, currentPage],
     queryFn: () =>
-      getCourses({
+      getCourses<CourseResponse>({
         pageParam: currentPage,
         page_size: 10,
         name: globalFilter.name,
@@ -248,7 +252,8 @@ export default function CoursesPage() {
       ),
     },
     {
-      id: "students",
+      id: "students_count",
+      accessorKey: "students_count",
       header: ({ column }) => (
         <div className='flex items-center justify-center space-x-1'>
           <span>Students</span>
@@ -261,12 +266,7 @@ export default function CoursesPage() {
           </Button>
         </div>
       ),
-      accessorFn: () => {
-        // This would come from API in a real implementation
-        // For now return a random number between 20 and 50
-        return Math.floor(Math.random() * 30) + 20;
-      },
-      cell: () => <div className='text-center'>{Math.floor(Math.random() * 30) + 20}</div>,
+      cell: ({ row }) => <div className='text-center'>{row.getValue("students_count")}</div>,
     },
     {
       id: "credit_hours",

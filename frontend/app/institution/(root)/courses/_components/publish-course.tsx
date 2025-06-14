@@ -55,7 +55,7 @@ export default function PublishCoursePage() {
                       )}
                       {lecture.attachments && (
                         <p className='flex items-center gap-1 text-muted-foreground'>
-                          <Paperclip className='size-3' /> 2
+                          <Paperclip className='size-3' />
                         </p>
                       )}
                     </div>

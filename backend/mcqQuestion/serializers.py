@@ -7,6 +7,14 @@ from .models import McqQuestion
 logger = logging.getLogger(__name__)
 
 
+class AIQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = McqQuestion
+        fields = ('id', 'question', 'options', 'answer_key', 'created_by', 'question_grade',
+                  'created_at', 'updated_at', 'section_number')
+        read_only_fields = ('created_at', 'updated_at', 'created_by')
+
+
 class McqQuestionSerializer(serializers.ModelSerializer):
     created_by = serializers.ReadOnlyField(source='created_by.email')
     options = serializers.ListField(
