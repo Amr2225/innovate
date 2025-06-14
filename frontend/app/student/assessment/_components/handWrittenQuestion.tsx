@@ -24,7 +24,7 @@ export default function HandWrittenQuestion({
   const ref = useRef<HTMLInputElement>(null);
 
   const { accessToken } = useAuth();
-  const qrCodeUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/student/assessment/upload?assessmentId=${assessmentId}&questionId=${questionId}&token=${accessToken}`;
+  const qrCodeUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/assessment/upload?assessmentId=${assessmentId}&questionId=${questionId}&token=${accessToken}`;
 
   const useSolveAssessmentStore = createSolveAssessmentStore(assessmentId as string);
   const { handWrittenAnswers, setHandWrittenAnswer } = useSolveAssessmentStore();

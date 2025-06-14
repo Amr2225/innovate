@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
@@ -12,43 +11,65 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-
-interface PolicyData {
-  min_passing_percentage: number;
-  max_allowed_failures: number;
-  min_gpa_required: number;
-  min_attendance_percent: number;
-  max_allowed_courses_per_semester: number;
-  year_registration_open: boolean;
-  summer_registration_open: boolean;
-  promotion_time: Date;
-}
+import { useForm } from "react-hook-form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { getInstitutionPolicy, updateInstitutionPolicy } from "@/apiService/institutionPolicy";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { InstitutionPolicy } from "@/types/institution.type";
 
 export default function InstitutionPolicyPage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [policyData, setPolicyData] = useState<PolicyData>({
-    min_passing_percentage: 60,
-    max_allowed_failures: 2,
-    min_gpa_required: 2.0,
-    min_attendance_percent: 75,
-    max_allowed_courses_per_semester: 6,
-    year_registration_open: true,
-    summer_registration_open: false,
-    promotion_time: new Date(),
+  const queryClient = useQueryClient();
+
+  const { data: policy, isLoading: isPolicyLoading } = useQuery({
+    queryKey: ["institution-policy"],
+    queryFn: () => getInstitutionPolicy(),
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      // TODO: Implement API call to update policy
+  const { mutate: updatePolicy, isPending: isUpdating } = useMutation({
+    mutationFn: (policy: InstitutionPolicy) => updateInstitutionPolicy(policy),
+    onSuccess: () => {
       toast.success("Policy updated successfully");
-    } catch {
+      queryClient.invalidateQueries({ queryKey: ["institution-policy"] });
+    },
+    onError: () => {
       toast.error("Failed to update policy");
-    } finally {
-      setIsLoading(false);
+    },
+  });
+
+  const form = useForm<InstitutionPolicy>({
+    defaultValues: {
+      min_passing_percentage: 0,
+      max_allowed_failures: 0,
+      min_gpa_required: 0,
+      min_attendance_percent: 0,
+      max_allowed_courses_per_semester: 0,
+      year_registration_open: true,
+      summer_registration_open: false,
+      promotion_time: undefined,
+    },
+  });
+
+  useEffect(() => {
+    if (policy && !isPolicyLoading) {
+      form.reset({
+        min_passing_percentage: policy.min_passing_percentage || 0,
+        max_allowed_failures: policy.max_allowed_failures || 0,
+        min_gpa_required: policy.min_gpa_required || 0,
+        min_attendance_percent: policy.min_attendance_percent || 0,
+        max_allowed_courses_per_semester: policy.max_allowed_courses_per_semester || 0,
+        year_registration_open: policy.year_registration_open || false,
+        summer_registration_open: policy.summer_registration_open ?? false,
+        promotion_time: policy.promotion_time || undefined,
+      });
     }
-  };
+  }, [form, policy, isPolicyLoading]);
 
   return (
     <div className='container max-w-4xl py-10'>
@@ -62,12 +83,12 @@ export default function InstitutionPolicyPage() {
             <div className='flex items-center justify-between p-4 bg-muted rounded-lg'>
               <div className='space-y-1'>
                 <p className='text-sm text-muted-foreground'>Your institution access code</p>
-                <p className='text-2xl font-mono font-bold'>INST-2024-1234</p>
+                <p className='text-2xl font-mono font-bold'>{policy?.access_code}</p>
               </div>
               <Button
                 variant='outline'
                 onClick={() => {
-                  navigator.clipboard.writeText("INST-2024-1234");
+                  navigator.clipboard.writeText(policy?.access_code || "");
                   toast.success("Access code copied to clipboard");
                 }}
               >
@@ -78,185 +99,211 @@ export default function InstitutionPolicyPage() {
         </Card>
 
         {/* Policy Settings Form */}
-        <form onSubmit={handleSubmit}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Academic Policy Settings</CardTitle>
-            </CardHeader>
-            <CardContent className='space-y-6'>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                {/* Minimum Passing Percentage */}
-                <div className='space-y-2'>
-                  <Label htmlFor='min_passing_percentage'>Minimum Passing Percentage</Label>
-                  <Input
-                    id='min_passing_percentage'
-                    type='number'
-                    min='0'
-                    max='100'
-                    value={policyData.min_passing_percentage}
-                    onChange={(e) =>
-                      setPolicyData({
-                        ...policyData,
-                        min_passing_percentage: Number(e.target.value),
-                      })
-                    }
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit((data) => updatePolicy(data))}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Academic Policy Settings</CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-6'>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                  {/* Minimum Passing Percentage */}
+                  <FormField
+                    control={form.control}
+                    name='min_passing_percentage'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Minimum Passing Percentage</FormLabel>
+                        <FormControl>
+                          <Input
+                            type='number'
+                            min='0'
+                            max='100'
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Maximum Allowed Failures */}
+                  <FormField
+                    control={form.control}
+                    name='max_allowed_failures'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Maximum Allowed Failures</FormLabel>
+                        <FormControl>
+                          <Input
+                            type='number'
+                            min='0'
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Minimum GPA Required */}
+                  <FormField
+                    control={form.control}
+                    name='min_gpa_required'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Minimum GPA Required</FormLabel>
+                        <FormControl>
+                          <Input
+                            type='number'
+                            step='0.1'
+                            min='0'
+                            max='4'
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Minimum Attendance Percent */}
+                  <FormField
+                    control={form.control}
+                    name='min_attendance_percent'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Minimum Attendance Percent</FormLabel>
+                        <FormControl>
+                          <Input
+                            type='number'
+                            min='0'
+                            max='100'
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Maximum Allowed Courses */}
+                  <FormField
+                    control={form.control}
+                    name='max_allowed_courses_per_semester'
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Maximum Courses per Semester</FormLabel>
+                        <FormControl>
+                          <Input
+                            type='number'
+                            min='1'
+                            {...field}
+                            value={field.value || ""}
+                            onChange={(e) => field.onChange(Number(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Promotion Time */}
+                  <FormField
+                    control={form.control}
+                    name='promotion_time'
+                    render={({ field }) => (
+                      <FormItem className='flex flex-col mt-2.5'>
+                        <FormLabel>Promotion Time</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant='outline'
+                                className={cn(
+                                  "w-full pl-3 text-left font-normal",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                              >
+                                {field.value ? (
+                                  format(field.value, "PPP")
+                                ) : (
+                                  <span>Pick a date</span>
+                                )}
+                                <CalendarIcon className='ml-auto h-4 w-4 opacity-50' />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className='w-auto p-0' align='start'>
+                            <Calendar
+                              mode='single'
+                              selected={field.value || undefined}
+                              onSelect={field.onChange}
+                              disabled={(date) => date < new Date("1900-01-01")}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
                 </div>
 
-                {/* Maximum Allowed Failures */}
-                <div className='space-y-2'>
-                  <Label htmlFor='max_allowed_failures'>Maximum Allowed Failures</Label>
-                  <Input
-                    id='max_allowed_failures'
-                    type='number'
-                    min='0'
-                    value={policyData.max_allowed_failures}
-                    onChange={(e) =>
-                      setPolicyData({
-                        ...policyData,
-                        max_allowed_failures: Number(e.target.value),
-                      })
-                    }
+                {/* Registration Toggles */}
+                <div className='space-y-4 pt-4'>
+                  <FormField
+                    control={form.control}
+                    name='year_registration_open'
+                    render={({ field }) => (
+                      <FormItem className='flex items-center justify-between rounded-lg border p-4'>
+                        <div className='space-y-0.5'>
+                          <FormLabel>Year Registration</FormLabel>
+                          <p className='text-sm text-muted-foreground'>
+                            Allow students to register for the academic year
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value || false} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name='summer_registration_open'
+                    render={({ field }) => (
+                      <FormItem className='flex items-center justify-between rounded-lg border p-4'>
+                        <div className='space-y-0.5'>
+                          <FormLabel>Summer Registration</FormLabel>
+                          <p className='text-sm text-muted-foreground'>
+                            Allow students to register for summer courses
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value || false} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
                   />
                 </div>
 
-                {/* Minimum GPA Required */}
-                <div className='space-y-2'>
-                  <Label htmlFor='min_gpa_required'>Minimum GPA Required</Label>
-                  <Input
-                    id='min_gpa_required'
-                    type='number'
-                    step='0.1'
-                    min='0'
-                    max='4'
-                    value={policyData.min_gpa_required}
-                    onChange={(e) =>
-                      setPolicyData({
-                        ...policyData,
-                        min_gpa_required: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-
-                {/* Minimum Attendance Percent */}
-                <div className='space-y-2'>
-                  <Label htmlFor='min_attendance_percent'>Minimum Attendance Percent</Label>
-                  <Input
-                    id='min_attendance_percent'
-                    type='number'
-                    min='0'
-                    max='100'
-                    value={policyData.min_attendance_percent}
-                    onChange={(e) =>
-                      setPolicyData({
-                        ...policyData,
-                        min_attendance_percent: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-
-                {/* Maximum Allowed Courses */}
-                <div className='space-y-2'>
-                  <Label htmlFor='max_allowed_courses'>Maximum Courses per Semester</Label>
-                  <Input
-                    id='max_allowed_courses'
-                    type='number'
-                    min='1'
-                    value={policyData.max_allowed_courses_per_semester}
-                    onChange={(e) =>
-                      setPolicyData({
-                        ...policyData,
-                        max_allowed_courses_per_semester: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-
-                {/* Promotion Time */}
-                <div className='space-y-2'>
-                  <Label>Promotion Time</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant='outline'
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !policyData.promotion_time && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className='mr-2 h-4 w-4' />
-                        {policyData.promotion_time ? (
-                          format(policyData.promotion_time, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className='w-auto p-0'>
-                      <Calendar
-                        mode='single'
-                        selected={policyData.promotion_time}
-                        onSelect={(date) =>
-                          date &&
-                          setPolicyData({
-                            ...policyData,
-                            promotion_time: date,
-                          })
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              {/* Registration Toggles */}
-              <div className='space-y-4 pt-4'>
-                <div className='flex items-center justify-between'>
-                  <div className='space-y-0.5'>
-                    <Label>Year Registration</Label>
-                    <p className='text-sm text-muted-foreground'>
-                      Allow students to register for the academic year
-                    </p>
-                  </div>
-                  <Switch
-                    checked={policyData.year_registration_open}
-                    onCheckedChange={(checked) =>
-                      setPolicyData({
-                        ...policyData,
-                        year_registration_open: checked,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className='flex items-center justify-between'>
-                  <div className='space-y-0.5'>
-                    <Label>Summer Registration</Label>
-                    <p className='text-sm text-muted-foreground'>
-                      Allow students to register for summer courses
-                    </p>
-                  </div>
-                  <Switch
-                    checked={policyData.summer_registration_open}
-                    onCheckedChange={(checked) =>
-                      setPolicyData({
-                        ...policyData,
-                        summer_registration_open: checked,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <Button type='submit' className='w-full' disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save Changes"}
-              </Button>
-            </CardContent>
-          </Card>
-        </form>
+                <Button type='submit' className='w-full' disabled={isUpdating}>
+                  {isUpdating ? "Saving..." : "Save Changes"}
+                </Button>
+              </CardContent>
+            </Card>
+          </form>
+        </Form>
       </div>
     </div>
   );

@@ -123,23 +123,22 @@ export default function AddAttachmentDialog({
           </div>
         )}
       </div>
-      <div className='flex justify-between items-center gap-2'>
+      <div className='flex justify-between items-center gap-2 mt-2'>
         <div className='space-x-2'>
           <DialogClose asChild>
             <Button type='button' variant='secondary'>
               Close
             </Button>
           </DialogClose>
-          {lecture.attachments && (
-            <Button
-              variant='link'
-              onClick={() => updateLecture(chapterId, lecture.id, "attachments", null)}
-            >
-              Reset
-            </Button>
-          )}
         </div>
-        <Button>Upload</Button>
+        {lecture.attachments && (
+          <Button
+            variant='link'
+            onClick={() => updateLecture(chapterId, lecture.id, "attachments", null)}
+          >
+            Reset
+          </Button>
+        )}
       </div>
     </CustomDialog>
   );

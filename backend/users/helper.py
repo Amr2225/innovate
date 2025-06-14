@@ -29,7 +29,7 @@ class SendEmail():
         send_mail(
             'Verify Your Email',
             f'Click the link to verify your email: {verificationLink}',
-            'from@example.com',
+            'innovateedu.20.25@gmail.com',
             [self.email],
             fail_silently=False,
         )
@@ -60,7 +60,7 @@ def sendEmail(email, otp):
     send_mail(
         'Verify Your Email',
         f'This is your OTP to verify your email: {otp}',
-        'from@example.com',
+        'innovateedu.20.25@gmail.com',
         [email],
         fail_silently=False,
     )

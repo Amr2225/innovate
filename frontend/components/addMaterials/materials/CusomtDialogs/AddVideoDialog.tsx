@@ -81,23 +81,23 @@ export default function AddVideoDialog({
           </div>
         )}
       </div>
-      <div className='flex justify-between items-center gap-2'>
+      <div className='flex justify-between items-center gap-2 mt-2'>
         <div className='space-x-2'>
           <DialogClose asChild>
             <Button type='button' variant='secondary'>
               Close
             </Button>
           </DialogClose>
-          {lecture.video && (
-            <Button
-              variant='link'
-              onClick={() => updateLecture(chapterId, lecture.id, "video", null)}
-            >
-              Reset
-            </Button>
-          )}
         </div>
-        <Button>Upload</Button>
+        {lecture.video && (
+          <Button
+            // variant='link'
+            onClick={() => updateLecture(chapterId, lecture.id, "video", null)}
+          >
+            Reset
+          </Button>
+        )}
+        {/* <Button>Upload</Button> */}
       </div>
     </CustomDialog>
   );

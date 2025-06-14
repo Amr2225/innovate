@@ -35,7 +35,7 @@ export default function StudentDashboard() {
 
           <div className='flex flex-col'>
             <h1 className='text-2xl font-bold capitalize'>{session.user.name}</h1>
-            <p className='text-gray-500'>Student Level / GPA</p>
+            {/* <p className='text-gray-500'>Student Level / GPA</p> */}
             <p className='text-gray-500'>{session.user.email}</p>
           </div>
         </header>

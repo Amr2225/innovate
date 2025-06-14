@@ -23,11 +23,11 @@ export default function LectureSelector({
 }) {
   const { assessmentId } = useParams();
   const useAssessmentStore = createAssessmentStore(assessmentId as string);
-  const { updateQuestion, courseId } = useAssessmentStore();
+  const { updateQuestion } = useAssessmentStore();
 
   const { data: lectures, isLoading } = useQuery({
     queryKey: ["lectures"],
-    queryFn: () => getLectures({ page_size: 1000, courseId }),
+    queryFn: () => getLectures({ page_size: 1000, assessmentId: assessmentId as string }),
   });
 
   if (isLoading) return <Skeleton className='w-full h-10' />;
@@ -45,8 +45,9 @@ export default function LectureSelector({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className='max-h-full overflow-auto'
-        sideOffset={4}
+        className='max-h-[300px] overflow-auto'
+        side='bottom'
+        align='start'
         style={{ width: "var(--radix-dropdown-menu-trigger-width)" }}
       >
         <DropdownMenuLabel>Select Lectures</DropdownMenuLabel>

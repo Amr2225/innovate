@@ -18,3 +18,4 @@ PyPDF2
 celery
 drf_sse
 django_celery_beat
+# sendgrid-django

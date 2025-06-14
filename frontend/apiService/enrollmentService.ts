@@ -5,7 +5,7 @@ interface EligibleCourses {
     name: string
     description: string
     instructors: Instructor[]
-    credit_hours: number
+    credit_hours?: number
 }
 
 interface Instructor {
@@ -28,10 +28,10 @@ interface StudentCourses {
 
 
 export const getEligibleCourses = async (): Promise<EligibleCourses[]> => {
-    const res = await api.get<EligibleCourses[]>("/enrollments/")
+    const res = await api.get<{ data: EligibleCourses[], detail: string }>("/enrollments/", { params: { page_size: 100, page_number: 1 } })
 
-    if (res.status === 200) return res.data
-    throw new Error("Failed to get eligible courses")
+    if (res.status === 200) return res.data.data
+    throw new Error(res.data.detail || "Failed to get eligible courses")
 }
 
 export const enrollInCourse = async (courseId: string) => {

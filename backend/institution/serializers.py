@@ -205,9 +205,10 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
 
     def validate(self, data):
         national_id = data.get('national_id')
-        institution = self.context['request'].user
-        if User.objects.filter(national_id=national_id, institution=institution).exists():
-            raise InstitutionNationalIdError()
+        if national_id:
+            institution = self.context['request'].user
+            if User.objects.filter(national_id=national_id, institution=institution).exists():
+                raise InstitutionNationalIdError()
         return data
 
     def create(self, data):

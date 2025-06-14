@@ -7,11 +7,13 @@ from users.permissions import isInstitution, isStudent, isTeacher
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from enrollments.models import Enrollments
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import LectureFilter
 
 
 class LectureListCreateAPIView(generics.ListCreateAPIView):
-    filterset_fields = ['id', 'title',
-                        'description', 'chapter', 'chapter__course']
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = LectureFilter
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

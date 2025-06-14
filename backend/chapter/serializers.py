@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from chapter.models import Chapter
+from enrollments.models import Enrollments
 from lecture.serializers import LectureSerializer
 from lecture.models import Lecture
 from courses.models import Course
@@ -129,7 +130,8 @@ class ChapterBulkCreateSerializer(serializers.Serializer):
         )
 
         progress_entries = [
-            LectureProgress(user=student, lecture=lecture, completed=False)
+            LectureProgress(enrollment=Enrollments.objects.get(
+                user=student, course=course, is_completed=False), lecture=lecture, completed=False)
             for student in students
         ]
 

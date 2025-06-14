@@ -1,8 +1,8 @@
 import { Lecture } from "@/types/course.type"
 import { api } from "./api"
 
-export const getLectures = async ({ chpaterId, page_size, pageParam, courseId }: { chpaterId?: string, page_size?: number, pageParam?: number, courseId?: string }): Promise<Lecture[]> => {
-    const res = await api.get<{ data: Lecture[] }>("/lecture/", { params: { chapter: chpaterId, chapter__course: courseId, page_size, page: pageParam } })
+export const getLectures = async ({ chpaterId, page_size, pageParam, courseId, assessmentId }: { chpaterId?: string, page_size?: number, pageParam?: number, courseId?: string, assessmentId?: string }): Promise<Lecture[]> => {
+    const res = await api.get<{ data: Lecture[] }>("/lecture/", { params: { chapter: chpaterId, chapter__course: courseId, page_size, page: pageParam, assessment_id: assessmentId } })
 
     if (res.status === 200) return res.data.data
     throw new Error("Failed to get lectures")

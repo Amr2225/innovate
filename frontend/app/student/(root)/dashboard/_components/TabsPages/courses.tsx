@@ -1,12 +1,12 @@
 "use client";
 import React from "react";
-import {
-  Select,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
+// import {
+//   Select,
+//   SelectValue,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+// } from "@/components/ui/select";
 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,7 @@ export default function CousresSection() {
           <Label htmlFor='search'>Search:</Label>
           <Input id='search' placeholder='Search in your courses..' />
         </div>
-
+        {/* 
         <div>
           <Label>Sort by:</Label>
           <Select defaultValue='latest'>
@@ -81,7 +81,7 @@ export default function CousresSection() {
               <SelectItem value='alphabetical'>Alphabetical</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </div> */}
       </div>
 
       <div className='grid grid-cols-4 gap-4 pb-5'>

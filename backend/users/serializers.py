@@ -96,7 +96,6 @@ class InstitutionSerializer(serializers.ModelSerializer):
 
 
 class InstitutionUserSeralizer(serializers.ModelSerializer):
-    # TODO: implement rules for the age attribute (calculated, or entered)
     Role = (
         ("Student", "Student"),
         ("Teacher", "Teacher"),
@@ -125,16 +124,6 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
             'date_joined',
             'email',
         )
-        # extra_kwargs = {
-        #     # "first_name": { 'required': True},
-        #     # "middle_name": {'write_only': True, 'required': True},
-        #     # "last_name": {'write_only': True, 'required': True},
-        #     "role": {'write_only': True, 'required': True},
-        #     "national_id": {'write_only': True, 'required': True},
-        #     "birth_date": {'write_only': True, 'required': True},
-        #     'date_joined': {'read_only': True},
-        #     'is_email_verified': {'read_only': True},
-        # }
 
     def create(self, data):
         request = self.context.get('request')
@@ -153,7 +142,8 @@ class InstitutionUserSeralizer(serializers.ModelSerializer):
                     Enrollments.objects.create(user=user, course=course)
                     lectures = Lecture.objects.filter(chapter__course=course)
                     LectureProgress.objects.bulk_create([
-                        LectureProgress(user=user, lecture=lecture)
+                        LectureProgress(enrollment=Enrollments.objects.get(
+                            user=user, course=course, is_completed=False), lecture=lecture)
                         for lecture in lectures
                     ])
 

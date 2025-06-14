@@ -16,8 +16,12 @@ function getTitle(studentLimit: number) {
 function getDescription(text: string, isAdvantage: boolean, key: number) {
   return (
     <li className='flex gap-3' key={key}>
-      {isAdvantage ? <Check className='text-green-500' /> : <X className='text-red-500' />}
-      <p className='capitalize'>{text}</p>
+      {isAdvantage ? (
+        <Check className='text-green-500 w-[15%]' />
+      ) : (
+        <X className='text-red-500 w-[15%]' />
+      )}
+      <p className='capitalize text-sm'>{text}</p>
     </li>
   );
 }
@@ -58,7 +62,7 @@ export default function PriceCards({
           variant={"secondary"}
           className='w-full my-6 rounded-full hover:bg-primary hover:text-primary-foreground transition-all'
         >
-          <Link href={`/institution-register/${id}`}>Buy Now</Link>
+          <Link href={`/register-institution/${id}`}>Buy Now</Link>
         </Button>
         <ul className='space-y-4'>
           {description.map((data, index) => getDescription(data.text, data.isAdvantage, index))}

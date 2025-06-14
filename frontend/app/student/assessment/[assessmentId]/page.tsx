@@ -12,9 +12,9 @@ import Loader from "@/components/Loader";
 import { Button } from "@/components/ui/button";
 
 // Local Components
-import { NavBar } from "../_components/Navbar";
-import MCQQuestion from "../_components/mcqQuestion";
-import HandWrittenQuestion from "../_components/handWrittenQuestion";
+import { NavBar } from "@/app/student/assessment/_components/Navbar";
+import MCQQuestion from "@/app/student/assessment/_components/mcqQuestion";
+import HandWrittenQuestion from "@/app/student/assessment/_components/handWrittenQuestion";
 
 // Query
 import { useQuery } from "@tanstack/react-query";

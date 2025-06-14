@@ -1,18 +1,16 @@
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.http import JsonResponse
-from django.db.models import Q, F
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import PermissionDenied
-from users.permissions import isInstitution, isStudent, isTeacher
+from users.permissions import isInstitution, isStudent
 from decimal import Decimal
 
 from courses.models import Course
 from enrollments.models import Enrollments
 from rest_framework.views import APIView
 from courses.serializers import CourseSerializer
-import uuid
 from uuid import UUID
 from assessment.models import AssessmentScore
 from institution_policy.models import InstitutionPolicy
@@ -20,7 +18,8 @@ from users.models import User
 from enrollments.serializers import (
     EnrollMultipleCoursesSerializer,
     EnrollmentsSerializer,
-    AssessmentScoreSerializer
+    AssessmentScoreSerializer,
+    EligibleCoursesSerializer
 )
 from lecture.models import Lecture, LectureProgress
 
@@ -144,7 +143,8 @@ class PromoteStudentsAPIView(APIView):
                     Enrollments.objects.create(user=student, course=course)
                     lectures = Lecture.objects.filter(chapter__course=course)
                     LectureProgress.objects.bulk_create([
-                        LectureProgress(user=student, lecture=lecture)
+                        LectureProgress(enrollment=Enrollments.objects.get(
+                            user=student, course=course, is_completed=False), lecture=lecture)
                         for lecture in lectures
                     ])
                 promoted_students.append(student.id)
@@ -217,7 +217,8 @@ class PromoteStudentsSummerAPIView(APIView):
                     Enrollments.objects.create(user=student, course=course)
                     lectures = Lecture.objects.filter(chapter__course=course)
                     LectureProgress.objects.bulk_create([
-                        LectureProgress(user=student, lecture=lecture)
+                        LectureProgress(enrollment=Enrollments.objects.get(
+                            user=student, course=course, is_completed=False), lecture=lecture)
                         for lecture in lectures
                     ])
                 promoted_students.append(student.id)
@@ -228,7 +229,7 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return EnrollMultipleCoursesSerializer
-        return CourseSerializer
+        return EligibleCoursesSerializer
 
     permission_classes = [isStudent]
 
@@ -333,7 +334,8 @@ class EligibleCoursesAPIView(generics.ListCreateAPIView):
                 enrolled_courses.append(enrollment)
                 lectures = Lecture.objects.filter(chapter__course=course)
                 progress_entries = [LectureProgress(
-                    user=user, lecture=lecture) for lecture in lectures]
+                    enrollment=Enrollments.objects.get(
+                        user=user, course=course, is_completed=False), lecture=lecture) for lecture in lectures]
                 try:
                     LectureProgress.objects.bulk_create(progress_entries)
                 except Exception as e:

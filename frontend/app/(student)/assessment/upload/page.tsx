@@ -125,9 +125,7 @@ export default function UploadPage() {
   return (
     <div className='p-4 flex flex-col items-center justify-center min-h-screen bg-slate-50'>
       <h1 className='text-2xl font-bold mb-4'>Upload Your Answer</h1>
-      <p className='mb-6 text-center'>
-        Take a photo of your handwritten answer for Question #{questionId}
-      </p>
+      <p className='mb-6 text-center'>Take a photo of your handwritten</p>
 
       {error && (
         <div className='mb-4 p-3 bg-red-100 text-red-700 rounded-md text-center'>

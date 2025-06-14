@@ -8,10 +8,15 @@ from enrollments.models import Enrollments
 
 
 class InstructorSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(read_only=True)
+
     class Meta:
         model = User
-        fields = ["id", "first_name", "middle_name", "last_name",
-                  "national_id", "birth_date", "age", 'date_joined', 'email',]
+        fields = ["id", "full_name", "avatar", "email"]
+
+        extra_kwargs = {
+            'avatar': {'read_only': True},
+        }
 
 
 class PrerequisiteCourseSerializer(serializers.ModelSerializer):
@@ -27,18 +32,17 @@ class CourseSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
-    chapters = ChapterSerializer(many=True, read_only=True)
 
     prerequisite_course_detail = PrerequisiteCourseSerializer(
         source='prerequisite_course', read_only=True)
     instructors_detials = InstructorSerializer(
         source='instructors', many=True, read_only=True)
     students_count = serializers.SerializerMethodField(read_only=True)
+    chapters = ChapterSerializer(many=True, read_only=True)
     # instructors_data = InstructorSerializer(
     #     source='instructors', many=True, read_only=True)
     # prerequisite_course_data = PrerequisiteCourseSerializer(
     #     source='prerequisite_course', read_only=True)
-    chapters = ChapterSerializer(many=True, read_only=True)
 
     def get_students_count(self, obj):
         return Enrollments.objects.filter(course=obj, is_completed=False).count()
@@ -50,9 +54,9 @@ class CourseSerializer(serializers.ModelSerializer):
             'name',
             'description',
             'prerequisite_course',
-            'prerequisite_course_data',
+            'prerequisite_course_detail',
             'instructors',
-            'instructors_data',
+            'instructors_detials',
             'passing_grade',
             'total_grade',
             'is_active',
@@ -60,10 +64,14 @@ class CourseSerializer(serializers.ModelSerializer):
             'semester',
             'level',
             'chapters',
-            'students_count'
+            'students_count',
             # 'chapters'
             'is_summer_open'
         )
+
+        extra_kwargs = {
+            'instructors': {'required': False},
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { HandwrittenGraphics, CodingGraphics, MCQGrahpics } from "./Graphics";
+import { HandwrittenGraphics, MCQGrahpics } from "./Graphics";
 
 export default function AssessmentSystem() {
   return (
@@ -25,7 +25,7 @@ export default function AssessmentSystem() {
           </div>
         </div>
 
-        <div className='flex flex-col md:flex-row gap-3 items-center justify-center '>
+        {/* <div className='flex flex-col md:flex-row gap-3 items-center justify-center '>
           <div className='size-[350px] aspect-square'>
             <CodingGraphics />
           </div>
@@ -39,9 +39,12 @@ export default function AssessmentSystem() {
               journey just got smarter and more intuitive.
             </p>
           </div>
-        </div>
+        </div> */}
 
         <div className='flex flex-col-reverse md:flex-row gap-3 items-center justify-center '>
+          <div className='w-[350px] aspect-square'>
+            <MCQGrahpics />
+          </div>
           <div className='w-full'>
             <h1 className='text-xl font-bold my-3'>MCQ Exams</h1>
             <p className='text-neutral-500'>
@@ -51,9 +54,6 @@ export default function AssessmentSystem() {
               cutting-edge technology. Join us in revolutionizing the way you learn and succeed.
               Your academic journey just became more engaging and effective.
             </p>
-          </div>
-          <div className='w-[350px] aspect-square'>
-            <MCQGrahpics />
           </div>
         </div>
       </div>

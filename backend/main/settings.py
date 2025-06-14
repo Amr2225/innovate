@@ -28,7 +28,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://192.168.1.2:3000",
     # "https://f659-156-208-242-179.ngrok-free.app",
-    "https://60d3-154-182-238-185.ngrok-free.app",
+    "https://aab2-154-182-238-185.ngrok-free.app",
 ]
 
 # For development, you can use these more permissive settings
@@ -276,11 +276,21 @@ CACHES = {
 
 # Email Config
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_HOST = 'smtp.gmail.com'
+# EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
+# EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+
+# SendGrid Email Config
+SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')
+EMAIL_HOST = 'smtp.sendgrid.net'
+EMAIL_HOST_USER = 'apikey'
+EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+# EMAIL_BACKEND = "sgbackend.SendGridBackend"
+
 
 # Payment Config
 PAYMOB_PK = os.environ.get('PAYMOB_PK')

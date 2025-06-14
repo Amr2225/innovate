@@ -65,9 +65,12 @@ import {
 } from "@tanstack/react-table";
 import { useDebounce } from "use-debounce";
 import { Course } from "@/types/course.type";
-import { deleteCourse, getCourses } from "@/apiService/courseService";
+import { deleteCourse, getCourses, updateCourse } from "@/apiService/courseService";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 // Local Components
 import AddEditCourse from "./_components/addEditCourse";
@@ -75,35 +78,78 @@ import { toast } from "sonner";
 import { useBreadcrumb } from "@/context/breadcrumbsContext";
 import { useAuth } from "@/hooks/useAuth";
 
-// Helper constants for course status mapping
-const COURSE_STATUSES = {
-  ACTIVE: "Active",
-  UPCOMING: "Upcoming",
-  ARCHIVED: "Archived",
-} as const;
-
-type CourseStatus = (typeof COURSE_STATUSES)[keyof typeof COURSE_STATUSES];
-
-// Helper function to determine course status based on semester
-const getCourseStatus = (course: Course): CourseStatus => {
-  const currentSemester = 3; // Assuming semester 3 is current
-  if (course.semester < currentSemester) {
-    return COURSE_STATUSES.ARCHIVED;
-  } else if (course.semester > currentSemester) {
-    return COURSE_STATUSES.UPCOMING;
-  } else {
-    return COURSE_STATUSES.ACTIVE;
-  }
-};
-
 interface GlobalFilter {
   name?: string;
   instructor?: string;
 }
 
 interface CourseResponse extends Course {
-  students_count: number;
+  students_count?: number;
+  is_active: boolean;
 }
+
+// Replace the EditableStatusCell component with this new version
+const EditableStatusCell: React.FC<{
+  value: boolean;
+  onSave: (newValue: boolean) => void;
+}> = ({ value, onSave }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [editValue, setEditValue] = useState(value);
+
+  const handleSave = () => {
+    onSave(editValue);
+    setIsOpen(false);
+  };
+
+  const handleCancel = () => {
+    setEditValue(value);
+    setIsOpen(false);
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${
+            value ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+          }`}
+        >
+          {value ? "Active" : "Inactive"}
+        </span>
+      </PopoverTrigger>
+      <PopoverContent className='w-48 p-4'>
+        <div className='space-y-4'>
+          <RadioGroup
+            value={editValue ? "active" : "inactive"}
+            onValueChange={(val) => setEditValue(val === "active")}
+            className='space-y-2'
+          >
+            <div className='flex items-center space-x-2'>
+              <RadioGroupItem value='active' id='active' className='size-5' />
+              <Label htmlFor='active' className='text-sm font-medium'>
+                Active
+              </Label>
+            </div>
+            <div className='flex items-center space-x-2'>
+              <RadioGroupItem value='inactive' id='inactive' className='size-5' />
+              <Label htmlFor='inactive' className='text-sm font-medium'>
+                Inactive
+              </Label>
+            </div>
+          </RadioGroup>
+          <div className='flex justify-end gap-2 pt-2'>
+            <Button size='sm' variant='ghost' onClick={handleCancel} className='h-8'>
+              Cancel
+            </Button>
+            <Button size='sm' onClick={handleSave} className='h-8'>
+              Save
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 export default function CoursesPage() {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -155,6 +201,17 @@ export default function CoursesPage() {
     mutationFn: (courseId: string) => deleteCourse(courseId),
     onSuccess: () => {
       toast.success("Course deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["institution-courses"] });
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const { mutate: updateCourseMutation } = useMutation({
+    mutationFn: (course: CourseResponse) => updateCourse(course),
+    onSuccess: () => {
+      toast.success("Course updated successfully");
       queryClient.invalidateQueries({ queryKey: ["institution-courses"] });
     },
     onError: (error) => {
@@ -286,7 +343,8 @@ export default function CoursesPage() {
       cell: ({ row }) => <div className='text-center'>{row.original.credit_hours}</div>,
     },
     {
-      id: "status",
+      id: "is_active",
+      accessorKey: "is_active",
       header: ({ column }) => (
         <div className='flex items-center space-x-1'>
           <span>Status</span>
@@ -299,26 +357,13 @@ export default function CoursesPage() {
           </Button>
         </div>
       ),
-      accessorFn: (row) => getCourseStatus(row),
       cell: ({ row }) => {
-        const status = getCourseStatus(row.original);
         return (
-          <span
-            className={`px-2 py-1 rounded-full text-xs font-medium ${
-              status === COURSE_STATUSES.ACTIVE
-                ? "bg-green-100 text-green-800"
-                : status === COURSE_STATUSES.UPCOMING
-                ? "bg-blue-100 text-blue-800"
-                : "bg-gray-100 text-gray-800"
-            }`}
-          >
-            {status}
-          </span>
+          <EditableStatusCell
+            value={row.getValue("is_active")}
+            onSave={(newValue) => updateCourseMutation({ ...row.original, is_active: newValue })}
+          />
         );
-      },
-      filterFn: (row, id, value: CourseStatus[]) => {
-        const status = getCourseStatus(row.original);
-        return value.includes(status);
       },
     },
     {

@@ -85,7 +85,6 @@ class InstitutionVerifyPaymentView(views.APIView):
 
 class InstitutionGeneratePaymentIntentView(generics.ListCreateAPIView):
     serializer_class = InstitutionGeneratePaymentSerializer
-    permission_classes = [isInstitution]
 
     def get_queryset(self):
         user = self.request.user
@@ -101,7 +100,7 @@ class InstitutionGeneratePaymentIntentView(generics.ListCreateAPIView):
 
         # If the redirection URL is not provided, use the default one redirects the registration page
         redirection_url = request.data.get(
-            'redirection_url', f"{settings.CLIENT_URL}/institution-register/{plan_id}")
+            'redirection_url', f"{settings.CLIENT_URL}/register-institution/{plan_id}")
 
         # If the plan ID is not provided, return an error
         if not plan_id:

@@ -17,6 +17,6 @@ def update_enrollment_total_grade(sender, instance, created, **kwargs):
             course=instance.assessment.course
         )
 
-        current_Total_Grade = Decimal(str(enrollment.total_grade))
+        current_Total_Grade = Decimal(str(enrollment.total_score))
         enrollment.total_grade = current_Total_Grade + instance.total_score
         enrollment.save()

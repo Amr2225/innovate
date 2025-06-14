@@ -267,7 +267,7 @@ class UserLoginView(APIView):
                 user = serializer.validated_data['user']
 
                 # Generate tokens
-                [refresh, access] = generateTokens(user)
+                [access, refresh] = generateTokens(user)
 
                 return Response({
                     'refresh': refresh,

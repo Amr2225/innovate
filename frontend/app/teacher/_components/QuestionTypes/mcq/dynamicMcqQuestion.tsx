@@ -203,7 +203,7 @@ export default function DynamicMCQQuestion({ question }: { question: DynamicMCQQ
             className='min-h-[200px]'
           />
         </div>
-        <div className='flex justify-between items-center gap-2'>
+        <div className='flex justify-between items-center gap-2 mt-2'>
           <div className='space-x-2'>
             <DialogClose asChild>
               <Button type='button' variant='secondary'>
@@ -224,7 +224,7 @@ export default function DynamicMCQQuestion({ question }: { question: DynamicMCQQ
         <div>
           <LectureSelector question={question} />
         </div>
-        <div className='flex justify-between items-center gap-2'>
+        <div className='flex justify-between items-center gap-2 mt-2'>
           <div className='space-x-2'>
             <DialogClose asChild>
               <Button type='button' variant='secondary'>

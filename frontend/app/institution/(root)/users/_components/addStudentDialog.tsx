@@ -52,7 +52,6 @@ export default function AddStudentDialog() {
       first_name: "",
       middle_name: "",
       last_name: "",
-      email: "",
       role: "Student",
       national_id: "",
       birth_date: null,
@@ -172,19 +171,6 @@ export default function AddStudentDialog() {
 
                 <FormField
                   control={form.control}
-                  name='email'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input placeholder='Email' {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name='national_id'
                   render={({ field }) => (
                     <FormItem>
@@ -200,7 +186,9 @@ export default function AddStudentDialog() {
                   control={form.control}
                   name='birth_date'
                   render={({ field }) => (
-                    <BirthDatePicker date={field.value ?? undefined} setDate={field.onChange} />
+                    <FormItem className='col-span-2'>
+                      <BirthDatePicker date={field.value ?? undefined} setDate={field.onChange} />
+                    </FormItem>
                   )}
                 />
 
