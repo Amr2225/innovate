@@ -63,6 +63,32 @@ export default function CourseGradesSection() {
     );
   }
 
+  const getStatusBadgeStyles = (status: "passed" | "failed" | "in progress") => {
+    switch (status) {
+      case "passed":
+        return "bg-green-100 text-green-800 hover:bg-green-100";
+      case "failed":
+        return "bg-red-100 text-red-800 hover:bg-red-100";
+      case "in progress":
+        return "bg-yellow-100 text-yellow-800 hover:bg-yellow-100";
+      default:
+        return "";
+    }
+  };
+
+  const getStatusText = (status: "passed" | "failed" | "in progress") => {
+    switch (status) {
+      case "passed":
+        return "Passed";
+      case "failed":
+        return "Failed";
+      case "in progress":
+        return "In Progress";
+      default:
+        return status;
+    }
+  };
+
   return (
     <div>
       <h1 className='text-xl font-bold mt-3 mb-6'>Course Grades</h1>
@@ -84,14 +110,18 @@ export default function CourseGradesSection() {
                 <TableCell>Level {Math.ceil(course.semester / 2)}</TableCell>
                 <TableCell>Semester {course.semester % 2 || 2}</TableCell>
                 <TableCell>
-                  {course.grade}/{course.total_grade}
+                  <div className='flex items-center gap-2'>
+                    <span className='font-medium'>{course.grade}</span>
+                    <span className='text-muted-foreground'>/</span>
+                    <span className='text-muted-foreground'>{course.total_grade}</span>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge
-                    variant={course.is_passed ? "default" : "destructive"}
-                    className='capitalize'
+                    variant={course.status === "failed" ? "destructive" : "default"}
+                    className={`capitalize px-3 py-1 ${getStatusBadgeStyles(course.status)}`}
                   >
-                    {course.is_passed ? "Passed" : "Failed"}
+                    {getStatusText(course.status)}
                   </Badge>
                 </TableCell>
               </TableRow>

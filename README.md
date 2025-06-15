@@ -1,157 +1,193 @@
 # Innovate - Learning Management System
 
-A comprehensive Learning Management System (LMS) platform designed for universities and schools, built with Django backend and Next.js frontend.
+A comprehensive learning management system built with Django and Next.js, featuring AI-powered assessment and analytics.
 
 ## Features
 
-### User Management
+- **User Management**
 
-- Multi-role system (Institution, Teacher, Student)
-- Institution registration and management
-- Bulk user import via CSV
-- User profile management
-- Role-based access control
+  - Multi-role system (Student, Teacher, Institution Admin)
+  - Secure authentication and authorization
+  - Profile management with avatar support
 
-### Course Management
+- **Course Management**
 
-- Course creation and management
-- Chapter organization
-- Lecture content management
-- Course enrollment system
-- Course analytics and tracking
+  - Course creation and management
+  - Prerequisite course system
+  - Course materials and curriculum
+  - Student enrollment tracking
 
-### Assessment System
+- **Assessment System**
 
-- Multiple assessment types:
-  - Multiple Choice Questions (MCQ)
-  - Handwritten Questions
-  - Dynamic MCQs
-- Assessment submission tracking
-- Automated grading for MCQs
-- Manual grading for handwritten submissions
-- Assessment analytics and reporting
+  - AI-powered assessment generation
+  - Multiple question types
+  - Automated grading
+  - Performance analytics
 
-### AI Integration
+- **AI Integration**
 
-- AI-powered features for enhanced learning
-- Integration with Hugging Face models
-- PDF processing capabilities
+  - Smart assessment generation
+  - Performance predictions
+  - Learning path recommendations
 
-### Analytics
-
-- Comprehensive analytics dashboard
-- Student performance tracking
-- Course progress monitoring
-- Assessment analytics
+- **Analytics**
+  - Student performance tracking
+  - Course analytics
+  - Progress monitoring
+  - Custom reports
 
 ## Technical Stack
 
 ### Backend
 
-- Django & Django REST Framework
-- PostgreSQL Database
+- Django 5.0
+- Django REST Framework
+- PostgreSQL
 - Celery for async tasks
-- Channels for WebSocket support
-- JWT Authentication
 - Redis for caching
-
-#### Key Backend Dependencies
-
-- djangorestframework
-- django-cors-headers
-- djangorestframework-simplejwt
-- django-filter
-- channels & channels-redis
-- celery & django_celery_beat
-- huggingface-hub
-- PyPDF2 & pdf2image
+- JWT Authentication
+- OpenAI API integration
 
 ### Frontend
 
-- Next.js 15
-- React 19
+- Next.js 14
+- React 18
 - TypeScript
 - Tailwind CSS
-- Shadcn UI Components
-- TanStack Query & Table
-- Socket.io for real-time features
+- Shadcn UI
+- TanStack Query
+- React Hook Form
+- Zod validation
 
-#### Key Frontend Dependencies
+## Key Dependencies
 
-- @tanstack/react-query & @tanstack/react-table
-- @radix-ui/react-\* (UI components)
-- recharts (Data visualization)
-- zod (Schema validation)
-- zustand (State management)
+### Backend
 
-## Prerequisites
-
-- Python 3.x
-- Node.js 18+
-- PostgreSQL
+- Django 5.0
+- Django REST Framework
+- Celery
 - Redis
-- Docker (optional)
+- PostgreSQL
+- OpenAI
+- JWT
+- Django CORS Headers
+
+### Frontend
+
+- Next.js 14
+- React 18
+- TypeScript
+- Tailwind CSS
+- Shadcn UI
+- TanStack Query
+- React Hook Form
+- Zod
+- Axios
+- Moment.js
 
 ## Project Structure
 
-### Backend Structure
+### Backend
 
 ```
-├── AI/                    # AI integration components
-├── analytics/            # Analytics and reporting
-├── assessment/          # Assessment management
-├── AssessmentSubmission/ # Assessment submission handling
-├── chapter/             # Course chapter management
+backend/
+├── core/                 # Core Django settings
+├── users/               # User management
 ├── courses/             # Course management
-├── DynamicMCQ/          # Dynamic MCQ functionality
-├── enrollments/         # Course enrollment system
-├── HandwrittenQuestion/ # Handwritten question handling
-├── institution/         # Institution management
-├── lecture/            # Lecture content management
-├── mcqQuestion/        # MCQ question management
-├── users/              # User management
-└── main/               # Core application settings
+├── assessments/         # Assessment system
+├── analytics/           # Analytics and reporting
+└── utils/              # Utility functions
 ```
 
-### Frontend Structure
+### Frontend
 
 ```
+frontend/
 ├── app/                # Next.js app directory
-│   ├── (root)/        # Root layout and pages
-│   ├── institution/   # Institution-specific pages
-│   ├── teacher/       # Teacher-specific pages
-│   └── student/       # Student-specific pages
-├── components/        # Reusable UI components
-├── apiService/       # API service functions
-├── hooks/           # Custom React hooks
-├── context/         # React context providers
-├── types/           # TypeScript type definitions
-├── lib/             # Utility functions
-├── store/           # State management
-└── public/          # Static assets
+├── components/         # Reusable components
+├── apiService/         # API integration
+├── hooks/             # Custom React hooks
+├── types/             # TypeScript types
+└── utils/             # Utility functions
 ```
 
-## Setup and Installation
+## Setup Instructions
+
+### Prerequisites
+
+- Python 3.8+
+- Node.js 18+
+- PostgreSQL
+- Redis
+- Git
 
 ### Backend Setup
 
-1. Clone the repository
-2. Create a virtual environment:
+1. Clone the repository and navigate to the backend directory:
+
+   ```bash
+   git clone https://github.com/your-username/innovate.git
+   cd innovate/backend
+   ```
+
+2. Create and activate a virtual environment:
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
+
 3. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
+
 4. Set up environment variables:
-   - Create a `.env` file with required configurations
-   - Include database credentials, secret key, and other necessary settings
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Configure the following variables in `.env`:
+
+   ```env
+   # Django Settings
+   DEBUG=True
+   SECRET_KEY=your-secret-key
+   ALLOWED_HOSTS=localhost,127.0.0.1
+
+   # Database
+   DB_NAME=innovate_db
+   DB_USER=postgres
+   DB_PASSWORD=your-password
+   DB_HOST=localhost
+   DB_PORT=5432
+
+   # Redis
+   REDIS_URL=redis://localhost:6379
+
+   # OpenAI
+   OPENAI_API_KEY=your-openai-api-key
+
+   # JWT
+   JWT_SECRET_KEY=your-jwt-secret
+   JWT_ACCESS_TOKEN_LIFETIME=5
+   JWT_REFRESH_TOKEN_LIFETIME=1
+
+   # Email
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_PORT=587
+   EMAIL_HOST_USER=your-email@gmail.com
+   EMAIL_HOST_PASSWORD=your-app-password
+   ```
+
 5. Run migrations:
+
    ```bash
    python manage.py migrate
    ```
+
 6. Start the development server:
    ```bash
    python manage.py runserver
@@ -160,16 +196,38 @@ A comprehensive Learning Management System (LMS) platform designed for universit
 ### Frontend Setup
 
 1. Navigate to the frontend directory:
+
    ```bash
-   cd frontend
+   cd ../frontend
    ```
+
 2. Install dependencies:
+
    ```bash
    npm install
    ```
+
 3. Set up environment variables:
-   - Create a `.env.local` file with required configurations
-   - Include API endpoints and other necessary settings
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Configure the following variables in `.env.local`:
+
+   ```env
+   # API Configuration
+   NEXT_PUBLIC_API_URL=http://localhost:8000/api
+   NEXT_PUBLIC_API_VERSION=v1
+
+   # Authentication
+   NEXT_PUBLIC_JWT_SECRET=your-jwt-secret
+
+   # Feature Flags
+   NEXT_PUBLIC_ENABLE_ANALYTICS=true
+   NEXT_PUBLIC_ENABLE_AI_ASSESSMENTS=true
+   ```
+
 4. Start the development server:
    ```bash
    npm run dev
@@ -177,14 +235,23 @@ A comprehensive Learning Management System (LMS) platform designed for universit
 
 ### Docker Deployment
 
-1. Build and run using Docker Compose:
-   ```bash
-   docker-compose up --build
-   ```
+#### Backend
+
+```bash
+docker build -t innovate-backend .
+docker run -p 8000:8000 innovate-backend
+```
+
+#### Frontend
+
+```bash
+docker build -t innovate-frontend .
+docker run -p 3000:3000 innovate-frontend
+```
 
 ## API Documentation
 
-The API documentation is available at `/api/schema/swagger-ui/` when running the server.
+API documentation is available at `/api/docs/` when running the backend server.
 
 ## Contributing
 

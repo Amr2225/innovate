@@ -31,7 +31,7 @@ interface CourseGrade {
     course_name: string;
     grade: number;
     total_grade: number;
-    is_passed: boolean;
+    status: 'passed' | 'failed' | 'in progress';
     semester: number;
 }
 
