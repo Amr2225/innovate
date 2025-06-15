@@ -11,69 +11,44 @@ class StudentAnalyticsView(generics.GenericAPIView):
     """
     API endpoint for student analytics.
     
-    GET /api/teacher-analytics/students/ - Returns analytics for all courses
-    GET /api/teacher-analytics/students/{course_id}/ - Returns analytics for a specific course
+    GET /api/analytics/students/ - Returns analytics for all courses
+    GET /api/analytics/students/{course_id}/ - Returns analytics for a specific course
     
-    Returns:
-    {
-        "courses": [
-            {
-                "course_id": "uuid",
-                "course_name": "string",
-                "students": [
-                    {
-                        "student_id": "uuid",
-                        "student_name": "string",
-                        "progress": {
-                            "completed_lectures": integer,
-                            "total_lectures": integer,
-                            "completion_percentage": float
-                        },
-                        "assessments": [
-                            {
-                                "assessment_id": "uuid",
-                                "assessment_name": "string",
-                                "score": float,
-                                "submitted_at": "datetime"
-                            }
-                        ],
-                        "average_score": float
-                    }
-                ],
-                "course_statistics": {
-                    "total_students": integer,
-                    "average_completion": float,
-                    "average_score": float
-                }
-            }
-        ]
-    }
+    Accessible by: Teachers (only their courses) & Institutions (only their courses)
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, course_id=None):
-        if request.user.role != "Teacher":
+        user = request.user
+
+        # Only Teachers or Institutions can access
+        if user.role not in ["Teacher", "Institution"]:
             return Response(
-                {"detail": "Only teachers can access this endpoint"},
+                {"detail": "Only teachers or institutions can access this endpoint"},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Get courses taught by the teacher
-        if course_id:
-            try:
-                courses = [Course.objects.get(id=course_id, instructors=request.user)]
-            except Course.DoesNotExist:
-                return Response(
-                    {"detail": "Course not found or you don't have permission to access it"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-        else:
-            courses = Course.objects.filter(instructors=request.user)
+        # Retrieve courses based on role and course_id
+        try:
+            if course_id:
+                if user.role == "Teacher":
+                    courses = [Course.objects.get(id=course_id, instructors=user)]
+                else:  # Institution
+                    courses = [Course.objects.get(id=course_id, institution=user)]
+            else:
+                if user.role == "Teacher":
+                    courses = Course.objects.filter(instructors=user)
+                else:  # Institution
+                    courses = Course.objects.filter(institution=user)
+        except Course.DoesNotExist:
+            return Response(
+                {"detail": "Course not found or you don't have permission to access it"},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
         courses_data = []
         
         for course in courses:
-            # Get all enrollments for the course
             enrollments = Enrollments.objects.filter(course=course)
             total_lectures = Lecture.objects.filter(chapter__course=course).count()
             
@@ -83,15 +58,13 @@ class StudentAnalyticsView(generics.GenericAPIView):
             student_count = 0
             
             for enrollment in enrollments:
-                # Get student's lecture progress
                 completed_lectures = LectureProgress.objects.filter(
                     enrollment=enrollment,
                     completed=True
                 ).count()
                 
-                completion_percentage = (completed_lectures / total_lectures * 100) if total_lectures > 0 else 0
+                completion_percentage = (completed_lectures / total_lectures * 100) if total_lectures else 0
                 
-                # Get student's assessment scores
                 assessment_scores = AssessmentScore.objects.filter(
                     enrollment=enrollment,
                     assessment__course=course
@@ -102,19 +75,18 @@ class StudentAnalyticsView(generics.GenericAPIView):
                 assessment_count = 0
                 
                 for score in assessment_scores:
-                    assessment_data = {
+                    assessments_data.append({
                         "assessment_id": str(score.assessment.id),
                         "assessment_name": score.assessment.title,
                         "score": float(score.total_score),
                         "submitted_at": score.created_at
-                    }
-                    assessments_data.append(assessment_data)
+                    })
                     total_student_score += float(score.total_score)
                     assessment_count += 1
                 
-                average_score = (total_student_score / assessment_count) if assessment_count > 0 else 0
+                average_score = (total_student_score / assessment_count) if assessment_count else 0
                 
-                student_data = {
+                students_data.append({
                     "student_id": str(enrollment.user.id),
                     "student_name": f"{enrollment.user.first_name} {enrollment.user.last_name}",
                     "progress": {
@@ -124,31 +96,23 @@ class StudentAnalyticsView(generics.GenericAPIView):
                     },
                     "assessments": assessments_data,
                     "average_score": round(average_score, 2)
-                }
+                })
                 
-                students_data.append(student_data)
                 total_completion += completion_percentage
                 total_score += average_score
                 student_count += 1
             
-            # Calculate course statistics
             course_statistics = {
                 "total_students": student_count,
-                "average_completion": round(total_completion / student_count, 2) if student_count > 0 else 0,
-                "average_score": round(total_score / student_count, 2) if student_count > 0 else 0
+                "average_completion": round(total_completion / student_count, 2) if student_count else 0,
+                "average_score": round(total_score / student_count, 2) if student_count else 0
             }
             
-            course_data = {
+            courses_data.append({
                 "course_id": str(course.id),
                 "course_name": course.name,
                 "students": students_data,
                 "course_statistics": course_statistics
-            }
-            
-            courses_data.append(course_data)
+            })
         
-        response_data = {
-            "courses": courses_data
-        }
-        
-        return Response(response_data) 
+        return Response({"courses": courses_data})

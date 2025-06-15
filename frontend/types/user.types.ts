@@ -14,13 +14,15 @@ export interface NewUser {
 }
 
 export interface UserUpdate {
-    first_name: string
-    middle_name: string
-    last_name: string
-    email: string
-    birth_date: Date
-    age: number
-    avatar: string
+    first_name?: string
+    middle_name?: string
+    last_name?: string
+    email?: string
+    birth_date?: Date
+    age?: number
+    avatar?: string
+    logo?: string
+    name?: string
 }
 
 

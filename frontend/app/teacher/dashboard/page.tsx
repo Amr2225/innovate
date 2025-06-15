@@ -75,9 +75,7 @@ export default function TeacherDashboard() {
       <Card className='col-span-6 h-full'>
         <CardHeader>
           <CardTitle>Top Students</CardTitle>
-          <CardDescription>
-            Showing average assessment completion rate for each student in your courses
-          </CardDescription>
+          <CardDescription>Showing Top 5 students in each course</CardDescription>
           <CardContent>
             <TopStudents />
           </CardContent>

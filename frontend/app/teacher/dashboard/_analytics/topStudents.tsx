@@ -85,7 +85,7 @@ export default function TopStudents() {
                   <Badge variant='secondary'>{student.student_name}</Badge>
                 </TableCell>
                 <TableCell className='text-right'>
-                  <span className='font-medium'>{student.total_grade}%</span>
+                  <span className='font-medium'>{student.total_grade}</span>
                 </TableCell>
               </TableRow>
             ))}

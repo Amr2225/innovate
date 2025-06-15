@@ -49,6 +49,12 @@ interface StudentDashboard {
     submitted_quizzes_count: number;
 }
 
+interface InstitutionUsersCourseAnalytics {
+    course_count: number;
+    teacher_count: number;
+    student_count: number;
+}
+
 export const getTeacherCourseStudentAnalytics = async (): Promise<StudentPerCourse> => {
     const response = await api.get('analytics/');
 
@@ -74,6 +80,14 @@ export const getTopStudents = async ({ courseId }: { courseId: string }): Promis
 
 export const studentAnalytics = async (): Promise<StudentDashboard> => {
     const response = await api.get('analytics/student-dashboard/');
+
+    if (response.status === 200) return response.data;
+    throw new Error(response.data.message || "Something went wrong");
+}
+
+
+export const getCourseUsersCount = async (): Promise<InstitutionUsersCourseAnalytics> => {
+    const response = await api.get('analytics/course-count/');
 
     if (response.status === 200) return response.data;
     throw new Error(response.data.message || "Something went wrong");

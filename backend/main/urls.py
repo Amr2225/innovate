@@ -34,5 +34,5 @@ urlpatterns = [
     # Rest Framework
     path("api-auth/", include("rest_framework.urls")),
 
-    path('analytics/', include('teacher_analytics.urls')),
+    path('analytics/', include('analytics.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

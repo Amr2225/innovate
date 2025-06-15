@@ -1,11 +1,8 @@
 "use client";
 import {
   Home,
-  Search,
   Settings,
   NotebookPen,
-  BarChart4,
-  Calendar,
   FileText,
   CreditCard,
   UserRoundPen,
@@ -37,21 +34,21 @@ const mainNavItems = [
     url: "/dashboard",
     icon: Home,
   },
-  {
-    title: "Analytics",
-    url: "/analytics",
-    icon: BarChart4,
-  },
-  {
-    title: "Calendar",
-    url: "/calendar",
-    icon: Calendar,
-  },
-  {
-    title: "Search",
-    url: "/dashboard/search",
-    icon: Search,
-  },
+  // {
+  //   title: "Analytics",
+  //   url: "/analytics",
+  //   icon: BarChart4,
+  // },
+  // {
+  //   title: "Calendar",
+  //   url: "/calendar",
+  //   icon: Calendar,
+  // },
+  // {
+  //   title: "Search",
+  //   url: "/dashboard/search",
+  //   icon: Search,
+  // },
 ];
 
 // Users management items

@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+// import { Calendar } from "@/components/ui/calendar";
+// import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+// import { CalendarIcon } from "lucide-react";
+// import { format } from "date-fns";
+// import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import {
   Form,
@@ -23,6 +23,8 @@ import {
 import { getInstitutionPolicy, updateInstitutionPolicy } from "@/apiService/institutionPolicy";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { InstitutionPolicy } from "@/types/institution.type";
+import { promoteStudents } from "@/apiService/institutionService";
+import { Loader2 } from "lucide-react";
 
 export default function InstitutionPolicyPage() {
   const queryClient = useQueryClient();
@@ -43,6 +45,16 @@ export default function InstitutionPolicyPage() {
     },
   });
 
+  const { mutate: promoteStudentsMutation, isPending: isPromoting } = useMutation({
+    mutationFn: () => promoteStudents(),
+    onSuccess: () => {
+      toast.success("Students promoted successfully");
+    },
+    onError: () => {
+      toast.error("Failed to promote students");
+    },
+  });
+
   const form = useForm<InstitutionPolicy>({
     defaultValues: {
       min_passing_percentage: 0,
@@ -52,7 +64,7 @@ export default function InstitutionPolicyPage() {
       max_allowed_courses_per_semester: 0,
       year_registration_open: true,
       summer_registration_open: false,
-      promotion_time: undefined,
+      // promotion_time: undefined,
     },
   });
 
@@ -66,14 +78,14 @@ export default function InstitutionPolicyPage() {
         max_allowed_courses_per_semester: policy.max_allowed_courses_per_semester || 0,
         year_registration_open: policy.year_registration_open || false,
         summer_registration_open: policy.summer_registration_open ?? false,
-        promotion_time: policy.promotion_time || undefined,
+        // promotion_time: policy.promotion_time || undefined,
       });
     }
   }, [form, policy, isPolicyLoading]);
 
   return (
-    <div className='container max-w-4xl py-10'>
-      <div className='space-y-6'>
+    <div className='container w-full py-10 flex gap-12'>
+      <div className='space-y-6 w-[50%]'>
         {/* Institution Access Code Section */}
         <Card>
           <CardHeader>
@@ -217,7 +229,7 @@ export default function InstitutionPolicyPage() {
                   />
 
                   {/* Promotion Time */}
-                  <FormField
+                  {/* <FormField
                     control={form.control}
                     name='promotion_time'
                     render={({ field }) => (
@@ -255,7 +267,7 @@ export default function InstitutionPolicyPage() {
                         <FormMessage />
                       </FormItem>
                     )}
-                  />
+                  /> */}
                 </div>
 
                 {/* Registration Toggles */}
@@ -304,6 +316,23 @@ export default function InstitutionPolicyPage() {
             </Card>
           </form>
         </Form>
+      </div>
+      <div className='w-2xl'>
+        <Card>
+          <CardHeader>
+            <CardTitle>Promote Students</CardTitle>
+            <CardDescription>
+              Promote students to the next academic year based on their performance
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div>
+              <Button type='button' onClick={() => promoteStudentsMutation()}>
+                {isPromoting ? <Loader2 className='size-4 animate-spin' /> : "Promote Students"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

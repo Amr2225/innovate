@@ -24,6 +24,6 @@ export interface InstitutionPolicy {
     max_allowed_courses_per_semester: number;
     year_registration_open: boolean;
     summer_registration_open: boolean;
-    promotion_time: Date;
+    // promotion_time: Date;
     access_code: string;
 }

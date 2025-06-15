@@ -321,7 +321,9 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'age',
             'national_id',
             'semester',
-            'avatar'
+            'avatar',
+            'name',
+            'logo'
         ]
         read_only_fields = ['email']  # Email shouldn't be changeable
 

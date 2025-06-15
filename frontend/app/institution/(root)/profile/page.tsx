@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BirthDatePicker } from "@/components/date-picker";
 import { Button } from "@/components/ui/button";
 import { useForm } from "react-hook-form";
 import { UserUpdate } from "@/types/user.types";
@@ -15,15 +14,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { getUserProfileData, updateUserProfileData } from "@/apiService/userService";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Loader from "@/components/Loader";
 import { changePassword } from "@/actions/changePassword";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
+import Image from "next/image";
 
-export default function TeacherProfilePage() {
+export default function InstitutionProfilePage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const passwordFormRef = useRef<HTMLFormElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+
   const { data: user, isLoading } = useQuery({
     queryKey: ["user"],
     queryFn: () => getUserProfileData(),
@@ -31,20 +35,17 @@ export default function TeacherProfilePage() {
 
   const form = useForm<UserUpdate>({
     defaultValues: {
-      first_name: "",
-      middle_name: "",
-      last_name: "",
+      name: "",
       email: "",
-      birth_date: new Date(),
-      age: 0,
-      avatar: "",
+      logo: "",
     },
   });
 
   const { mutate: updateUser, isPending: isUpdatingUser } = useMutation({
-    mutationFn: (data: UserUpdate) => updateUserProfileData(data),
+    mutationFn: (data: UserUpdate | FormData) => updateUserProfileData(data),
     onSuccess: () => {
       toast.success("Profile updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["user"] });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -54,13 +55,9 @@ export default function TeacherProfilePage() {
   useEffect(() => {
     if (!isLoading && user) {
       form.reset({
-        first_name: user.first_name,
-        middle_name: user.middle_name,
-        last_name: user.last_name,
+        name: user.name,
         email: user.email,
-        birth_date: user.birth_date,
-        age: user.age,
-        avatar: user.avatar,
+        logo: user.logo,
       });
     }
   }, [user, form, isLoading]);
@@ -69,6 +66,43 @@ export default function TeacherProfilePage() {
 
   const onSubmit = (data: UserUpdate) => {
     updateUser(data);
+  };
+
+  const handleLogoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      toast.error("No file selected");
+      return;
+    }
+
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size should be under 1MB");
+      return;
+    }
+
+    // Check if it's an image
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      console.log(file);
+      const formData = new FormData();
+      formData.append("logo", file);
+      console.log(formData);
+      updateUser(formData);
+    } catch {
+      toast.error("Failed to upload logo");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handlePasswordChange = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -107,20 +141,39 @@ export default function TeacherProfilePage() {
   };
 
   return (
-    <div className=' mx-auto p-6'>
-      <h1 className='text-2xl font-bold mb-8'>Teacher Profile Settings</h1>
+    <div className='mx-auto p-6 max-w-4xl'>
+      <h1 className='text-2xl font-bold mb-8'>Institution Profile Settings</h1>
 
       <div className='grid grid-cols-1 md:grid-cols-3 gap-8'>
-        {/* Left Column - Profile Image */}
+        {/* Left Column - Logo Upload */}
         <div className='md:col-span-1'>
-          <div className='relative group'>
-            <div className='bg-primary/10 w-full aspect-square rounded-lg overflow-hidden border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors'>
-              <div className='absolute inset-0 flex items-center justify-center'>
-                <Upload className='w-8 h-8 text-primary/40 group-hover:text-primary/60 transition-colors' />
+          <div className='relative'>
+            <div
+              className='relative group bg-orange-50 w-full aspect-square rounded-lg overflow-hidden border-2 border-dashed border-orange-200 hover:border-orange-400 transition-colors cursor-pointer'
+              onClick={handleLogoClick}
+            >
+              {user?.logo && (
+                <Image
+                  src={user.logo}
+                  alt='Institution Logo'
+                  className='w-full h-full object-cover'
+                  width={100}
+                  height={100}
+                />
+              )}
+              <div className='absolute inset-0 flex items-center justify-center bg-orange-500/50 opacity-0 group-hover:opacity-100 transition-opacity'>
+                <Upload className='w-8 h-8 text-white' />
               </div>
             </div>
-            <p className='text-sm text-muted-foreground mt-2 text-center'>
-              Image size should be under 1MB and image ratio needs to be 1:1
+            <input
+              type='file'
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept='image/*'
+              className='hidden'
+            />
+            <p className='text-sm text-orange-600/70 mt-2 text-center'>
+              Logo size should be under 5MB and image ratio needs to be 1:1
             </p>
           </div>
         </div>
@@ -128,83 +181,20 @@ export default function TeacherProfilePage() {
         {/* Right Column - Profile Form */}
         <div className='md:col-span-2'>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
-              <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-                <FormField
-                  control={form.control}
-                  name='first_name'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>First Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder='First Name' {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name='middle_name'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Middle Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder='Middle Name' {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name='last_name'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder='Last Name' {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                <FormField
-                  control={form.control}
-                  name='birth_date'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Birth Date</FormLabel>
-                      <FormControl>
-                        <BirthDatePicker
-                          date={field.value || undefined}
-                          setDate={(value) => field.onChange(value as Date)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name='age'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Age</FormLabel>
-                      <FormControl>
-                        <Input placeholder='Age' {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+            <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+              <FormField
+                control={form.control}
+                name='name'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Institution Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder='Enter institution name' {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -213,22 +203,26 @@ export default function TeacherProfilePage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder='Email' {...field} />
+                      <Input placeholder='Enter email address' {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <Button type='submit' className='w-full' disabled={isUpdatingUser}>
+              <Button
+                type='submit'
+                className='w-full bg-orange-500 hover:bg-orange-600 text-white'
+                disabled={isUpdatingUser || isUploading}
+              >
                 {isUpdatingUser ? "Saving..." : "Save Changes"}
               </Button>
             </form>
           </Form>
 
           {/* Password Change Section */}
-          <div className='mt-12'>
-            <h2 className='text-xl font-semibold mb-4'>Change Password</h2>
+          <div className='mt-12 border-t border-orange-200 pt-8'>
+            <h2 className='text-xl font-semibold mb-6 text-orange-900'>Change Password</h2>
             <form ref={passwordFormRef} onSubmit={handlePasswordChange} className='space-y-4'>
               <div>
                 <Label htmlFor='old_password'>Old Password</Label>
@@ -236,7 +230,7 @@ export default function TeacherProfilePage() {
                   id='old_password'
                   name='old_password'
                   type='password'
-                  placeholder='Old Password'
+                  placeholder='Enter old password'
                   disabled={isChangingPassword}
                   required
                 />
@@ -248,7 +242,7 @@ export default function TeacherProfilePage() {
                   id='new_password'
                   name='new_password'
                   type='password'
-                  placeholder='New Password'
+                  placeholder='Enter new password'
                   disabled={isChangingPassword}
                   required
                 />
@@ -260,7 +254,7 @@ export default function TeacherProfilePage() {
                   id='confirm_password'
                   name='confirm_password'
                   type='password'
-                  placeholder='Confirm Password'
+                  placeholder='Confirm new password'
                   disabled={isChangingPassword}
                   required
                 />

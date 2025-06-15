@@ -62,6 +62,12 @@ export const deleteUser = async ({ userId }: { userId: string }): Promise<boolea
     throw new Error(res.data.message || "Failed to delete user")
 }
 
+export const promoteStudents = async (): Promise<boolean> => {
+    const res = await api.post("/enrollments/promote-students/")
+    if (res.status === 200) return true
+    throw new Error(res.data.message || "Failed to promote students")
+}
+
 
 // Institution User Registration
 export const bulkUserInsert = async (formData: FormData): Promise<SubmissionData[]> => {
