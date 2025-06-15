@@ -1,9 +1,9 @@
 # Django
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
+from rest_framework.permissions import IsAuthenticated
 
 # DRF
-from rest_framework import generics, status, views
+from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.pagination import PageNumberPagination
@@ -13,10 +13,8 @@ from institution.filter import InstituionUserFilter
 from institution.serializers import InstitutionRegisterSeralizer, InstitutionUserSeralizer, InstitutionUserCreationSerializer, InstitutionPaymentSerializer
 
 # Permissions
-from users.permissions import isInstitution
+from users.permissions import isInstitution, isTeacher
 
-# Models
-from institution.models import Payment
 
 # Python
 import io
@@ -130,13 +128,21 @@ class Pagination(PageNumberPagination):
 
 class InstitutionUserView(generics.ListCreateAPIView):
     serializer_class = InstitutionUserCreationSerializer
-    permission_classes = [isInstitution]
     pagination_class = Pagination
     filterset_class = InstituionUserFilter
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-        return User.objects.filter(institution=user)
+        if user.role == "Institution":
+            return User.objects.filter(institution=user)
+        elif user.role == "Teacher":
+            # Get students enrolled in courses taught by the teacher
+            return User.objects.filter(
+                enrollments__course__instructors=user,
+                enrollments__is_completed=False
+            ).distinct()
+        return User.objects.none()
 
     def get_serializer_class(self):
         if self.request.method == 'POST':

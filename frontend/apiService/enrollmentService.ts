@@ -26,6 +26,15 @@ interface StudentCourses {
     credit_hours: number
 }
 
+interface CourseGrade {
+    course_id: string;
+    course_name: string;
+    grade: number;
+    total_grade: number;
+    is_passed: boolean;
+    semester: number;
+}
+
 
 export const getEligibleCourses = async (): Promise<EligibleCourses[]> => {
     const res = await api.get<{ data: EligibleCourses[], detail: string }>("/enrollments/", { params: { page_size: 100, page_number: 1 } })
@@ -48,3 +57,11 @@ export const getStudentCourses = async ({ page_size, pageParam }: { page_size: n
     throw new Error("Failed to get student courses")
 }
 
+
+export const getCourseGrades = async (): Promise<CourseGrade[]> => {
+
+    const res = await api.get<{ grades: CourseGrade[], detail: string }>("/enrollments/all-grades/", { params: { page_size: 1000, page: 1 } })
+
+    if (res.status === 200) return res.data.grades
+    throw new Error(res.data.detail || "Failed to get student courses")
+}

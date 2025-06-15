@@ -12,5 +12,9 @@ urlpatterns = [
     path('<uuid:pk>/update-score/', views.EnrollmentUpdateScoreView.as_view(),
          name='enrollment-update-score'),
     path('promote-students/', views.PromoteStudentsAPIView.as_view(),
-         name='promote-students')
+         name='promote-students'),
+    path('promote-students-summer/', views.PromoteStudentsSummerAPIView.as_view(),
+         name='promote-students-summer'),
+    path('all-grades/', views.AllStudentGradesView.as_view(),
+         name='all_student_grades')
 ]

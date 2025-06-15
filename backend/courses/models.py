@@ -17,7 +17,7 @@ class Course(models.Model):
     passing_grade = models.FloatField(default=50.0, null=True, blank=True)
     is_active = models.BooleanField(default=False)
     total_grade = models.PositiveSmallIntegerField(null=True, blank=True)
-    is_summer_open = models.BooleanField(default=False)
+    is_summer_open = models.BooleanField(default=True)
 
     # Faculty fields
     credit_hours = models.PositiveSmallIntegerField(null=True, blank=True)
